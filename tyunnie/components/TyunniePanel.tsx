@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import type { Event, Todo, Draft, Project, Snip, FinanceEntry } from '@/lib/database'
 
 // ── TYPES ──
@@ -184,6 +185,7 @@ Rules:
 - For add_event: always trigger confirmation — never add silently
 - For financial questions: quote the exact balance from the data above
 - Never mention "action block" or "JSON" to the user
+- Always put the action block on its own line at the very end, nothing after it
 - Speak warmly, like Taehyun — caring, direct, a little cool`
   }
 
@@ -289,7 +291,7 @@ Rules:
 
   // ── RENDER ──
   return (
-    <div className="w-[300px] flex-shrink-0 bg-[#111010] flex flex-col overflow-hidden border-l border-[#2a2520] relative">
+    <div className="w-75 shrink-0 bg-[#111010] flex flex-col overflow-hidden border-l border-[#2a2520] relative">
 
       {/* Subtle radial glow at bottom */}
       <div
@@ -303,33 +305,44 @@ Rules:
         className="flex-1 overflow-y-auto px-3 pt-4 pb-2 flex flex-col justify-end gap-2.5 z-10 relative min-h-0"
         style={{ scrollbarWidth: 'thin', scrollbarColor: '#2a2520 transparent' }}
       >
-        {bubbles.map(b => (
-          <div
-            key={b.id}
-            className={`flex ${b.who === 'tyunnie' ? 'justify-end' : 'justify-start'}`}
-            style={{ animation: 'bubbleIn 0.3s ease' }}
-          >
+        {bubbles.map((b, index) => {
+          // Fade bubbles that are more than 3 from the bottom
+          const distanceFromBottom = bubbles.length - 1 - index
+          const opacity = distanceFromBottom > 3
+            ? Math.max(0.15, 1 - (distanceFromBottom - 3) * 0.18)
+            : 1
+
+          return (
             <div
+              key={b.id}
+              className={`flex ${b.who === 'tyunnie' ? 'justify-start' : 'justify-end'}`}
+              style={{
+                animation: 'bubbleIn 0.3s ease',
+                opacity,
+                transition: 'opacity 0.3s ease'
+              }}
+            >
+              <div
               className={`
-                max-w-[210px] px-3.5 py-2.5 text-[12.5px] leading-[1.7] font-medium
+                max-w-52.5 px-3.5 py-2.5 text-[12.5px] leading-[1.7] font-medium
                 ${b.who === 'tyunnie'
-                  ? 'bg-[#f97316] text-white rounded-[16px_4px_16px_16px]'
-                  : 'bg-[#2a2520] text-[#e8ddd0] rounded-[4px_16px_16px_16px] border border-[#3a3028]'
+                  ? 'bg-[#f97316] text-white rounded-[4px_16px_16px_16px]'
+                  : 'bg-[#2a2520] text-[#e8ddd0] rounded-[16px_4px_16px_16px] border border-[#3a3028]'
                 }
               `}
-            >
-              {/* Render HTML for list_drafts responses */}
-              <span dangerouslySetInnerHTML={{ __html: b.text }} />
-              <div className="text-[9px] opacity-60 mt-1 text-right font-mono">
-                {b.time}
+              >    
+                <span dangerouslySetInnerHTML={{ __html: b.text }} />
+                <div className="text-[9px] opacity-60 mt-1 text-right font-mono">
+                  {b.time}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {/* Thinking dots */}
         {thinking && (
-          <div className="flex justify-end">
+          <div className="flex justify-start">
             <div className="bg-[#f97316] rounded-[16px_4px_16px_16px] px-4 py-3 flex gap-1 items-center">
               {[0, 1, 2].map(i => (
                 <div
@@ -379,26 +392,29 @@ Rules:
       </div>
 
       {/* ── SPRITE ── */}
-      <div className="h-[270px] flex-shrink-0 relative flex items-end justify-center overflow-hidden z-10">
+      <div className="h-67.5 shrink-0 relative flex items-end justify-center overflow-hidden z-10">
         {/* Top fade */}
         <div
           className="absolute top-0 left-0 right-0 h-14 pointer-events-none z-10"
           style={{ background: 'linear-gradient(#111010, transparent)' }}
         />
-        <img
+        <Image
           src="/sprite.png"
           alt="Tyunnie"
-          className="h-full object-contain object-top relative z-[2] transition-all duration-500"
+          width={200}
+          height={60}
+          className="object-contain object-top relative z-2 transition-all duration-500"
           style={{
             filter: spriteGlow
               ? 'drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)'
               : 'drop-shadow(0 -8px 30px rgba(249,115,22,0.20))'
           }}
+          priority
         />
       </div>
 
       {/* ── CHAT INPUT ── */}
-      <div className="px-3 py-3 border-t border-[#2a2520] bg-black/30 flex gap-2 z-10 flex-shrink-0">
+      <div className="px-3 py-3 border-t border-[#2a2520] bg-black/30 flex gap-2 z-10 shrink-0">
         <textarea
           ref={inputRef}
           value={input}
@@ -406,13 +422,13 @@ Rules:
           onKeyDown={handleKeyDown}
           placeholder="Talk to Tyunnie..."
           rows={1}
-          className="flex-1 bg-[#1e1b17] border border-[#3a3028] rounded-xl text-[#e8ddd0] text-xs px-3 py-2.5 outline-none resize-none leading-[1.5] placeholder:text-[#4a4038] transition-colors focus:border-[#f97316]"
+          className="flex-1 bg-[#1e1b17] border border-[#3a3028] rounded-xl text-[#e8ddd0] text-xs px-3 py-2.5 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors focus:border-[#f97316]"
           style={{ minHeight: '40px', maxHeight: '80px' }}
         />
         <button
           onClick={sendChat}
           disabled={thinking || !input.trim()}
-          className="w-10 h-10 bg-[#f97316] rounded-xl text-white text-base flex items-center justify-center flex-shrink-0 hover:bg-[#c2500f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
+          className="w-10 h-10 bg-[#f97316] rounded-xl text-white text-base flex items-center justify-center shrink-0 hover:bg-[#c2500f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
         >
           ↑
         </button>

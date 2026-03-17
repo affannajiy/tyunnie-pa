@@ -180,7 +180,7 @@ export default function Snippets({ userId, onAction }: Props) {
     <div className="flex gap-4 h-[calc(100vh-120px)]">
 
       {/* ── FILE SIDEBAR ── */}
-      <div className="w-[200px] flex-shrink-0 flex flex-col gap-2">
+      <div className="w-50 shrink-0 flex flex-col gap-2">
 
         {/* New snip button */}
         <button
@@ -226,7 +226,7 @@ export default function Snippets({ userId, onAction }: Props) {
             >
               {/* Language colour dot */}
               <div
-                className="w-2 h-2 rounded-full flex-shrink-0"
+                className="w-2 h-2 rounded-full shrink-0"
                 style={{ background: getLangColor(snip.language) }}
               />
 
@@ -238,7 +238,7 @@ export default function Snippets({ userId, onAction }: Props) {
               {/* Delete — only visible on hover */}
               <button
                 onClick={e => { e.stopPropagation(); handleDelete(snip.id, snip.name) }}
-                className="text-[#c5bdb0] hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                className="text-[#c5bdb0] hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 transition-all shrink-0"
               >
                 ✕
               </button>
@@ -251,7 +251,7 @@ export default function Snippets({ userId, onAction }: Props) {
       <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl overflow-hidden flex flex-col">
 
         {/* Editor top bar */}
-        <div className="bg-[#f3f0ea] border-b border-[#e8e2d8] px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <div className="bg-[#f3f0ea] border-b border-[#e8e2d8] px-4 py-3 flex items-center gap-3 shrink-0">
           {/* macOS-style dots */}
           <div className="flex gap-1.5">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
@@ -278,7 +278,7 @@ export default function Snippets({ userId, onAction }: Props) {
           {/* Language selector */}
           <div className="flex items-center gap-1.5">
             <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
+              className="w-2 h-2 rounded-full shrink-0"
               style={{ background: getLangColor(language) }}
             />
             <select
@@ -314,7 +314,7 @@ export default function Snippets({ userId, onAction }: Props) {
         <div className="flex flex-1 overflow-hidden font-mono text-sm">
 
           {/* Line numbers */}
-          <div className="bg-[#faf8f5] border-r border-[#e8e2d8] px-3 py-4 text-right text-[#c5bdb0] text-xs leading-[1.8] select-none flex-shrink-0 overflow-hidden">
+          <div className="bg-[#faf8f5] border-r border-[#e8e2d8] px-3 py-4 text-right text-[#c5bdb0] text-xs leading-[1.8] select-none shrink-0 overflow-hidden">
             {(code || ' ').split('\n').map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
@@ -333,7 +333,7 @@ export default function Snippets({ userId, onAction }: Props) {
         </div>
 
         {/* Status bar */}
-        <div className="bg-[#f3f0ea] border-t border-[#e8e2d8] px-4 py-1.5 flex items-center gap-4 text-[9px] font-mono text-[#9a8f7e] flex-shrink-0">
+        <div className="bg-[#f3f0ea] border-t border-[#e8e2d8] px-4 py-1.5 flex items-center gap-4 text-[9px] font-mono text-[#9a8f7e] shrink-0">
           <span>{getLangLabel(language)}</span>
           <span>{code.split('\n').length} lines</span>
           <span>{code.length} chars</span>

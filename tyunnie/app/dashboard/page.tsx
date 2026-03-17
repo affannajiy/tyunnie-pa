@@ -164,7 +164,13 @@ export default function Home() {
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
 
         {/* Topbar */}
-        <div className="h-[56px] bg-white border-b border-[#e8e2d8] flex items-center px-7 gap-3 flex-shrink-0">
+        <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-7 gap-3 shrink-0">
+          <button onClick={() => router.push('/chat')}
+          className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1"
+            >
+              ← Chat
+          </button>
+          
           <span className="font-serif italic text-xl text-[#111010]">Tyunnie</span>
           <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
             {PANEL_LABELS[activePanel]}

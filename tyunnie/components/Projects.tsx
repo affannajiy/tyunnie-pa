@@ -163,7 +163,7 @@ export default function Projects({ userId, onAction }: Props) {
         </div>
 
         {/* Month tick labels */}
-        <div className="relative h-5 mb-2 ml-[140px]">
+        <div className="relative h-5 mb-2 ml-35">
           {ticks.map((tick, i) => (
             <span
               key={i}
@@ -189,7 +189,7 @@ export default function Projects({ userId, onAction }: Props) {
             return (
               <div key={p.id} className="flex items-center gap-3">
                 {/* Project name label */}
-                <div className="w-[130px] flex-shrink-0 text-xs font-semibold text-[#111010] truncate text-right pr-2">
+                <div className="w-32.5 shrink-0 text-xs font-semibold text-[#111010] truncate text-right pr-2">
                   {p.name}
                 </div>
 
@@ -210,7 +210,7 @@ export default function Projects({ userId, onAction }: Props) {
                 </div>
 
                 {/* End date */}
-                <div className="w-[70px] flex-shrink-0 font-mono text-[9px] text-[#9a8f7e] text-right">
+                <div className="w-17.5 shrink-0 font-mono text-[9px] text-[#9a8f7e] text-right">
                   {p.end_date}
                 </div>
               </div>
@@ -244,7 +244,7 @@ export default function Projects({ userId, onAction }: Props) {
           <form onSubmit={handleSubmit}>
             {/* Name + Status */}
             <div className="flex gap-3 mb-3">
-              <div className="flex-[2]">
+              <div className="flex-2">
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
                   Project Name
                 </label>
