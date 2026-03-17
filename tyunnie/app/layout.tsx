@@ -1,6 +1,7 @@
 // app/layout.tsx
 import type { Metadata } from 'next'
 import { Instrument_Serif, Nunito } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 
 const instrumentSerif = Instrument_Serif({
@@ -30,6 +31,7 @@ export default function RootLayout({
     <html lang="en" className={`${instrumentSerif.variable} ${nunito.variable}`}>
       <body className="font-sans antialiased">
         {children}
+        <Analytics />
       </body>
     </html>
   )
