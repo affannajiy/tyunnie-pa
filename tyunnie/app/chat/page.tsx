@@ -286,11 +286,11 @@ Rules:
       />
 
       {/* Top bar */}
-      <div className="w-full flex items-center justify-between px-6 py-4 z-10">
+      <div className="w-full flex items-center justify-between px-4 md:px-6 py-4 z-10">
         <div className="font-serif italic text-[#f97316] text-xl tracking-wide">Tyunnie</div>
         <button
-          onClick={() => router.push('/dashboard')}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-bold uppercase tracking-widest font-mono"
+        onClick={() => router.push('/dashboard')}
+        className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-bold uppercase tracking-widest font-mono"
         >
           Dashboard →
         </button>

@@ -319,7 +319,7 @@ STRICT RULES:
 
   // ── RENDER ──
   return (
-    <div className="w-75 shrink-0 bg-[#111010] flex flex-col overflow-hidden border-l border-[#2a2520] relative">
+    <div className="w-[300px] shrink-0 bg-[#111010] flex flex-col overflow-hidden border-l border-[#2a2520] relative">
 
       {/* Subtle radial glow at bottom */}
       <div

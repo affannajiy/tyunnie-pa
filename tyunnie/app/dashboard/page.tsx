@@ -63,6 +63,7 @@ export default function Home() {
   const [dataLoading, setDataLoading] = useState(true)
   const [todoRefreshKey, setTodoRefreshKey] = useState(0)
   const [draftRefreshKey, setDraftRefreshKey] = useState(0)
+  const [showMobileChat, setShowMobileChat] = useState(false)
 
   // ── CHECK AUTH ON MOUNT ──
   useEffect(() => {
@@ -167,93 +168,91 @@ export default function Home() {
 
   // ── MAIN APP ──
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
+  <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
 
-      {/* Sidebar */}
-      <Sidebar
-        active={activePanel}
-        onChange={setActivePanel}
-        onSignOut={handleSignOut}
-      />
+    <Sidebar
+      active={activePanel}
+      onChange={setActivePanel}
+      onSignOut={handleSignOut}
+    />
 
-      {/* Main content area */}
-      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+    {/* Main content */}
+    <div className="flex flex-col flex-1 overflow-hidden min-w-0">
 
-        {/* Topbar */}
-        <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-7 gap-3 shrink-0">
-          <button onClick={() => router.push('/chat')}
-          className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1"
-            >
-              ← Chat
-          </button>
-          
-          <span className="font-serif italic text-xl text-[#111010]">Tyunnie</span>
-          <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
-            {PANEL_LABELS[activePanel]}
-          </span>
-          <div className="flex-1" />
-          <span className="font-mono text-[11px] text-[#9a8f7e]">
-            {new Date().toLocaleDateString('en-MY', {
-              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-            })}
-          </span>
-        </div>
+      {/* Topbar */}
+      <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 gap-3 shrink-0">
+        <button
+          onClick={() => router.push('/chat')}
+          className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1 hidden md:block"
+        >
+          ← Chat
+        </button>
 
-        {/* Scrollable panel area */}
-        <div className="flex-1 overflow-y-auto p-7">
-          {dataLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center text-[#c5bdb0]">
-                <div className="text-3xl mb-3 opacity-40">🧡</div>
-                <p className="text-sm">Loading your data...</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {activePanel === 'calendar' && (
-                <Calendar
-                  userId={user.id}
-                  onAction={() => {}}
-                />
-              )}
-              {activePanel === 'todo' && (
-                <Todo
-                  userId={user.id}
-                  onAction={() => {}}
-                  refreshKey={todoRefreshKey}
-                />
-              )}
-              {activePanel === 'writing' && (
-                <Writing
-                  userId={user.id}
-                  onAction={() => {}}
-                  refreshKey={draftRefreshKey}
-                />
-              )}
-              {activePanel === 'projects' && (
-                <Projects
-                  userId={user.id}
-                  onAction={() => {}}
-                />
-              )}
-              {activePanel === 'snippets' && (
-                <Snippets
-                  userId={user.id}
-                  onAction={() => {}}
-                />
-              )}
-              {activePanel === 'finance' && (
-                <Finance
-                  userId={user.id}
-                  onAction={() => {}}
-                />
-              )}
-            </>
-          )}
-        </div>
+        <span className="font-serif italic text-xl text-[#111010]">Tyunnie</span>
+        <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+          {PANEL_LABELS[activePanel]}
+        </span>
+        <div className="flex-1" />
+
+        {/* Date — hidden on mobile */}
+        <span className="font-mono text-[11px] text-[#9a8f7e] hidden md:block">
+          {new Date().toLocaleDateString('en-MY', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+          })}
+        </span>
+
+        {/* Mobile chat toggle button */}
+        <button
+          onClick={() => setShowMobileChat(true)}
+          className="md:hidden w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
+        >
+          🧡
+        </button>
       </div>
 
-      {/* Tyunnie panel — always visible on the right */}
+      {/* Panel content — add bottom padding on mobile for tab bar */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-7 pb-24 md:pb-7">
+        {dataLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-[#c5bdb0]">
+              <div className="text-3xl mb-3 opacity-40">🧡</div>
+              <p className="text-sm">Loading your data...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {activePanel === 'calendar'  && <Calendar  userId={user.id} onAction={() => {}} />}
+            {activePanel === 'todo'      && <Todo      userId={user.id} onAction={() => {}} refreshKey={todoRefreshKey} />}
+            {activePanel === 'writing'   && <Writing   userId={user.id} onAction={() => {}} refreshKey={draftRefreshKey} />}
+            {activePanel === 'projects'  && <Projects  userId={user.id} onAction={() => {}} />}
+            {activePanel === 'snippets'  && <Snippets  userId={user.id} onAction={() => {}} />}
+            {activePanel === 'finance'   && <Finance   userId={user.id} onAction={() => {}} />}
+          </>
+        )}
+      </div>
+    </div>
+
+    {/* TyunniePanel — desktop: always visible, mobile: slide-in overlay */}
+    <div className={`
+      fixed inset-0 z-40 transition-transform duration-300
+      md:relative md:inset-auto md:z-auto md:translate-x-0 md:flex md:shrink-0
+      ${showMobileChat ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+    `}>
+      {/* Mobile backdrop */}
+      <div
+        className="md:hidden absolute inset-0 bg-black/50"
+        onClick={() => setShowMobileChat(false)}
+      />
+
+      {/* Close button on mobile */}
+      <button
+        onClick={() => setShowMobileChat(false)}
+        className="md:hidden absolute top-4 left-4 z-50 w-9 h-9 bg-[#2a2520] rounded-xl flex items-center justify-center text-[#9a8f7e] text-lg"
+      >
+        ✕
+      </button>
+
+      
       <TyunniePanel
         appData={{ events, todos, drafts, projects, snips, finance }}
         userId={user.id}
@@ -262,7 +261,7 @@ export default function Home() {
         onTodoAdded={handleTodoAdded}
         onDraftAdded={handleDraftAdded}
       />
-
     </div>
-  )
+  </div>
+)
 }

@@ -34,3 +34,14 @@ html, body {
 
 .font-serif { font-family: var(--font-serif); }
 .font-sans  { font-family: var(--font-sans);  }
+
+/* Safe area for iPhone home indicator */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@theme {
+  --font-family-sans:  var(--font-sans),  sans-serif;
+  --font-family-serif: var(--font-serif), serif;
+  --font-family-mono:  "Geist Mono",      monospace;
+}
