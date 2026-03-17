@@ -392,7 +392,7 @@ Rules:
       </div>
 
       {/* ── SPRITE ── */}
-      <div className="h-67.5 shrink-0 relative flex items-end justify-center overflow-hidden z-10">
+      <div className="h-[270px] shrink-0 relative flex items-end justify-start overflow-hidden z-10">
         {/* Top fade */}
         <div
           className="absolute top-0 left-0 right-0 h-14 pointer-events-none z-10"
@@ -401,13 +401,13 @@ Rules:
         <Image
           src="/sprite.png"
           alt="Tyunnie"
-          width={200}
-          height={60}
-          className="object-contain object-top relative z-2 transition-all duration-500"
+          width={220}
+          height={270}
+          className="object-contain object-top relative z-[2] transition-all duration-500 -ml-2"
           style={{
             filter: spriteGlow
-              ? 'drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)'
-              : 'drop-shadow(0 -8px 30px rgba(249,115,22,0.20))'
+            ? 'drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)'
+            : 'drop-shadow(0 -8px 30px rgba(249,115,22,0.20))'
           }}
           priority
         />

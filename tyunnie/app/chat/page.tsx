@@ -311,7 +311,7 @@ Rules:
               ? '0 0 40px rgba(249,115,22,0.7), 0 0 80px rgba(249,115,22,0.3)'
               : '0 0 20px rgba(249,115,22,0.3)',
             transition: 'all 0.5s ease',
-            animation: 'spin 8s linear infinite'
+            animation: spriteGlow ? 'glow 1s ease-in-out infinite' : ''
           }}
         >
           {/* Inner circle clip */}
