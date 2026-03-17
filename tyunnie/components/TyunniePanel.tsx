@@ -44,6 +44,7 @@ type Props = {
   // Called when Tyunnie adds a task
   onTodoAdded: (todo: { text: string; tag: string; due: string }) => void
   onDraftAdded: (draft: { title: string; body: string }) => void
+  onProjectAdded: (project: { name: string; status: string; description: string; start_date: string; end_date: string; progress: number }) => void
 }
 
 const SPRITE_GREETINGS = [
@@ -60,6 +61,7 @@ export default function TyunniePanel({
   onEventAdded,
   onTodoAdded,
   onDraftAdded,
+  onProjectAdded,
 }: Props) {
   const [messages, setMessages]       = useState<Message[]>([])
   const [input, setInput]             = useState('')
@@ -185,6 +187,7 @@ Available actions:
 - add_event → ALWAYS show confirmation first. data: { "title":"...", "date":"YYYY-MM-DD", "time":"..." }
 - add_todo  → Add immediately, NO confirmation needed. data: { "text":"...", "tag":"cs"|"write"|"personal"|"other", "due":"YYYY-MM-DD or empty string" }
 - add_draft → Create a writing draft immediately. data: { "title":"...", "body":"..." }
+- add_project → Create a project immediately. data: { "name":"...", "status":"planning"|"active"|"paused"|"done", "description":"...", "start_date":"YYYY-MM-DD or empty", "end_date":"YYYY-MM-DD or empty", "progress": 0 }
 - navigate  → data: { "panel":"calendar"|"todo"|"writing"|"projects"|"snippets"|"finance" }
 
 STRICT RULES:
@@ -201,7 +204,12 @@ STRICT RULES:
 - For add_draft: create it immediately, tell the user it's saved
 - Example of correct add_draft response:
   Done! I've created your draft "Meeting Notes" 🧡
-  <action>{"type":"add_draft","data":{"title":"Meeting Notes","body":"Title:\n\nWritten by:\n\nBody:\n"}}</action>`
+  <action>{"type":"add_draft","data":{"title":"Meeting Notes","body":"Title:\n\nWritten by:\n\nBody:\n"}}</action>
+- When user says "add project", "create a project", "new project", "track a project" → ALWAYS include add_project action
+- For add_project: create it immediately, tell the user it's added
+- Example of correct add_project response:
+  Done! I've added "Final Year Project" to your projects 🗂️
+  <action>{"type":"add_project","data":{"name":"Final Year Project","status":"planning","description":"","start_date":"","end_date":"","progress":0}}</action>`
   }
 
   // ── PARSE AND EXECUTE ACTION ──
@@ -244,6 +252,19 @@ STRICT RULES:
           onDraftAdded({ title: d.title, body: d.body ?? '' })
           break
         }
+
+        case 'add_project': {
+          const d = action.data
+          onProjectAdded({
+          name:        d.name ?? 'Untitled Project',
+          status:      d.status ?? 'planning',
+          description: d.description ?? '',
+          start_date:  d.start_date ?? '',
+          end_date:    d.end_date ?? '',
+          progress:    d.progress ?? 0,
+        })
+        break
+      }
       }
     } catch (err) {
       console.log('Action parse error:', err, 'raw:', raw)

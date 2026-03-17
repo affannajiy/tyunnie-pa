@@ -79,8 +79,12 @@ export default function ChatPage() {
 
   // ── AUTH + DATA LOAD ──
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) { router.push('/auth'); return }
+    supabase.auth.getUser().then(async ({ data, error }) => {
+      if (error || !data.user) {
+        supabase.auth.signOut()
+        router.push('/auth')
+        return
+      }
       setUser(data.user)
 
       const [ev, td, dr, pr, sn, fi] = await Promise.all([

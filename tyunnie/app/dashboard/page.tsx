@@ -25,6 +25,7 @@ import {
   addEvent,
   addTodo,
   addDraft,
+  addProject,
   type Event,
   type Todo as TodoType,
   type Draft,
@@ -64,17 +65,28 @@ export default function Home() {
   const [todoRefreshKey, setTodoRefreshKey] = useState(0)
   const [draftRefreshKey, setDraftRefreshKey] = useState(0)
   const [showMobileChat, setShowMobileChat] = useState(false)
+  const [projectRefreshKey, setProjectRefreshKey] = useState(0)
 
   // ── CHECK AUTH ON MOUNT ──
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (error || !data.user) {
+        // Clear the bad session then redirect
+        supabase.auth.signOut()
         router.push('/auth')
       } else {
         setUser(data.user)
         setAuthLoading(false)
       }
     })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
+      router.push('/auth')
+    }
+  })
+
+    return () => subscription.unsubscribe()
   }, [router])
 
   // ── LOAD ALL DATA once we have a user ──
@@ -149,6 +161,24 @@ export default function Home() {
   if (newDraft) {
     setDrafts(prev => [newDraft, ...prev])
     setDraftRefreshKey(prev => prev + 1)
+  }
+}
+
+async function handleProjectAdded(project: {
+  name: string; status: string; description: string
+  start_date: string; end_date: string; progress: number
+}) {
+  if (!user) return
+  const newProject = await addProject(user.id, {
+    name:        project.name,
+    status:      project.status,
+    description: project.description,
+    start_date:  project.start_date || null,
+    end_date:    project.end_date || null,
+    progress:    project.progress,
+  })
+  if (newProject) {
+    setProjectRefreshKey(prev => prev + 1)
   }
 }
 
@@ -252,7 +282,6 @@ export default function Home() {
         ✕
       </button>
 
-      
       <TyunniePanel
         appData={{ events, todos, drafts, projects, snips, finance }}
         userId={user.id}
@@ -260,6 +289,7 @@ export default function Home() {
         onEventAdded={handleEventAdded}
         onTodoAdded={handleTodoAdded}
         onDraftAdded={handleDraftAdded}
+        onProjectAdded={handleProjectAdded}
       />
     </div>
   </div>

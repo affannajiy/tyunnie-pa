@@ -13,6 +13,7 @@ import {
 type Props = {
   userId: string
   onAction: (msg: string) => void
+  refreshKey?: number
 }
 
 const STATUS_OPTIONS = ['planning', 'active', 'paused', 'done'] as const
@@ -24,7 +25,7 @@ const STATUS_STYLES: Record<string, string> = {
   done:     'bg-[#eff6ff] text-[#3b82f6] border-[#bfdbfe]',
 }
 
-export default function Projects({ userId, onAction }: Props) {
+export default function Projects({ userId, onAction, refreshKey }: Props) {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading]   = useState(true)
 
@@ -48,8 +49,9 @@ export default function Projects({ userId, onAction }: Props) {
     getProjects(userId).then(data => {
       setProjects(data)
       setLoading(false)
+      setShowForm(false)
     })
-  }, [userId])
+  }, [userId, refreshKey])
 
   // ── FORM HELPERS ──
   function resetForm() {
