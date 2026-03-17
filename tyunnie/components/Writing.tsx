@@ -13,9 +13,10 @@ import {
 type Props = {
   userId: string
   onAction: (msg: string) => void
+  refreshKey?: number
 }
 
-export default function Writing({ userId, onAction }: Props) {
+export default function Writing({ userId, onAction, refreshKey }: Props) {
   const [drafts, setDrafts]       = useState<Draft[]>([])
   const [loading, setLoading]     = useState(true)
 
@@ -38,7 +39,7 @@ export default function Writing({ userId, onAction }: Props) {
       setDrafts(data)
       setLoading(false)
     })
-  }, [userId])
+  }, [userId, refreshKey])
 
   // ── DERIVED ──
   const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0
@@ -241,7 +242,7 @@ export default function Writing({ userId, onAction }: Props) {
             />
             <button
               onClick={openNew}
-              className="bg-[#f97316] text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px flex-shrink-0"
+              className="bg-[#f97316] text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px shrink-0"
             >
               + New Draft
             </button>

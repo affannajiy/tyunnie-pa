@@ -24,6 +24,7 @@ import {
   getFinanceEntries,
   addEvent,
   addTodo,
+  addDraft,
   type Event,
   type Todo as TodoType,
   type Draft,
@@ -60,6 +61,8 @@ export default function Home() {
   const [snips,    setSnips]    = useState<Snip[]>([])
   const [finance,  setFinance]  = useState<FinanceEntry[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [todoRefreshKey, setTodoRefreshKey] = useState(0)
+  const [draftRefreshKey, setDraftRefreshKey] = useState(0)
 
   // ── CHECK AUTH ON MOUNT ──
   useEffect(() => {
@@ -132,8 +135,21 @@ export default function Home() {
     })
     if (newTodo) {
       setTodos(prev => [newTodo, ...prev])
+      setTodoRefreshKey(prev => prev + 1)  // ← bump this
     }
   }
+
+  async function handleDraftAdded(draft: { title: string; body: string }) {
+  if (!user) return
+  const newDraft = await addDraft(user.id, {
+    title: draft.title || 'Untitled',
+    body:  draft.body
+  })
+  if (newDraft) {
+    setDrafts(prev => [newDraft, ...prev])
+    setDraftRefreshKey(prev => prev + 1)
+  }
+}
 
   // ── LOADING SCREEN ──
   if (authLoading) {
@@ -204,12 +220,14 @@ export default function Home() {
                 <Todo
                   userId={user.id}
                   onAction={() => {}}
+                  refreshKey={todoRefreshKey}
                 />
               )}
               {activePanel === 'writing' && (
                 <Writing
                   userId={user.id}
                   onAction={() => {}}
+                  refreshKey={draftRefreshKey}
                 />
               )}
               {activePanel === 'projects' && (
@@ -242,6 +260,7 @@ export default function Home() {
         onNavigate={handleNavigate}
         onEventAdded={handleEventAdded}
         onTodoAdded={handleTodoAdded}
+        onDraftAdded={handleDraftAdded}
       />
 
     </div>

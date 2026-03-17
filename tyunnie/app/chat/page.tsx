@@ -310,7 +310,7 @@ Rules:
             boxShadow: spriteGlow
               ? '0 0 40px rgba(249,115,22,0.7), 0 0 80px rgba(249,115,22,0.3)'
               : '0 0 20px rgba(249,115,22,0.3)',
-            transition: 'all 0.5s ease',
+            transition: 'all 1.0s ease',
             animation: spriteGlow ? 'glow 1s ease-in-out infinite' : ''
           }}
         >
@@ -321,7 +321,7 @@ Rules:
               alt="Tyunnie"
               width={112}
               height={112}
-              className="w-full h-full object-cover object-top"
+              className="w-full h-full object-cover object-[80%_5%]"
               priority
             />
           </div>

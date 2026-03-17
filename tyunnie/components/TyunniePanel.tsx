@@ -43,6 +43,7 @@ type Props = {
   onEventAdded: (event: { title: string; date: string; time: string }) => void
   // Called when Tyunnie adds a task
   onTodoAdded: (todo: { text: string; tag: string; due: string }) => void
+  onDraftAdded: (draft: { title: string; body: string }) => void
 }
 
 const SPRITE_GREETINGS = [
@@ -58,6 +59,7 @@ export default function TyunniePanel({
   onNavigate,
   onEventAdded,
   onTodoAdded,
+  onDraftAdded,
 }: Props) {
   const [messages, setMessages]       = useState<Message[]>([])
   const [input, setInput]             = useState('')
@@ -172,27 +174,40 @@ CODE SNIPS:
 ${snipList}
 
 === ACTIONS ===
-You can trigger app actions by appending ONE action block at the very end of your reply:
+You MUST append an action block at the end of your reply using EXACTLY this format with no variations:
 <action>{"type":"ACTION","data":{...}}</action>
 
-Available actions:
-- navigate   → data: { "panel": "calendar"|"todo"|"writing"|"projects"|"snippets"|"finance" }
-- add_event  → ALWAYS show confirmation first. data: { "title": "...", "date": "YYYY-MM-DD", "time": "..." }
-- add_todo   → data: { "text": "...", "tag": "cs"|"write"|"personal"|"other", "due": "YYYY-MM-DD or empty string" }
-- list_drafts → no data needed, just list them in your message text
+CRITICAL: Use the exact characters < and > around the word "action". 
+Do NOT use $, [, {, or any other character instead of <.
+The format must be exactly: <action> at the start and </action> at the end.
 
-Rules:
-- For add_event: always trigger confirmation — never add silently
-- For financial questions: quote the exact balance from the data above
-- Never mention "action block" or "JSON" to the user
-- Always put the action block on its own line at the very end, nothing after it
-- Speak warmly, like Taehyun — caring, direct, a little cool`
+Available actions:
+- add_event → ALWAYS show confirmation first. data: { "title":"...", "date":"YYYY-MM-DD", "time":"..." }
+- add_todo  → Add immediately, NO confirmation needed. data: { "text":"...", "tag":"cs"|"write"|"personal"|"other", "due":"YYYY-MM-DD or empty string" }
+- add_draft → Create a writing draft immediately. data: { "title":"...", "body":"..." }
+- navigate  → data: { "panel":"calendar"|"todo"|"writing"|"projects"|"snippets"|"finance" }
+
+STRICT RULES:
+- When user says "add task", "remind me to", "add to my todo", "create a task" → ALWAYS include add_todo action
+- For add_todo: add it silently and immediately, tell the user it's done
+- For add_event: always confirm details first before adding
+- For financial questions: quote the exact RM balance from the data
+- NEVER mention "action block" or "JSON" to the user
+- The action block MUST be the very last thing in your response, on its own line
+- Example of correct add_todo response:
+  Done! I've added "Feed Cats" to your tasks 🧡
+  <action>{"type":"add_todo","data":{"text":"Feed Cats","tag":"personal","due":""}}</action>
+  When user says "make a draft", "create a draft", "write a template", "start a draft" → ALWAYS include add_draft action
+- For add_draft: create it immediately, tell the user it's saved
+- Example of correct add_draft response:
+  Done! I've created your draft "Meeting Notes" 🧡
+  <action>{"type":"add_draft","data":{"title":"Meeting Notes","body":"Title:\n\nWritten by:\n\nBody:\n"}}</action>`
   }
 
   // ── PARSE AND EXECUTE ACTION ──
   function executeAction(raw: string) {
     try {
-      const action = JSON.parse(raw)
+      const action = JSON.parse(raw.trim())
 
       switch (action.type) {
 
@@ -224,12 +239,14 @@ Rules:
           break
         }
 
-        case 'list_drafts':
-          // The text is already in the bubble — no UI action needed
+        case 'add_draft': {
+          const d = action.data
+          onDraftAdded({ title: d.title, body: d.body ?? '' })
           break
+        }
       }
-    } catch {
-      // Malformed action block — silently ignore
+    } catch (err) {
+      console.log('Action parse error:', err, 'raw:', raw)
     }
   }
 
@@ -260,10 +277,20 @@ Rules:
 
       const data = await res.json()
       const fullReply: string = data.text ?? "I'm here 🧡"
+      
+      console.log('Full reply from AI:', fullReply) // DEBUG
+
+      const normalized = fullReply
+        .replace(/\$action>/gi, '<action>')
+        .replace(/\$\/action>/gi, '</action>')
+        .replace(/\[action\]/gi, '<action>')
+        .replace(/\[\/action\]/gi, '</action>')
 
       // Strip the action block from the visible message
-      const actionMatch  = fullReply.match(/<action>([\s\S]*?)<\/action>/)
-      const cleanMessage = fullReply.replace(/<action>[\s\S]*?<\/action>/g, '').trim()
+      const actionMatch  = normalized.match(/<action>([\s\S]*?)<\/action>/)
+      const cleanMessage = normalized.replace(/<action>[\s\S]*?<\/action>/g, '').trim()
+
+      console.log('Clean reply from AI:', cleanMessage) // DEBUG
 
       setThinking(false)
       addBubble('tyunnie', cleanMessage)
@@ -273,6 +300,7 @@ Rules:
 
       // Execute action if present
       if (actionMatch) {
+        console.log('Action found:', actionMatch[1])  // keep this for debugging
         setTimeout(() => executeAction(actionMatch[1]), 300)
       }
 
@@ -392,7 +420,7 @@ Rules:
       </div>
 
       {/* ── SPRITE ── */}
-      <div className="h-[270px] shrink-0 relative flex items-end justify-start overflow-hidden z-10">
+      <div className="h-67.5 shrink-0 relative flex items-end justify-start overflow-hidden z-10">
         {/* Top fade */}
         <div
           className="absolute top-0 left-0 right-0 h-14 pointer-events-none z-10"
@@ -401,9 +429,9 @@ Rules:
         <Image
           src="/sprite.png"
           alt="Tyunnie"
-          width={220}
-          height={270}
-          className="object-contain object-top relative z-[2] transition-all duration-500 -ml-2"
+          width={180}
+          height={230}
+          className="object-contain object-top relative z-2 transition-all duration-500 -ml-2"
           style={{
             filter: spriteGlow
             ? 'drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)'

@@ -13,6 +13,7 @@ import {
 type Props = {
   userId: string
   onAction: (msg: string) => void
+  refreshKey?: number
 }
 
 const TAGS = [
@@ -30,7 +31,7 @@ function getTagLabel(value: string) {
   return TAGS.find(t => t.value === value)?.label ?? value
 }
 
-export default function Todo({ userId, onAction }: Props) {
+export default function Todo({ userId, onAction, refreshKey }: Props) {
   const [todos, setTodos]   = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -48,7 +49,7 @@ export default function Todo({ userId, onAction }: Props) {
       setTodos(data)
       setLoading(false)
     })
-  }, [userId])
+  }, [userId, refreshKey])
 
   // ── HANDLERS ──
   async function handleAdd(e: React.FormEvent) {
@@ -261,7 +262,7 @@ export default function Todo({ userId, onAction }: Props) {
                 onClick={() => handleToggle(todo.id, todo.done)}
                 className={`
                   w-5 h-5 rounded-md border-2 flex items-center justify-center
-                  flex-shrink-0 transition-all text-[11px] font-bold
+                  shrink-0 transition-all text-[11px] font-bold
                   ${todo.done
                     ? 'bg-[#f97316] border-[#f97316] text-white'
                     : 'border-[#e8e2d8] text-transparent hover:border-[#f97316]'
@@ -279,7 +280,7 @@ export default function Todo({ userId, onAction }: Props) {
               {/* Due date */}
               {todo.due && (
                 <span className={`
-                  font-mono text-[10px] px-2 py-0.5 rounded-lg flex-shrink-0
+                  font-mono text-[10px] px-2 py-0.5 rounded-lg shrink-0
                   ${isOverdue(todo.due) && !todo.done
                     ? 'bg-red-100 text-red-500 border border-red-200'
                     : 'bg-[#f3f0ea] text-[#9a8f7e]'
@@ -290,14 +291,14 @@ export default function Todo({ userId, onAction }: Props) {
               )}
 
               {/* Tag */}
-              <span className={`text-[9px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border flex-shrink-0 ${getTagStyle(todo.tag)}`}>
+              <span className={`text-[9px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border shrink-0 ${getTagStyle(todo.tag)}`}>
                 {getTagLabel(todo.tag)}
               </span>
 
               {/* Delete — visible on hover */}
               <button
                 onClick={() => handleDelete(todo.id, todo.text)}
-                className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 flex-shrink-0"
+                className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 shrink-0"
               >
                 ✕
               </button>
