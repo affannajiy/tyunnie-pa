@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useMusicContext } from "@/lib/MusicContext";
 import Image from "next/image";
 import type {
   Event,
@@ -113,7 +114,7 @@ export default function TyunniePanel({
   const [thinking, setThinking] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [spriteGlow, setSpriteGlow] = useState(false);
-
+  const music = useMusicContext();
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -491,6 +492,71 @@ STRICT RULES:
             "radial-gradient(ellipse at 50% 100%, rgba(249,115,22,0.10) 0%, transparent 65%)",
         }}
       />
+
+      {/* ── MINI PLAYER ── only shows when a track is loaded */}
+      {music.currentTrack && (
+        <div className="shrink-0 px-3 pt-3 pb-2 border-b border-[#2a2520] z-10">
+          <div className="bg-[#1a1410] rounded-xl px-3 py-2 flex items-center gap-2.5">
+            {/* Cover */}
+            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
+              {music.currentTrack.cover ? (
+                <Image
+                  src={music.currentTrack.cover}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">
+                  🎵
+                </div>
+              )}
+            </div>
+
+            {/* Track info + progress */}
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-semibold text-white truncate leading-tight">
+                {music.currentTrack.title}
+              </div>
+              <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-tight">
+                {music.currentTrack.artist}
+              </div>
+              {/* Mini progress bar */}
+              <div className="h-0.5 bg-[#2a2520] rounded-full mt-1 overflow-hidden">
+                <div
+                  className="h-full bg-[#f97316] rounded-full transition-all"
+                  style={{
+                    width: `${music.duration > 0 ? (music.progress / music.duration) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={music.prevTrack}
+                className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
+              >
+                ⏮
+              </button>
+              <button
+                onClick={music.togglePlay}
+                className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors"
+              >
+                {music.isPlaying ? "⏸" : "▶"}
+              </button>
+              <button
+                onClick={music.nextTrack}
+                className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
+              >
+                ⏭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── CHAT HISTORY ── */}
       <div

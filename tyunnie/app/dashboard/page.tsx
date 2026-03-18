@@ -14,6 +14,8 @@ import Writing from "@/components/Writing";
 import Projects from "@/components/Projects";
 import Snippets from "@/components/Snippets";
 import Finance from "@/components/Finance";
+import Music from "@/components/Music";
+import { MusicProvider } from '@/lib/MusicContext'
 
 import {
   getEvents,
@@ -44,6 +46,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   projects: "Projects",
   snippets: "Snip Files",
   finance: "Finance",
+  music: "Music",
 };
 
 export default function Home() {
@@ -264,6 +267,7 @@ export default function Home() {
 
   // ── MAIN APP ──
   return (
+    <MusicProvider>
     <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
       <Sidebar
         active={activePanel}
@@ -364,6 +368,7 @@ export default function Home() {
                   }}
                 />
               )}
+              {activePanel === "music" && <Music />}
             </>
           )}
         </div>
@@ -392,7 +397,16 @@ export default function Home() {
         </button>
 
         <TyunniePanel
-          appData={{ events, todos, drafts, projects, snips, finance, financeViewMonth, financeViewYear }}
+          appData={{
+            events,
+            todos,
+            drafts,
+            projects,
+            snips,
+            finance,
+            financeViewMonth,
+            financeViewYear,
+          }}
           onNavigate={handleNavigate}
           onEventAdded={handleEventAdded}
           onTodoAdded={handleTodoAdded}
@@ -404,5 +418,6 @@ export default function Home() {
         />
       </div>
     </div>
+    </MusicProvider>
   );
 }
