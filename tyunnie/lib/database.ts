@@ -380,6 +380,24 @@ export async function deleteFinanceEntry(id: string): Promise<void> {
   if (error) console.error('deleteFinanceEntry error:', error)
 }
 
+export async function deleteFinanceEntriesByMonth(
+  userId: string,
+  year: number,
+  month: number  // 1-12
+): Promise<void> {
+  const start = `${year}-${String(month).padStart(2,'0')}-01`
+  const end   = `${year}-${String(month).padStart(2,'0')}-31`
+
+  const { error } = await supabase
+    .from('finance')
+    .delete()
+    .eq('user_id', userId)
+    .gte('date', start)
+    .lte('date', end)
+
+  if (error) console.error('deleteFinanceEntriesByMonth error:', error)
+}
+
 // Calculate balance summary — called by Tyunnie when you ask about your money
 // Returns: { income, expenses, balance }
 export async function getFinanceSummary(

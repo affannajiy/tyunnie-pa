@@ -12,6 +12,21 @@ import type {
   FinanceEntry,
 } from "@/lib/database";
 
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 // ── TYPES ──
 type Message = {
   role: "user" | "assistant";
@@ -39,6 +54,8 @@ type AppData = {
   projects: Project[];
   snips: Snip[];
   finance: FinanceEntry[];
+  financeViewMonth?: number;
+  financeViewYear?: number;
 };
 
 type Props = {
@@ -65,6 +82,7 @@ type Props = {
     category: string;
     date: string;
   }) => void;
+  onFinanceReset: (year: number, month: number) => void;
   onSnippetAdded: (snip: {
     name: string;
     language: string;
@@ -87,6 +105,7 @@ export default function TyunniePanel({
   onDraftAdded,
   onProjectAdded,
   onFinanceAdded,
+  onFinanceReset,
   onSnippetAdded,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -203,6 +222,9 @@ export default function TyunniePanel({
         )
         .join("\n") || "None";
 
+    const viewM = appData.financeViewMonth ?? new Date().getMonth();
+    const viewY = appData.financeViewYear ?? new Date().getFullYear();
+
     return `You are Tyunnie — a warm, caring personal AI assistant based on Taehyun from TXT. You speak like a close, supportive friend. The user is a CS student who loves writing and ideas. Keep all replies short and personal (1–3 sentences max before any action block).
 
 Today: ${today}
@@ -245,6 +267,7 @@ Available actions:
 - add_draft → Create a writing draft immediately. data: { "title":"...", "body":"..." }
 - add_project → Create a project immediately. data: { "name":"...", "status":"planning"|"active"|"paused"|"done", "description":"...", "start_date":"YYYY-MM-DD or empty", "end_date":"YYYY-MM-DD or empty", "progress": 0 }
 - add_finance → Add an income or expense entry immediately. data: { "type":"income"|"expense", "description":"...", "amount": 0.00, "category":"Food"|"Transport"|"Education"|"Entertainment"|"Salary"|"Freelance"|"Utilities"|"Shopping"|"Other", "date":"YYYY-MM-DD" }
+- reset_finance → Reset all entries for a specific month. data: { "year": 2026, "month": 3 }
 - add_snippet  → Generate and save a code snippet. data: { "name":"filename.py", "language":"py"|"js"|"ts"|"css"|"html"|"sql"|"bash"|"other", "code":"..." }
 - navigate  → data: { "panel":"calendar"|"todo"|"writing"|"projects"|"snippets"|"finance" }
 
@@ -280,7 +303,12 @@ STRICT RULES:
 - For add_snippet: write clean, complete, working code. Use proper newlines (\n) inside the code string.
 - Example of correct add_snippet response:
   Here's a simple for loop in Python 🧡
-  <action>{"type":"add_snippet","data":{"name":"for_loop.py","language":"py","code":"# Simple for loop\nfor i in range(5):\n    print(f'Number: {i}')"}}</action>`;
+  <action>{"type":"add_snippet","data":{"name":"for_loop.py","language":"py","code":"# Simple for loop\nfor i in range(5):\n    print(f'Number: {i}')"}}</action>
+- When user says "reset finance", "clear this month", "reset my expenses", "start fresh" → ALWAYS include reset_finance action
+- For reset_finance: use the CURRENTLY VIEWED month (${MONTHS[viewM]} ${viewY})
+- Example:
+  Done, all entries for ${MONTHS[viewM]} ${viewY} have been cleared 🧡
+  <action>{"type":"reset_finance","data":{"year":${viewY},"month":${viewM + 1}}}</action>`;
   }
 
   // ── PARSE AND EXECUTE ACTION ──
@@ -356,6 +384,13 @@ STRICT RULES:
             category: d.category ?? "Other",
             date: d.date ?? new Date().toISOString().split("T")[0],
           });
+          break;
+        }
+
+        case "reset_finance": {
+          const viewM = appData.financeViewMonth ?? new Date().getMonth();
+          const viewY = appData.financeViewYear ?? new Date().getFullYear();
+          onFinanceReset(viewY, viewM + 1);
           break;
         }
 

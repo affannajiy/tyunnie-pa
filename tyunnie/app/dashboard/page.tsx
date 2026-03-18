@@ -27,6 +27,7 @@ import {
   addDraft,
   addProject,
   addFinanceEntry,
+  deleteFinanceEntry,
   addSnip,
   type Event,
   type Todo as TodoType,
@@ -63,6 +64,12 @@ export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [snips, setSnips] = useState<Snip[]>([]);
   const [finance, setFinance] = useState<FinanceEntry[]>([]);
+  const [financeViewMonth, setFinanceViewMonth] = useState(
+    new Date().getMonth(),
+  );
+  const [financeViewYear, setFinanceViewYear] = useState(
+    new Date().getFullYear(),
+  );
   const [dataLoading, setDataLoading] = useState(true);
   const [todoRefreshKey, setTodoRefreshKey] = useState(0);
   const [draftRefreshKey, setDraftRefreshKey] = useState(0);
@@ -217,6 +224,14 @@ export default function Home() {
     }
   }
 
+  async function handleFinanceReset(year: number, month: number) {
+    const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
+    const toDelete = finance.filter((f) => f.date.startsWith(monthPrefix));
+    await Promise.all(toDelete.map((f) => deleteFinanceEntry(f.id)));
+    setFinance((prev) => prev.filter((f) => !f.date.startsWith(monthPrefix)));
+    setFinanceRefreshKey((prev) => prev + 1);
+  }
+
   async function handleSnippetAdded(snip: {
     name: string;
     language: string;
@@ -341,6 +356,12 @@ export default function Home() {
                   userId={user.id}
                   onAction={() => {}}
                   refreshKey={financeRefreshKey}
+                  viewMonth={financeViewMonth}
+                  viewYear={financeViewYear}
+                  onViewChange={(m, y) => {
+                    setFinanceViewMonth(m);
+                    setFinanceViewYear(y);
+                  }}
                 />
               )}
             </>
@@ -371,7 +392,7 @@ export default function Home() {
         </button>
 
         <TyunniePanel
-          appData={{ events, todos, drafts, projects, snips, finance }}
+          appData={{ events, todos, drafts, projects, snips, finance, financeViewMonth, financeViewYear }}
           onNavigate={handleNavigate}
           onEventAdded={handleEventAdded}
           onTodoAdded={handleTodoAdded}
@@ -379,6 +400,7 @@ export default function Home() {
           onProjectAdded={handleProjectAdded}
           onFinanceAdded={handleFinanceAdded}
           onSnippetAdded={handleSnippetAdded}
+          onFinanceReset={handleFinanceReset}
         />
       </div>
     </div>
