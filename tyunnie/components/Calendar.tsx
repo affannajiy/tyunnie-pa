@@ -9,7 +9,7 @@ type Props = {
   onAction: (msg: string) => void
 }
 
-type ViewMode = '3day'  | 'week' | 'month' | 'year'
+type ViewMode = '3day' | 'week' | 'month' | 'year'
 
 const DAYS         = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 const MONTHS       = ['January','February','March','April','May','June','July','August','September','October','November','December']

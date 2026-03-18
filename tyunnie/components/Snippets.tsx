@@ -1,187 +1,220 @@
 // components/panels/Snippets.tsx
-'use client'
+"use client";
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from "react";
 import {
   getSnips,
   addSnip,
   updateSnip,
   deleteSnip,
-  type Snip
-} from '@/lib/database'
+  type Snip,
+} from "@/lib/database";
 
 type Props = {
-  userId: string
-  onAction: (msg: string) => void
-}
+  userId: string;
+  onAction: (msg: string) => void;
+  refreshKey?: number;
+};
 
 const LANGUAGES = [
-  { value: 'js',    label: 'JavaScript', color: '#f7df1e' },
-  { value: 'ts',    label: 'TypeScript', color: '#007acc' },
-  { value: 'py',    label: 'Python',     color: '#3776ab' },
-  { value: 'css',   label: 'CSS',        color: '#264de4' },
-  { value: 'html',  label: 'HTML',       color: '#e44d26' },
-  { value: 'sql',   label: 'SQL',        color: '#f29111' },
-  { value: 'bash',  label: 'Bash',       color: '#4eaa25' },
-  { value: 'json',  label: 'JSON',       color: '#9a8f7e' },
-  { value: 'other', label: 'Other',      color: '#9a8f7e' },
-]
+  { value: "js", label: "JavaScript", color: "#f7df1e" },
+  { value: "ts", label: "TypeScript", color: "#007acc" },
+  { value: "py", label: "Python", color: "#3776ab" },
+  { value: "css", label: "CSS", color: "#264de4" },
+  { value: "html", label: "HTML", color: "#e44d26" },
+  { value: "sql", label: "SQL", color: "#f29111" },
+  { value: "bash", label: "Bash", color: "#4eaa25" },
+  { value: "json", label: "JSON", color: "#9a8f7e" },
+  { value: "other", label: "Other", color: "#9a8f7e" },
+];
 
 function getLangColor(value: string) {
-  return LANGUAGES.find(l => l.value === value)?.color ?? '#9a8f7e'
+  return LANGUAGES.find((l) => l.value === value)?.color ?? "#9a8f7e";
 }
 
 function getLangLabel(value: string) {
-  return LANGUAGES.find(l => l.value === value)?.label ?? value
+  return LANGUAGES.find((l) => l.value === value)?.label ?? value;
 }
 
-export default function Snippets({ userId, onAction }: Props) {
-  const [snips, setSnips]         = useState<Snip[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [activeId, setActiveId]   = useState<string | null>(null)
-  const [isDirty, setIsDirty]     = useState(false) // unsaved changes
+export default function Snippets({ userId, onAction, refreshKey }: Props) {
+  const [snips, setSnips] = useState<Snip[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false); // unsaved changes
 
   // Editor state
-  const [fileName, setFileName]   = useState('untitled.js')
-  const [language, setLanguage]   = useState('js')
-  const [code, setCode]           = useState('')
-  const [saving, setSaving]       = useState(false)
-  const [copied, setCopied]       = useState(false)
+  const [fileName, setFileName] = useState("untitled.js");
+  const [language, setLanguage] = useState("js");
+  const [code, setCode] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Search
-  const [search, setSearch]       = useState('')
+  const [search, setSearch] = useState("");
 
-  const codeRef = useRef<HTMLTextAreaElement>(null)
+  const codeRef = useRef<HTMLTextAreaElement>(null);
+
+  // Terminal state
+  const [output, setOutput] = useState("");
+  const [running, setRunning] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(false);
 
   function loadSnip(snip: Snip) {
-    setActiveId(snip.id)
-    setFileName(snip.name)
-    setLanguage(snip.language)
-    setCode(snip.code ?? '')
-    setIsDirty(false)
+    setActiveId(snip.id);
+    setFileName(snip.name);
+    setLanguage(snip.language);
+    setCode(snip.code ?? "");
+    setIsDirty(false);
   }
-  
+
   useEffect(() => {
-    getSnips(userId).then(data => {
-      setSnips(data)
-      setLoading(false)
-      // Auto-open first snip if any
-      if (data.length > 0) loadSnip(data[0])
-    })
-  }, [userId])
+    getSnips(userId).then((data) => {
+      setSnips(data);
+      setLoading(false);
+      if (data.length > 0 && refreshKey && refreshKey > 0) {
+        loadSnip(data[0]); // ← just use data[0] directly, no variable needed
+        setShowTerminal(false);
+        setOutput("");
+      }
+    });
+  }, [userId, refreshKey]);
 
   // ── HELPERS ──
-  
 
   function newSnip() {
-    setActiveId(null)
-    setFileName('untitled.js')
-    setLanguage('js')
-    setCode('')
-    setIsDirty(false)
-    codeRef.current?.focus()
+    setActiveId(null);
+    setFileName("untitled.js");
+    setLanguage("js");
+    setCode("");
+    setIsDirty(false);
+    codeRef.current?.focus();
   }
 
   // Auto-update language when filename extension changes
   function handleFileNameChange(val: string) {
-    setFileName(val)
-    setIsDirty(true)
-    const ext = val.split('.').pop()?.toLowerCase() ?? ''
-    const match = LANGUAGES.find(l => l.value === ext)
-    if (match) setLanguage(match.value)
+    setFileName(val);
+    setIsDirty(true);
+    const ext = val.split(".").pop()?.toLowerCase() ?? "";
+    const match = LANGUAGES.find((l) => l.value === ext);
+    if (match) setLanguage(match.value);
   }
 
   // ── HANDLERS ──
   async function handleSave() {
-    if (!code.trim() && !fileName.trim()) return
-    setSaving(true)
+    if (!code.trim() && !fileName.trim()) return;
+    setSaving(true);
 
     if (activeId) {
       // Update existing snip
       await updateSnip(activeId, {
-        name: fileName.trim() || 'untitled',
+        name: fileName.trim() || "untitled",
         language,
-        code
-      })
-      setSnips(prev => prev.map(s =>
-        s.id === activeId
-          ? { ...s, name: fileName.trim() || 'untitled', language, code }
-          : s
-      ))
-      onAction(`Snip saved — "${fileName}" is updated 💻`)
+        code,
+      });
+      setSnips((prev) =>
+        prev.map((s) =>
+          s.id === activeId
+            ? { ...s, name: fileName.trim() || "untitled", language, code }
+            : s,
+        ),
+      );
+      onAction(`Snip saved — "${fileName}" is updated 💻`);
     } else {
       // Create new snip
       const newSnip = await addSnip(userId, {
-        name: fileName.trim() || 'untitled',
+        name: fileName.trim() || "untitled",
         language,
-        code
-      })
+        code,
+      });
       if (newSnip) {
-        setSnips(prev => [newSnip, ...prev])
-        setActiveId(newSnip.id)
-        onAction(`New snip saved — "${fileName}". Good code deserves a good home 💻`)
+        setSnips((prev) => [newSnip, ...prev]);
+        setActiveId(newSnip.id);
+        onAction(
+          `New snip saved — "${fileName}". Good code deserves a good home 💻`,
+        );
       }
     }
 
-    setIsDirty(false)
-    setSaving(false)
+    setIsDirty(false);
+    setSaving(false);
   }
 
   async function handleDelete(id: string, snipName: string) {
-    await deleteSnip(id)
-    const updated = snips.filter(s => s.id !== id)
-    setSnips(updated)
+    await deleteSnip(id);
+    const updated = snips.filter((s) => s.id !== id);
+    setSnips(updated);
 
     // If we just deleted the active one, open the next or clear
     if (activeId === id) {
       if (updated.length > 0) {
-        loadSnip(updated[0])
+        loadSnip(updated[0]);
       } else {
-        newSnip()
+        newSnip();
       }
     }
-    onAction(`Deleted "${snipName}".`)
+    onAction(`Deleted "${snipName}".`);
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function runCode() {
+    if (!code.trim()) return;
+    setRunning(true);
+    setShowTerminal(true);
+    setOutput("Running...");
+
+    try {
+      const res = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, language }),
+      });
+
+      const data = await res.json();
+      setOutput(data.output || "(no output)");
+    } catch {
+      setOutput("Error: Could not connect to run engine.");
+    }
+
+    setRunning(false);
   }
 
   // Tab key inserts 2 spaces instead of jumping focus
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const el = e.currentTarget
-      const start = el.selectionStart
-      const end   = el.selectionEnd
-      const next  = code.substring(0, start) + '  ' + code.substring(end)
-      setCode(next)
-      setIsDirty(true)
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const el = e.currentTarget;
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const next = code.substring(0, start) + "  " + code.substring(end);
+      setCode(next);
+      setIsDirty(true);
       // Restore cursor position after state update
       requestAnimationFrame(() => {
-        el.selectionStart = start + 2
-        el.selectionEnd   = start + 2
-      })
-    } else if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-      e.preventDefault()
-      handleSave()
+        el.selectionStart = start + 2;
+        el.selectionEnd = start + 2;
+      });
+    } else if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+      e.preventDefault();
+      handleSave();
     }
   }
 
-  const filtered = snips.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.language.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = snips.filter(
+    (s) =>
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.language.toLowerCase().includes(search.toLowerCase()),
+  );
 
   // ── RENDER ──
   return (
     <div className="flex gap-4 h-[calc(100vh-120px)]">
-
       {/* ── FILE SIDEBAR ── */}
       <div className="w-50 shrink-0 flex flex-col gap-2">
-
         {/* New snip button */}
         <button
           onClick={newSnip}
@@ -194,7 +227,7 @@ export default function Snippets({ userId, onAction }: Props) {
         <input
           type="text"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Search snips..."
           className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-xs outline-none focus:border-[#f97316] transition-colors"
         />
@@ -202,25 +235,30 @@ export default function Snippets({ userId, onAction }: Props) {
         {/* Snip file list */}
         <div className="flex flex-col gap-1.5 overflow-y-auto flex-1">
           {loading && (
-            <p className="text-xs text-[#c5bdb0] text-center py-4">Loading...</p>
+            <p className="text-xs text-[#c5bdb0] text-center py-4">
+              Loading...
+            </p>
           )}
 
           {!loading && filtered.length === 0 && (
             <p className="text-xs text-[#c5bdb0] text-center py-4 leading-relaxed">
-              {search ? 'No matches.' : 'No snips yet.\nHit + New Snip.'}
+              {search ? "No matches." : "No snips yet.\nHit + New Snip."}
             </p>
           )}
 
-          {filtered.map(snip => (
+          {filtered.map((snip) => (
             <div
               key={snip.id}
-              onClick={() => { if (snip.id !== activeId) loadSnip(snip) }}
+              onClick={() => {
+                if (snip.id !== activeId) loadSnip(snip);
+              }}
               className={`
                 flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer
                 transition-all group border
-                ${activeId === snip.id
-                  ? 'bg-[#fff0e6] border-[#f97316]'
-                  : 'bg-white border-[#e8e2d8] hover:border-[#fed7aa]'
+                ${
+                  activeId === snip.id
+                    ? "bg-[#fff0e6] border-[#f97316]"
+                    : "bg-white border-[#e8e2d8] hover:border-[#fed7aa]"
                 }
               `}
             >
@@ -237,7 +275,10 @@ export default function Snippets({ userId, onAction }: Props) {
 
               {/* Delete — only visible on hover */}
               <button
-                onClick={e => { e.stopPropagation(); handleDelete(snip.id, snip.name) }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(snip.id, snip.name);
+                }}
                 className="text-[#c5bdb0] hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 transition-all shrink-0"
               >
                 ✕
@@ -249,7 +290,6 @@ export default function Snippets({ userId, onAction }: Props) {
 
       {/* ── CODE EDITOR ── */}
       <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl overflow-hidden flex flex-col">
-
         {/* Editor top bar */}
         <div className="bg-[#f3f0ea] border-b border-[#e8e2d8] px-4 py-3 flex items-center gap-3 shrink-0">
           {/* macOS-style dots */}
@@ -263,7 +303,7 @@ export default function Snippets({ userId, onAction }: Props) {
           <input
             type="text"
             value={fileName}
-            onChange={e => handleFileNameChange(e.target.value)}
+            onChange={(e) => handleFileNameChange(e.target.value)}
             className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-[#111010] placeholder:text-[#c5bdb0]"
             placeholder="filename.js"
           />
@@ -283,11 +323,16 @@ export default function Snippets({ userId, onAction }: Props) {
             />
             <select
               value={language}
-              onChange={e => { setLanguage(e.target.value); setIsDirty(true) }}
+              onChange={(e) => {
+                setLanguage(e.target.value);
+                setIsDirty(true);
+              }}
               className="bg-transparent border-none outline-none text-xs font-mono text-[#9a8f7e] cursor-pointer"
             >
-              {LANGUAGES.map(l => (
-                <option key={l.value} value={l.value}>{l.label}</option>
+              {LANGUAGES.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label}
+                </option>
               ))}
             </select>
           </div>
@@ -297,7 +342,23 @@ export default function Snippets({ userId, onAction }: Props) {
             onClick={handleCopy}
             className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors px-2 py-1 rounded-lg hover:bg-[#e8e2d8]"
           >
-            {copied ? '✓ Copied' : 'Copy'}
+            {copied ? "✓ Copied" : "Copy"}
+          </button>
+
+          {/* Run button */}
+          <button
+            onClick={runCode}
+            disabled={running || !code.trim()}
+            className="bg-[#16a34a] text-white font-bold rounded-lg px-4 py-1.5 text-[10px] tracking-wide hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {running ? (
+              <>
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                Running...
+              </>
+            ) : (
+              "▶ Run"
+            )}
           </button>
 
           {/* Save button */}
@@ -306,16 +367,15 @@ export default function Snippets({ userId, onAction }: Props) {
             disabled={saving}
             className="bg-[#f97316] text-white font-bold rounded-lg px-4 py-1.5 text-[10px] tracking-wide hover:bg-[#c2500f] transition-all disabled:opacity-40"
           >
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
 
         {/* Line numbers + code area */}
         <div className="flex flex-1 overflow-hidden font-mono text-sm">
-
           {/* Line numbers */}
           <div className="bg-[#faf8f5] border-r border-[#e8e2d8] px-3 py-4 text-right text-[#c5bdb0] text-xs leading-[1.8] select-none shrink-0 overflow-hidden">
-            {(code || ' ').split('\n').map((_, i) => (
+            {(code || " ").split("\n").map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
           </div>
@@ -324,7 +384,10 @@ export default function Snippets({ userId, onAction }: Props) {
           <textarea
             ref={codeRef}
             value={code}
-            onChange={e => { setCode(e.target.value); setIsDirty(true) }}
+            onChange={(e) => {
+              setCode(e.target.value);
+              setIsDirty(true);
+            }}
             onKeyDown={handleKeyDown}
             spellCheck={false}
             placeholder="// write your code here..."
@@ -332,16 +395,83 @@ export default function Snippets({ userId, onAction }: Props) {
           />
         </div>
 
+        {/* Terminal output */}
+        {showTerminal && (
+          <div
+            className="border-t border-[#e8e2d8] flex flex-col"
+            style={{ minHeight: "140px", maxHeight: "220px" }}
+          >
+            {/* Terminal header */}
+            <div className="bg-[#111010] px-4 py-2 flex items-center gap-2 shrink-0">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+              </div>
+              <span className="font-mono text-[10px] text-[#9a8f7e] flex-1">
+                output — {fileName}
+              </span>
+              <button
+                onClick={() => {
+                  setShowTerminal(false);
+                  setOutput("");
+                }}
+                className="text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Output */}
+            <div
+              className="flex-1 bg-[#0d0d0d] px-4 py-3 overflow-y-auto"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#2a2520 transparent",
+              }}
+            >
+              {running ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-[#f97316]"
+                        style={{
+                          animation: "thinkPulse 1.2s ease-in-out infinite",
+                          animationDelay: `${i * 0.2}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-mono text-[11px] text-[#9a8f7e]">
+                    Running...
+                  </span>
+                </div>
+              ) : (
+                <pre className="font-mono text-[11px] text-[#c8ffb0] leading-[1.8] whitespace-pre-wrap wrap-break-word">
+                  {output}
+                </pre>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Status bar */}
         <div className="bg-[#f3f0ea] border-t border-[#e8e2d8] px-4 py-1.5 flex items-center gap-4 text-[9px] font-mono text-[#9a8f7e] shrink-0">
           <span>{getLangLabel(language)}</span>
-          <span>{code.split('\n').length} lines</span>
+          <span>{code.split("\n").length} lines</span>
           <span>{code.length} chars</span>
           <div className="flex-1" />
           <span className="text-[#c5bdb0]">Tab = 2 spaces · Cmd+S to save</span>
         </div>
       </div>
-
+      <style>{`
+        @keyframes thinkPulse {
+          0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+          40%           { transform: scale(1);   opacity: 1; }
+        }
+      `}</style>
     </div>
-  )
+  );
 }

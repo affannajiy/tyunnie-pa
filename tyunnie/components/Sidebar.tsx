@@ -40,7 +40,7 @@ export default function Sidebar({ active, onChange, onSignOut }: Props) {
               transition-all duration-200 border-none cursor-pointer
               ${active === panel
                 ? 'bg-[rgba(249,115,22,0.18)] text-[#f97316]'
-                : 'bg-transparent text-[#4a4038] hover:bg-[rgba(249,115,22,0.12)] hover:text-[#f97316]'
+                : 'bg-transparent text-[#fff0e6] hover:bg-[rgba(249,115,22,0.12)] hover:text-[#f97316]'
               }
             `}
           >

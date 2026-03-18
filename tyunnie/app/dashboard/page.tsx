@@ -1,19 +1,19 @@
 // app/page.tsx
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import type { User } from '@supabase/supabase-js'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
-import Sidebar, { type Panel } from '@/components/Sidebar'
-import TyunniePanel from '@/components/TyunniePanel'
-import Calendar from '@/components/Calendar'
-import Todo     from '@/components/Todo'
-import Writing  from '@/components/Writing'
-import Projects from '@/components/Projects'
-import Snippets from '@/components/Snippets'
-import Finance  from '@/components/Finance'
+import Sidebar, { type Panel } from "@/components/Sidebar";
+import TyunniePanel from "@/components/TyunniePanel";
+import Calendar from "@/components/Calendar";
+import Todo from "@/components/Todo";
+import Writing from "@/components/Writing";
+import Projects from "@/components/Projects";
+import Snippets from "@/components/Snippets";
+import Finance from "@/components/Finance";
 
 import {
   getEvents,
@@ -26,72 +26,78 @@ import {
   addTodo,
   addDraft,
   addProject,
+  addFinanceEntry,
+  addSnip,
   type Event,
   type Todo as TodoType,
   type Draft,
   type Project,
   type Snip,
   type FinanceEntry,
-} from '@/lib/database'
+} from "@/lib/database";
 
 const PANEL_LABELS: Record<Panel, string> = {
-  calendar: 'Calendar',
-  todo:     'Tasks',
-  writing:  'Writing',
-  projects: 'Projects',
-  snippets: 'Snip Files',
-  finance:  'Finance',
-}
+  calendar: "Calendar",
+  todo: "Tasks",
+  writing: "Writing",
+  projects: "Projects",
+  snippets: "Snip Files",
+  finance: "Finance",
+};
 
 export default function Home() {
-  const router = useRouter()
+  const router = useRouter();
 
   // ── AUTH ──
-  const [user, setUser]       = useState<User | null>(null)
-  const [authLoading, setAuthLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // ── PANEL ──
-  const [activePanel, setActivePanel] = useState<Panel>('calendar')
+  const [activePanel, setActivePanel] = useState<Panel>("calendar");
 
   // ── APP DATA ──
   // All data lives here so TyunniePanel always has up-to-date context
-  const [events,   setEvents]   = useState<Event[]>([])
-  const [todos,    setTodos]    = useState<TodoType[]>([])
-  const [drafts,   setDrafts]   = useState<Draft[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [snips,    setSnips]    = useState<Snip[]>([])
-  const [finance,  setFinance]  = useState<FinanceEntry[]>([])
-  const [dataLoading, setDataLoading] = useState(true)
-  const [todoRefreshKey, setTodoRefreshKey] = useState(0)
-  const [draftRefreshKey, setDraftRefreshKey] = useState(0)
-  const [showMobileChat, setShowMobileChat] = useState(false)
-  const [projectRefreshKey, setProjectRefreshKey] = useState(0)
+  const [events, setEvents] = useState<Event[]>([]);
+  const [todos, setTodos] = useState<TodoType[]>([]);
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [snips, setSnips] = useState<Snip[]>([]);
+  const [finance, setFinance] = useState<FinanceEntry[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [todoRefreshKey, setTodoRefreshKey] = useState(0);
+  const [draftRefreshKey, setDraftRefreshKey] = useState(0);
+  const [showMobileChat, setShowMobileChat] = useState(false);
+  const [projectRefreshKey, setProjectRefreshKey] = useState(0);
+  const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
+  const [snippetRefreshKey, setSnippetRefreshKey] = useState(0);
 
   // ── CHECK AUTH ON MOUNT ──
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
       if (error || !data.user) {
         // Clear the bad session then redirect
-        supabase.auth.signOut()
-        router.push('/auth')
+        supabase.auth.signOut();
+        router.push("/auth");
       } else {
-        setUser(data.user)
-        setAuthLoading(false)
+        setUser(data.user);
+        setAuthLoading(false);
       }
-    })
+    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
-      router.push('/auth')
-    }
-  })
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !session)) {
+        router.push("/auth");
+      }
+    });
 
-    return () => subscription.unsubscribe()
-  }, [router])
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   // ── LOAD ALL DATA once we have a user ──
   useEffect(() => {
-    if (!user) return
+    if (!user) return;
 
     async function loadAll() {
       const [ev, td, dr, pr, sn, fi] = await Promise.all([
@@ -101,197 +107,280 @@ export default function Home() {
         getProjects(user!.id),
         getSnips(user!.id),
         getFinanceEntries(user!.id),
-      ])
-      setEvents(ev)
-      setTodos(td)
-      setDrafts(dr)
-      setProjects(pr)
-      setSnips(sn)
-      setFinance(fi)
-      setDataLoading(false)
+      ]);
+      setEvents(ev);
+      setTodos(td);
+      setDrafts(dr);
+      setProjects(pr);
+      setSnips(sn);
+      setFinance(fi);
+      setDataLoading(false);
     }
 
-    loadAll()
-  }, [user])
+    loadAll();
+  }, [user]);
 
   // ── SIGN OUT ──
   async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/auth')
+    await supabase.auth.signOut();
+    router.push("/auth");
   }
 
   // ── TYUNNIE CALLBACKS ──
   // Called when Tyunnie navigates to a panel
   function handleNavigate(panel: string) {
     if (Object.keys(PANEL_LABELS).includes(panel)) {
-      setActivePanel(panel as Panel)
+      setActivePanel(panel as Panel);
     }
   }
 
   // Called when Tyunnie confirms adding an event
-  async function handleEventAdded(ev: { title: string; date: string; time: string }) {
-    if (!user) return
-    const newEvent = await addEvent(user.id, ev)
+  async function handleEventAdded(ev: {
+    title: string;
+    date: string;
+    time: string;
+  }) {
+    if (!user) return;
+    const newEvent = await addEvent(user.id, ev);
     if (newEvent) {
-      setEvents(prev => [...prev, newEvent].sort((a, b) => a.date.localeCompare(b.date)))
-      setActivePanel('calendar')
+      setEvents((prev) =>
+        [...prev, newEvent].sort((a, b) => a.date.localeCompare(b.date)),
+      );
+      setActivePanel("calendar");
     }
   }
 
   // Called when Tyunnie adds a task
-  async function handleTodoAdded(todo: { text: string; tag: string; due: string }) {
-    if (!user) return
+  async function handleTodoAdded(todo: {
+    text: string;
+    tag: string;
+    due: string;
+  }) {
+    if (!user) return;
     const newTodo = await addTodo(user.id, {
       text: todo.text,
-      tag:  todo.tag,
-      due:  todo.due || null,
-    })
+      tag: todo.tag,
+      due: todo.due || null,
+    });
     if (newTodo) {
-      setTodos(prev => [newTodo, ...prev])
-      setTodoRefreshKey(prev => prev + 1)  // ← bump this
+      setTodos((prev) => [newTodo, ...prev]);
+      setTodoRefreshKey((prev) => prev + 1); // ← bump this
     }
   }
 
   async function handleDraftAdded(draft: { title: string; body: string }) {
-  if (!user) return
-  const newDraft = await addDraft(user.id, {
-    title: draft.title || 'Untitled',
-    body:  draft.body
-  })
-  if (newDraft) {
-    setDrafts(prev => [newDraft, ...prev])
-    setDraftRefreshKey(prev => prev + 1)
+    if (!user) return;
+    const newDraft = await addDraft(user.id, {
+      title: draft.title || "Untitled",
+      body: draft.body,
+    });
+    if (newDraft) {
+      setDrafts((prev) => [newDraft, ...prev]);
+      setDraftRefreshKey((prev) => prev + 1);
+    }
   }
-}
 
-async function handleProjectAdded(project: {
-  name: string; status: string; description: string
-  start_date: string; end_date: string; progress: number
-}) {
-  if (!user) return
-  const newProject = await addProject(user.id, {
-    name:        project.name,
-    status:      project.status,
-    description: project.description,
-    start_date:  project.start_date || null,
-    end_date:    project.end_date || null,
-    progress:    project.progress,
-  })
-  if (newProject) {
-    setProjectRefreshKey(prev => prev + 1)
+  async function handleProjectAdded(project: {
+    name: string;
+    status: string;
+    description: string;
+    start_date: string;
+    end_date: string;
+    progress: number;
+  }) {
+    if (!user) return;
+    const newProject = await addProject(user.id, {
+      name: project.name,
+      status: project.status,
+      description: project.description,
+      start_date: project.start_date || null,
+      end_date: project.end_date || null,
+      progress: project.progress,
+    });
+    if (newProject) {
+      setProjectRefreshKey((prev) => prev + 1);
+    }
   }
-}
+
+  async function handleFinanceAdded(entry: {
+    type: "income" | "expense";
+    description: string;
+    amount: number;
+    category: string;
+    date: string;
+  }) {
+    if (!user) return;
+    const newEntry = await addFinanceEntry(user.id, entry);
+    if (newEntry) {
+      setFinance((prev) => [newEntry, ...prev]);
+      setFinanceRefreshKey((prev) => prev + 1);
+    }
+  }
+
+  async function handleSnippetAdded(snip: {
+    name: string;
+    language: string;
+    code: string;
+  }) {
+    if (!user) return;
+    const newSnip = await addSnip(user.id, snip);
+    if (newSnip) {
+      setSnips((prev) => [newSnip, ...prev]);
+      setSnippetRefreshKey((prev) => prev + 1);
+      setActivePanel("snippets"); // auto-navigate to snippets panel
+    }
+  }
 
   // ── LOADING SCREEN ──
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center">
         <div className="text-center">
-          <div className="font-serif italic text-4xl text-[#f97316] mb-3">Tyunnie</div>
+          <div className="font-serif italic text-4xl text-[#f97316] mb-3">
+            Tyunnie
+          </div>
           <div className="text-sm text-[#9a8f7e]">Loading...</div>
         </div>
       </div>
-    )
+    );
   }
 
-  if (!user) return null
+  if (!user) return null;
 
   // ── MAIN APP ──
   return (
-  <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
+      <Sidebar
+        active={activePanel}
+        onChange={setActivePanel}
+        onSignOut={handleSignOut}
+      />
 
-    <Sidebar
-      active={activePanel}
-      onChange={setActivePanel}
-      onSignOut={handleSignOut}
-    />
+      {/* Main content */}
+      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+        {/* Topbar */}
+        <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 gap-3 shrink-0">
+          <button
+            onClick={() => router.push("/chat")}
+            className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1 hidden md:block"
+          >
+            ← Chat
+          </button>
 
-    {/* Main content */}
-    <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+          <span className="font-serif italic text-xl text-[#111010]">
+            Tyunnie
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+            {PANEL_LABELS[activePanel]}
+          </span>
+          <div className="flex-1" />
 
-      {/* Topbar */}
-      <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 gap-3 shrink-0">
-        <button
-          onClick={() => router.push('/chat')}
-          className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1 hidden md:block"
-        >
-          ← Chat
-        </button>
+          {/* Date — hidden on mobile */}
+          <span className="font-mono text-[11px] text-[#9a8f7e] hidden md:block">
+            {new Date().toLocaleDateString("en-MY", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </span>
 
-        <span className="font-serif italic text-xl text-[#111010]">Tyunnie</span>
-        <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
-          {PANEL_LABELS[activePanel]}
-        </span>
-        <div className="flex-1" />
+          {/* Mobile chat toggle button */}
+          <button
+            onClick={() => setShowMobileChat(true)}
+            className="md:hidden w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
+          >
+            🧡
+          </button>
+        </div>
 
-        {/* Date — hidden on mobile */}
-        <span className="font-mono text-[11px] text-[#9a8f7e] hidden md:block">
-          {new Date().toLocaleDateString('en-MY', {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-          })}
-        </span>
-
-        {/* Mobile chat toggle button */}
-        <button
-          onClick={() => setShowMobileChat(true)}
-          className="md:hidden w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
-        >
-          🧡
-        </button>
-      </div>
-
-      {/* Panel content — add bottom padding on mobile for tab bar */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-7 pb-24 md:pb-7">
-        {dataLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-[#c5bdb0]">
-              <div className="text-3xl mb-3 opacity-40">🧡</div>
-              <p className="text-sm">Loading your data...</p>
+        {/* Panel content — add bottom padding on mobile for tab bar */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-7 pb-24 md:pb-7">
+          {dataLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center text-[#c5bdb0]">
+                <div className="text-3xl mb-3 opacity-40">🧡</div>
+                <p className="text-sm">Loading your data...</p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <>
-            {activePanel === 'calendar'  && <Calendar  userId={user.id} onAction={() => {}} />}
-            {activePanel === 'todo'      && <Todo      userId={user.id} onAction={() => {}} refreshKey={todoRefreshKey} />}
-            {activePanel === 'writing'   && <Writing   userId={user.id} onAction={() => {}} refreshKey={draftRefreshKey} />}
-            {activePanel === 'projects'  && <Projects  userId={user.id} onAction={() => {}} />}
-            {activePanel === 'snippets'  && <Snippets  userId={user.id} onAction={() => {}} />}
-            {activePanel === 'finance'   && <Finance   userId={user.id} onAction={() => {}} />}
-          </>
-        )}
+          ) : (
+            <>
+              {activePanel === "calendar" && (
+                <Calendar userId={user.id} onAction={() => {}} />
+              )}
+              {activePanel === "todo" && (
+                <Todo
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={todoRefreshKey}
+                />
+              )}
+              {activePanel === "writing" && (
+                <Writing
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={draftRefreshKey}
+                />
+              )}
+              {activePanel === "projects" && (
+                <Projects
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={projectRefreshKey}
+                />
+              )}
+              {activePanel === "snippets" && (
+                <Snippets
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={snippetRefreshKey}
+                />
+              )}
+              {activePanel === "finance" && (
+                <Finance
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={financeRefreshKey}
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
 
-    {/* TyunniePanel — desktop: always visible, mobile: slide-in overlay */}
-    <div className={`
+      {/* TyunniePanel — desktop: always visible, mobile: slide-in overlay */}
+      <div
+        className={`
       fixed inset-0 z-40 transition-transform duration-300
       md:relative md:inset-auto md:z-auto md:translate-x-0 md:flex md:shrink-0
-      ${showMobileChat ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
-    `}>
-      {/* Mobile backdrop */}
-      <div
-        className="md:hidden absolute inset-0 bg-black/50"
-        onClick={() => setShowMobileChat(false)}
-      />
-
-      {/* Close button on mobile */}
-      <button
-        onClick={() => setShowMobileChat(false)}
-        className="md:hidden absolute top-4 left-4 z-50 w-9 h-9 bg-[#2a2520] rounded-xl flex items-center justify-center text-[#9a8f7e] text-lg"
+      ${showMobileChat ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+    `}
       >
-        ✕
-      </button>
+        {/* Mobile backdrop */}
+        <div
+          className="md:hidden absolute inset-0 bg-black/50"
+          onClick={() => setShowMobileChat(false)}
+        />
 
-      <TyunniePanel
-        appData={{ events, todos, drafts, projects, snips, finance }}
-        userId={user.id}
-        onNavigate={handleNavigate}
-        onEventAdded={handleEventAdded}
-        onTodoAdded={handleTodoAdded}
-        onDraftAdded={handleDraftAdded}
-        onProjectAdded={handleProjectAdded}
-      />
+        {/* Close button on mobile */}
+        <button
+          onClick={() => setShowMobileChat(false)}
+          className="md:hidden absolute top-4 left-4 z-50 w-9 h-9 bg-[#2a2520] rounded-xl flex items-center justify-center text-[#9a8f7e] text-lg"
+        >
+          ✕
+        </button>
+
+        <TyunniePanel
+          appData={{ events, todos, drafts, projects, snips, finance }}
+          onNavigate={handleNavigate}
+          onEventAdded={handleEventAdded}
+          onTodoAdded={handleTodoAdded}
+          onDraftAdded={handleDraftAdded}
+          onProjectAdded={handleProjectAdded}
+          onFinanceAdded={handleFinanceAdded}
+          onSnippetAdded={handleSnippetAdded}
+        />
+      </div>
     </div>
-  </div>
-)
+  );
 }

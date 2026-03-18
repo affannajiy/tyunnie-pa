@@ -13,6 +13,7 @@ import {
 type Props = {
   userId: string
   onAction: (msg: string) => void
+  refreshKey?: number
 }
 
 const CATEGORIES = [
@@ -20,7 +21,7 @@ const CATEGORIES = [
   'Salary', 'Freelance', 'Utilities', 'Shopping', 'Other'
 ]
 
-export default function Finance({ userId, onAction }: Props) {
+export default function Finance({ userId, onAction, refreshKey }: Props) {
   const [entries, setEntries] = useState<FinanceEntry[]>([])
   const [summary, setSummary] = useState({ income: 0, expenses: 0, balance: 0 })
   const [loading, setLoading] = useState(true)
@@ -47,7 +48,7 @@ export default function Finance({ userId, onAction }: Props) {
       setLoading(false)
     }
     load()
-  }, [userId])
+  }, [userId, refreshKey])
 
   // ── HANDLERS ──
   async function handleSubmit(e: React.FormEvent) {
@@ -171,7 +172,7 @@ export default function Finance({ userId, onAction }: Props) {
 
           <div className="flex gap-3 mb-3">
             {/* Description */}
-            <div className="flex-[2]">
+            <div className="flex-2">
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
                 Description
               </label>
@@ -289,7 +290,7 @@ export default function Finance({ userId, onAction }: Props) {
                 className="flex items-center gap-3 border border-[#e8e2d8] rounded-xl px-4 py-3 hover:border-[#e8e2d8] transition-colors group"
               >
                 {/* Income / expense dot */}
-                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                   entry.type === 'income' ? 'bg-[#16a34a]' : 'bg-red-500'
                 }`} />
 
@@ -304,7 +305,7 @@ export default function Finance({ userId, onAction }: Props) {
                 </div>
 
                 {/* Amount */}
-                <div className={`font-serif italic text-base font-semibold flex-shrink-0 ${
+                <div className={`font-serif italic text-base font-semibold shrink-0 ${
                   entry.type === 'income' ? 'text-[#16a34a]' : 'text-red-500'
                 }`}>
                   {entry.type === 'income' ? '+' : '−'}RM {entry.amount.toFixed(2)}
