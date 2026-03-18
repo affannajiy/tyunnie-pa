@@ -12,6 +12,7 @@ import Projects from "@/components/Projects";
 import Snippets from "@/components/Snippets";
 import Finance from "@/components/Finance";
 import Music from "@/components/Music";
+import { MusicProvider } from "@/lib/MusicContext";
 import type {
   Event,
   Todo as TodoType,
@@ -230,46 +231,47 @@ export default function DemoPage() {
     setDraftRefreshKey((prev) => prev + 1);
   }
 
-    async function handleFinanceAdded(entry: {
-      type: "income" | "expense";
-      description: string;
-      amount: number;
-      category: string;
-      date: string;
-    }) {
-      const newEntry: FinanceEntry = {
-        id: Date.now().toString(),
-        user_id: DEMO_USER_ID,
-        ...entry,
-        created_at: "",
-      };
-      setFinance((prev) => [newEntry, ...prev]);
-      setFinanceRefreshKey((prev) => prev + 1);
-    }
+  async function handleFinanceAdded(entry: {
+    type: "income" | "expense";
+    description: string;
+    amount: number;
+    category: string;
+    date: string;
+  }) {
+    const newEntry: FinanceEntry = {
+      id: Date.now().toString(),
+      user_id: DEMO_USER_ID,
+      ...entry,
+      created_at: "",
+    };
+    setFinance((prev) => [newEntry, ...prev]);
+    setFinanceRefreshKey((prev) => prev + 1);
+  }
 
-    async function handleFinanceReset(year: number, month: number) {
-      const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
-      setFinance((prev) => prev.filter((f) => !f.date.startsWith(monthPrefix)));
-      setFinanceRefreshKey((prev) => prev + 1);
-    }
+  async function handleFinanceReset(year: number, month: number) {
+    const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
+    setFinance((prev) => prev.filter((f) => !f.date.startsWith(monthPrefix)));
+    setFinanceRefreshKey((prev) => prev + 1);
+  }
 
-    async function handleSnippetAdded(snip: {
-      name: string;
-      language: string;
-      code: string;
-    }) {
-      const newSnip: Snip = {
-        id: Date.now().toString(),
-        user_id: DEMO_USER_ID,
-        ...snip,
-        created_at: new Date().toISOString(),
-      };
-      setSnips((prev) => [newSnip, ...prev]);
-      setSnippetRefreshKey((prev) => prev + 1);
-      setActivePanel("snippets");
-    }
+  async function handleSnippetAdded(snip: {
+    name: string;
+    language: string;
+    code: string;
+  }) {
+    const newSnip: Snip = {
+      id: Date.now().toString(),
+      user_id: DEMO_USER_ID,
+      ...snip,
+      created_at: new Date().toISOString(),
+    };
+    setSnips((prev) => [newSnip, ...prev]);
+    setSnippetRefreshKey((prev) => prev + 1);
+    setActivePanel("snippets");
+  }
 
-    return (
+  return (
+    <MusicProvider>
       <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
         <Sidebar
           active={activePanel}
@@ -359,7 +361,7 @@ export default function DemoPage() {
                 }}
               />
             )}
-            {activePanel === 'music' && <Music />}
+            {activePanel === "music" && <Music />}
           </div>
         </div>
 
@@ -403,5 +405,6 @@ export default function DemoPage() {
           />
         </div>
       </div>
-    );
-  }
+    </MusicProvider>
+  );
+}
