@@ -11,6 +11,7 @@ import Writing from "@/components/Writing";
 import Projects from "@/components/Projects";
 import Snippets from "@/components/Snippets";
 import Finance from "@/components/Finance";
+import Music from "@/components/Music";
 import type {
   Event,
   Todo as TodoType,
@@ -145,6 +146,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   projects: "Projects",
   snippets: "Snip Files",
   finance: "Finance",
+  music: "Music",
 };
 
 export default function DemoPage() {
@@ -357,6 +359,7 @@ export default function DemoPage() {
                 }}
               />
             )}
+            {activePanel === 'music' && <Music />}
           </div>
         </div>
 
