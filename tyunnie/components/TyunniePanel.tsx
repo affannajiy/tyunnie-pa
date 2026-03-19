@@ -117,7 +117,9 @@ export default function TyunniePanel({
   const music = useMusicContext();
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [spriteIndex, setSpriteIndex] = useState(0);
 
+  const SPRITES = ["/sprite.png", "/sprite2.png"];
   // ── HELPERS ──
 
   function timeNow() {
@@ -141,6 +143,7 @@ export default function TyunniePanel({
     if (who === "tyunnie") {
       setSpriteGlow(true);
       setTimeout(() => setSpriteGlow(false), 800);
+      setSpriteIndex((prev) => (prev + 1) % SPRITES.length); // ← toggles between 0 and 1
     }
   }
 
@@ -664,7 +667,7 @@ STRICT RULES:
           style={{ background: "linear-gradient(#111010, transparent)" }}
         />
         <Image
-          src="/sprite.png"
+          src={SPRITES[spriteIndex]} // ← was hardcoded '/sprite.png'
           alt="Tyunnie"
           width={180}
           height={230}
