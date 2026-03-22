@@ -273,7 +273,7 @@ Available actions:
 - add_finance → Add an income or expense entry immediately. data: { "type":"income"|"expense", "description":"...", "amount": 0.00, "category":"Food"|"Transport"|"Education"|"Entertainment"|"Salary"|"Freelance"|"Utilities"|"Shopping"|"Other", "date":"YYYY-MM-DD" }
 - reset_finance → Reset all entries for a specific month. data: { "year": 2026, "month": 3 }
 - add_snippet  → Generate and save a code snippet. data: { "name":"filename.py", "language":"py"|"js"|"ts"|"css"|"html"|"sql"|"bash"|"other", "code":"..." }
-- navigate  → data: { "panel":"calendar"|"todo"|"writing"|"projects"|"snippets"|"finance" }
+- navigate  → data: { "panel":"calendar"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music" }
 
 STRICT RULES:
 - When user says "add task", "remind me to", "add to my todo", "create a task" → ALWAYS include add_todo action
