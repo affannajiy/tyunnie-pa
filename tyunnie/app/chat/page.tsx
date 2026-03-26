@@ -63,17 +63,7 @@ export default function ChatPage() {
   const [finance, setFinance] = useState<FinanceEntry[]>([]);
 
   // Chat state
-  const [bubbles, setBubbles] = useState<Bubble[]>(() => [
-    {
-      id: Math.random().toString(36).slice(2),
-      who: "tyunnie",
-      text: GREETINGS[Math.floor(Math.random() * GREETINGS.length)],
-      time:
-        new Date().getHours().toString().padStart(2, "0") +
-        ":" +
-        new Date().getMinutes().toString().padStart(2, "0"),
-    },
-  ]);
+  const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -82,34 +72,6 @@ export default function ChatPage() {
 
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  // ── AUTH + DATA LOAD ──
-  useEffect(() => {
-    supabase.auth.getUser().then(async ({ data, error }) => {
-      if (error || !data.user) {
-        supabase.auth.signOut();
-        router.push("/auth");
-        return;
-      }
-      setUser(data.user);
-
-      const [ev, td, dr, pr, sn, fi] = await Promise.all([
-        getEvents(data.user.id),
-        getTodos(data.user.id),
-        getDrafts(data.user.id),
-        getProjects(data.user.id),
-        getSnips(data.user.id),
-        getFinanceEntries(data.user.id),
-      ]);
-      setEvents(ev);
-      setTodos(td);
-      setDrafts(dr);
-      setProjects(pr);
-      setSnips(sn);
-      setFinance(fi);
-      setLoading(false);
-    });
-  }, [router]);
 
   // Scroll to bottom on new bubbles
   useEffect(() => {
@@ -137,6 +99,111 @@ export default function ChatPage() {
       setTimeout(() => setSpriteGlow(false), 1000);
     }
   }
+
+  // ── BRIEFING ──
+  async function generateBriefing(
+    ev: Event[],
+    td: Todo[],
+    dr: Draft[],
+    pr: Project[],
+    fi: FinanceEntry[],
+  ) {
+    setThinking(true);
+
+    const today = new Date().toISOString().split("T")[0];
+    const todayName = new Date().toLocaleDateString("en-MY", {
+      weekday: "long",
+    });
+
+    const todayEvents = ev.filter((e) => e.date === today);
+    const upcomingEvents = ev
+      .filter((e) => e.date > today)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 3);
+
+    const overdueTodos = td.filter((t) => !t.done && t.due && t.due < today);
+    const todayTodos = td.filter((t) => !t.done && t.due === today);
+    const pendingTodos = td.filter((t) => !t.done);
+
+    const totalIncome = fi
+      .filter((f) => f.type === "income")
+      .reduce((s, f) => s + f.amount, 0);
+    const totalExpenses = fi
+      .filter((f) => f.type === "expense")
+      .reduce((s, f) => s + f.amount, 0);
+    const balance = totalIncome - totalExpenses;
+
+    const briefingPrompt = `You are Tyunnie — a warm, caring AI assistant based on Taehyun from TXT. Give a SHORT, personal morning briefing to the user. Be warm, direct, a little cool — like Taehyun. Max 4-5 sentences total. Do NOT use bullet points or lists — write naturally like a friend talking to them.
+
+Today is ${todayName}, ${today}.
+
+Here's what's going on:
+
+EVENTS TODAY: ${todayEvents.length > 0 ? todayEvents.map((e) => `${e.title}${e.time ? " at " + e.time : ""}`).join(", ") : "Nothing scheduled today"}
+UPCOMING EVENTS: ${upcomingEvents.length > 0 ? upcomingEvents.map((e) => `${e.title} on ${e.date}`).join(", ") : "Nothing coming up"}
+TASKS DUE TODAY: ${todayTodos.length > 0 ? todayTodos.map((t) => t.text).join(", ") : "None"}
+OVERDUE TASKS: ${overdueTodos.length > 0 ? overdueTodos.map((t) => t.text).join(", ") : "None — you're on top of it!"}
+TOTAL PENDING TASKS: ${pendingTodos.length}
+CURRENT BALANCE: RM${balance.toFixed(2)}
+DRAFTS IN PROGRESS: ${dr.length}
+ACTIVE PROJECTS: ${pr.filter((p) => p.status === "active").length}
+
+Write a natural morning greeting and briefing. Mention what's most important for today specifically. If there are overdue tasks, gently flag them. End with a short encouraging line. Do not include any action blocks.`;
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Good morning!" }],
+          systemPrompt: briefingPrompt,
+        }),
+      });
+      const data = await res.json();
+      const text =
+        data.text ?? "Hey 🧡 Good to see you. Let's have a great day.";
+
+      setThinking(false);
+      addBubble("tyunnie", text);
+      setMessages([{ role: "assistant", content: text }]);
+    } catch {
+      setThinking(false);
+      const fallback = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+      addBubble("tyunnie", fallback);
+    }
+  }
+
+  // ── AUTH + DATA LOAD ──
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data, error }) => {
+      if (error || !data.user) {
+        supabase.auth.signOut();
+        router.push("/auth");
+        return;
+      }
+      setUser(data.user);
+
+      const [ev, td, dr, pr, sn, fi] = await Promise.all([
+        getEvents(data.user.id),
+        getTodos(data.user.id),
+        getDrafts(data.user.id),
+        getProjects(data.user.id),
+        getSnips(data.user.id),
+        getFinanceEntries(data.user.id),
+      ]);
+      setEvents(ev);
+      setTodos(td);
+      setDrafts(dr);
+      setProjects(pr);
+      setSnips(sn);
+      setFinance(fi);
+      setLoading(false);
+
+      // ← Generate the daily briefing after data is ready
+      await generateBriefing(ev, td, dr, pr, fi);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   // ── SYSTEM PROMPT ──
   function buildSystemPrompt(): string {
@@ -185,9 +252,7 @@ export default function ChatPage() {
         .join("\n") || "None";
 
     const snipList =
-      snips
-        .map((s) => `• ${s.name} (${s.language})`)
-        .join("\n") || "None";
+      snips.map((s) => `• ${s.name} (${s.language})`).join("\n") || "None";
 
     return `You are Tyunnie — a warm, caring AI assistant based on Taehyun from TXT. You speak like a close, supportive friend. The user is a CS student who loves writing and ideas. Keep replies short and personal (1–3 sentences). Be direct, warm, a little cool — like Taehyun.
 
@@ -348,12 +413,14 @@ Rules:
           <div className="font-serif italic text-4xl text-[#f97316] mb-3">
             Tyunnie
           </div>
-          <div className="text-sm text-[#9a8f7e]">Loading...</div>
+          <div className="text-sm text-[#9a8f7e]">
+            Preparing your briefing...
+          </div>{" "}
+          {/* ← update */}
         </div>
       </div>
     );
   }
-
   // ── RENDER ──
   return (
     <div className="min-h-screen bg-[#111010] flex flex-col items-center relative overflow-hidden">
