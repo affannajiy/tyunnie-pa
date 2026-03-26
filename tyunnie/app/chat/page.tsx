@@ -466,7 +466,7 @@ Rules:
           {/* Inner circle clip */}
           <div className="w-28 h-28 rounded-full overflow-hidden bg-[#1a1410]">
             <Image
-              src="/sprite.png"
+              src="/sprites/tyun-default.png"
               alt="Tyunnie"
               width={112}
               height={112}
@@ -522,7 +522,7 @@ Rules:
                 {b.who === "tyunnie" && (
                   <div className="w-6 h-6 rounded-full overflow-hidden mr-2 shrink-0 self-end mb-1 border border-[#f97316]/40">
                     <Image
-                      src="/sprite.png"
+                      src="/sprites/tyun-default.png"
                       alt=""
                       width={24}
                       height={24}
@@ -555,7 +555,7 @@ Rules:
             <div className="flex justify-start items-end gap-2">
               <div className="w-6 h-6 rounded-full overflow-hidden border border-[#f97316]/40 shrink-0">
                 <Image
-                  src="/sprite.png"
+                  src="/sprites/tyun-default.png"
                   alt=""
                   width={24}
                   height={24}
