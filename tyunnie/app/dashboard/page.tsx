@@ -542,6 +542,7 @@ export default function Home() {
             onFinanceAdded={handleFinanceAdded}
             onSnippetAdded={handleSnippetAdded}
             onFinanceReset={handleFinanceReset}
+            activePanel={activePanel}
           />
         </div>
       </div>

@@ -29,6 +29,27 @@ const MONTHS = [
 ];
 
 // ── TYPES ──
+// ── SPRITE SYSTEM ──
+type MoodType = "default" | "happy" | "concerned" | "celebrating" | "thinking";
+
+const PANEL_SPRITES: Record<string, string> = {
+  calendar: "/sprites/tyun-casual.png",
+  todo: "/sprites/tyun-focused.png",
+  writing: "/sprites/tyun-writing.png",
+  projects: "/sprites/tyun-serious.png",
+  snippets: "/sprites/tyun-coding.png",
+  finance: "/sprites/tyun-thinking.png",
+  music: "/sprites/tyun-happy.png",
+};
+
+const MOOD_SPRITES: Record<MoodType, string> = {
+  default: "/sprites/tyun-default.png",
+  happy: "/sprites/tyun-happy.png",
+  concerned: "/sprites/tyun-concerned.png",
+  celebrating: "/sprites/tyun-celebrating.png",
+  thinking: "/sprites/tyun-thinking.png",
+};
+
 type Message = {
   role: "user" | "assistant";
   content: string;
@@ -89,6 +110,7 @@ type Props = {
     language: string;
     code: string;
   }) => void;
+  activePanel?: string;
 };
 
 const SPRITE_GREETINGS = [
@@ -108,6 +130,7 @@ export default function TyunniePanel({
   onFinanceAdded,
   onFinanceReset,
   onSnippetAdded,
+  activePanel = "calendar",
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -115,11 +138,15 @@ export default function TyunniePanel({
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [spriteGlow, setSpriteGlow] = useState(false);
   const music = useMusicContext();
+
+  const [currentMood, setCurrentMood] = useState<MoodType | null>(null);
+  const currentSprite = currentMood
+    ? MOOD_SPRITES[currentMood]
+    : (PANEL_SPRITES[activePanel] ?? MOOD_SPRITES["default"]);
+
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [spriteIndex, setSpriteIndex] = useState(0);
 
-  const SPRITES = ["/sprite.png", "/sprite2.png"];
   // ── HELPERS ──
 
   function timeNow() {
@@ -135,7 +162,7 @@ export default function TyunniePanel({
     return Math.random().toString(36).slice(2);
   }
 
-  function addBubble(who: "user" | "tyunnie", text: string) {
+  function addBubble(who: "user" | "tyunnie", text: string, mood?: MoodType) {
     setBubbles((prev) => [
       ...prev,
       { id: makeId(), who, text, time: timeNow() },
@@ -143,7 +170,11 @@ export default function TyunniePanel({
     if (who === "tyunnie") {
       setSpriteGlow(true);
       setTimeout(() => setSpriteGlow(false), 800);
-      setSpriteIndex((prev) => (prev + 1) % SPRITES.length); // ← toggles between 0 and 1
+      if (mood) {
+        setCurrentMood(mood);
+        // Reset mood back to panel-based after 4 seconds
+        setTimeout(() => setCurrentMood(null), 4000);
+      }
     }
   }
 
@@ -326,6 +357,7 @@ STRICT RULES:
           break;
 
         case "add_event": {
+          setCurrentMood("thinking");
           const d = action.data;
           setConfirm({
             label: "Add to Calendar?",
@@ -344,6 +376,7 @@ STRICT RULES:
               addBubble(
                 "tyunnie",
                 `Done! "${d.title}" is now on your calendar 📅`,
+                "celebrating",
               );
             },
           });
@@ -357,12 +390,18 @@ STRICT RULES:
             tag: d.tag ?? "other",
             due: d.due ?? "",
           });
+          addBubble(
+            "tyunnie",
+            `Done! Added "${d.text}" to your tasks 🧡`,
+            "happy",
+          );
           break;
         }
 
         case "add_draft": {
           const d = action.data;
           onDraftAdded({ title: d.title, body: d.body ?? "" });
+          addBubble("tyunnie", `Your draft "${d.title}" is saved 🧡`, "happy");
           break;
         }
 
@@ -376,6 +415,11 @@ STRICT RULES:
             end_date: d.end_date ?? "",
             progress: d.progress ?? 0,
           });
+          addBubble(
+            "tyunnie",
+            `Project "${d.name}" added! Let's build something great 🗂️`,
+            "celebrating",
+          );
           break;
         }
 
@@ -388,6 +432,14 @@ STRICT RULES:
             category: d.category ?? "Other",
             date: d.date ?? new Date().toISOString().split("T")[0],
           });
+          // Happy for income, concerned for big expenses
+          const mood: MoodType =
+            d.type === "income" ? "celebrating" : "thinking";
+          addBubble(
+            "tyunnie",
+            `Logged! RM${d.amount} ${d.type === "income" ? "income" : "expense"} noted 🧡`,
+            mood,
+          );
           break;
         }
 
@@ -405,6 +457,11 @@ STRICT RULES:
             language: d.language ?? "other",
             code: d.code ?? "",
           });
+          addBubble(
+            "tyunnie",
+            `Here's your "${d.name}" snippet — ready to run 💻`,
+            "happy",
+          );
           break;
         }
       }
@@ -426,6 +483,7 @@ STRICT RULES:
       { role: "user", content: msg },
     ];
     setMessages(updatedMessages);
+    setCurrentMood("thinking");
     setThinking(true);
 
     try {
@@ -458,6 +516,7 @@ STRICT RULES:
       console.log("Clean reply from AI:", cleanMessage); // DEBUG
 
       setThinking(false);
+      setCurrentMood(null);
       addBubble("tyunnie", cleanMessage);
 
       // Update message history with clean text (no action block)
@@ -667,7 +726,7 @@ STRICT RULES:
           style={{ background: "linear-gradient(#111010, transparent)" }}
         />
         <Image
-          src={SPRITES[spriteIndex]} // ← was hardcoded '/sprite.png'
+          src={currentSprite}
           alt="Tyunnie"
           width={180}
           height={230}
