@@ -33,12 +33,12 @@ const MONTHS = [
 type MoodType = "default" | "happy" | "concerned" | "celebrating" | "thinking";
 
 const PANEL_SPRITES: Record<string, string> = {
-  calendar: "/sprites/tyun-casual.png",
+  calendar: "/sprites/tyun-celebrating.png",
   todo: "/sprites/tyun-focused.png",
   writing: "/sprites/tyun-writing.png",
   projects: "/sprites/tyun-serious.png",
   snippets: "/sprites/tyun-coding.png",
-  finance: "/sprites/tyun-thinking.png",
+  finance: "/sprites/tyun-concerned.png",
   music: "/sprites/tyun-happy.png",
 };
 
