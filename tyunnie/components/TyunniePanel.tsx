@@ -305,6 +305,7 @@ Available actions:
 - reset_finance → Reset all entries for a specific month. data: { "year": 2026, "month": 3 }
 - add_snippet  → Generate and save a code snippet. data: { "name":"filename.py", "language":"py"|"js"|"ts"|"css"|"html"|"sql"|"bash"|"other", "code":"..." }
 - navigate  → data: { "panel":"calendar"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music" }
+- music_control → Control the music player. data: { "action": "play"|"pause"|"next"|"prev"|"toggle" }
 
 STRICT RULES:
 - When user says "add task", "remind me to", "add to my todo", "create a task" → ALWAYS include add_todo action
@@ -343,7 +344,15 @@ STRICT RULES:
 - For reset_finance: use the CURRENTLY VIEWED month (${MONTHS[viewM]} ${viewY})
 - Example:
   Done, all entries for ${MONTHS[viewM]} ${viewY} have been cleared 🧡
-  <action>{"type":"reset_finance","data":{"year":${viewY},"month":${viewM + 1}}}</action>`;
+  <action>{"type":"reset_finance","data":{"year":${viewY},"month":${viewM + 1}}}</action>
+- When user says "play music", "play the song", "resume" → music_control with "play"
+- When user says "pause", "stop the music", "pause the song" → music_control with "pause"
+- When user says "next song", "skip", "next track" → music_control with "next"
+- When user says "previous", "go back", "prev song", "last song" → music_control with "prev"
+- When user says "toggle music", "play or pause" → music_control with "toggle"
+- Example:
+  Done, playing your music 🎵
+  <action>{"type":"music_control","data":{"action":"play"}}</action>`;
   }
 
   // ── PARSE AND EXECUTE ACTION ──
@@ -449,6 +458,29 @@ STRICT RULES:
             language: d.language ?? "other",
             code: d.code ?? "",
           });
+          setCurrentMood("happy");
+          setTimeout(() => setCurrentMood(null), 4000);
+          break;
+        }
+        case "music_control": {
+          const d = action.data;
+          switch (d.action) {
+            case "play":
+              if (!music.isPlaying) music.togglePlay();
+              break;
+            case "pause":
+              if (music.isPlaying) music.togglePlay();
+              break;
+            case "toggle":
+              music.togglePlay();
+              break;
+            case "next":
+              music.nextTrack();
+              break;
+            case "prev":
+              music.prevTrack();
+              break;
+          }
           setCurrentMood("happy");
           setTimeout(() => setCurrentMood(null), 4000);
           break;
