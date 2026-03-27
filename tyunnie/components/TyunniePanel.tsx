@@ -390,18 +390,16 @@ STRICT RULES:
             tag: d.tag ?? "other",
             due: d.due ?? "",
           });
-          addBubble(
-            "tyunnie",
-            `Done! Added "${d.text}" to your tasks 🧡`,
-            "happy",
-          );
+          setCurrentMood("happy");
+          setTimeout(() => setCurrentMood(null), 4000);
           break;
         }
 
         case "add_draft": {
           const d = action.data;
           onDraftAdded({ title: d.title, body: d.body ?? "" });
-          addBubble("tyunnie", `Your draft "${d.title}" is saved 🧡`, "happy");
+          setCurrentMood("happy");
+          setTimeout(() => setCurrentMood(null), 4000);
           break;
         }
 
@@ -415,11 +413,8 @@ STRICT RULES:
             end_date: d.end_date ?? "",
             progress: d.progress ?? 0,
           });
-          addBubble(
-            "tyunnie",
-            `Project "${d.name}" added! Let's build something great 🗂️`,
-            "celebrating",
-          );
+          setCurrentMood("celebrating");
+          setTimeout(() => setCurrentMood(null), 4000);
           break;
         }
 
@@ -435,11 +430,8 @@ STRICT RULES:
           // Happy for income, concerned for big expenses
           const mood: MoodType =
             d.type === "income" ? "celebrating" : "thinking";
-          addBubble(
-            "tyunnie",
-            `Logged! RM${d.amount} ${d.type === "income" ? "income" : "expense"} noted 🧡`,
-            mood,
-          );
+          setCurrentMood(mood);
+          setTimeout(() => setCurrentMood(null), 4000);
           break;
         }
 
@@ -457,11 +449,8 @@ STRICT RULES:
             language: d.language ?? "other",
             code: d.code ?? "",
           });
-          addBubble(
-            "tyunnie",
-            `Here's your "${d.name}" snippet — ready to run 💻`,
-            "happy",
-          );
+          setCurrentMood("happy");
+          setTimeout(() => setCurrentMood(null), 4000);
           break;
         }
       }
