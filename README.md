@@ -7,6 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
+![Version](https://img.shields.io/badge/version-0.2.0-f97316?style=flat-square)
 
 ---
 
@@ -16,8 +17,11 @@
 - Context-aware AI assistant powered by **Groq (Llama 3.3 70B)**
 - Knows your calendar, tasks, drafts, projects, finances, and snippets
 - Can add events, tasks, drafts, projects, finance entries, and code snippets via natural language
+- **Daily briefing** — personalised 1-2 sentence summary generated on load based on your data
+- **Expandable panel** — click Chat → to expand Tyunnie into a full-screen chat view with a larger sprite; click ✕ to collapse back
 - Persistent chat history within each session
 - Warm, personal tone inspired by Taehyun from TXT
+- **Sprite system** — 10 named sprites that react to active panel and Tyunnie's current mood
 
 ### 📅 Calendar
 - Month, Week, 3-Day, and Year views
@@ -65,6 +69,12 @@
 - Album art with slow spin animation while playing
 - **Persistent playback** — music continues when switching panels
 - **Mini player** in the Tyunnie panel with progress bar and controls
+
+### 🔍 Global Search
+- `Cmd+K` / `Ctrl+K` to open search modal
+- Searches across all data types: events, tasks, drafts, projects, snippets, finance
+- Highlighted keyword matches, grouped by type
+- Click any result to jump straight to that panel
 
 ### 🔐 Authentication
 - Email/password sign up and login
@@ -205,7 +215,24 @@ Enable RLS on all tables and add policies so users can only access their own dat
 3. Paste the Client ID and Secret into Supabase → Authentication → Providers → Google
 4. Set your Supabase Site URL and redirect URLs to your app's domain
 
-### 5. Add music (optional)
+### 5. Add sprites (optional)
+
+Create `public/sprites/` and add your sprite PNGs (recommended 360×460px transparent PNG):
+
+```
+tyun-default.png
+tyun-casual.png
+tyun-focused.png
+tyun-writing.png
+tyun-serious.png
+tyun-coding.png
+tyun-thinking.png
+tyun-happy.png
+tyun-celebrating.png
+tyun-concerned.png
+```
+
+### 6. Add music (optional)
 
 Create `public/music/` and add your MP3 files and a `playlist.json`:
 
@@ -220,7 +247,7 @@ Create `public/music/` and add your MP3 files and a `playlist.json`:
 ]
 ```
 
-### 6. Run the development server
+### 7. Run the development server
 
 ```bash
 npm run dev
@@ -239,17 +266,17 @@ tyunnie/
 │   │   ├── chat/route.ts       # Groq AI endpoint
 │   │   └── run/route.ts        # JDoodle code execution
 │   ├── auth/page.tsx           # Login / signup
-│   ├── chat/page.tsx           # Tyunnie chat landing page
-│   ├── chat-demo/page.tsx      # Demo chat (no auth)
+│   ├── chat/page.tsx           # Redirects → /dashboard
+│   ├── chat-demo/page.tsx      # Redirects → /demo
 │   ├── demo/page.tsx           # Demo dashboard (no auth)
 │   ├── error.tsx               # Custom error page
 │   ├── not-found.tsx           # Custom 404 page
 │   ├── layout.tsx
-│   ├── page.tsx                # Main dashboard
+│   ├── page.tsx                # Redirects → /dashboard
 │   └── globals.css
 ├── components/
 │   ├── Sidebar.tsx
-│   ├── TyunniePanel.tsx
+│   ├── TyunniePanel.tsx        # AI chat panel (expandable)
 │   ├── Calendar.tsx
 │   ├── Todo.tsx
 │   ├── Writing.tsx
@@ -262,7 +289,7 @@ tyunnie/
 │   ├── database.ts             # All DB query functions
 │   └── MusicContext.tsx        # Global music state
 └── public/
-    ├── sprite.png              # Tyunnie sprite
+    ├── sprites/                # Tyunnie sprite PNGs
     └── music/                  # MP3 files + playlist.json
 ```
 
@@ -271,8 +298,6 @@ tyunnie/
 ## 🌐 Demo
 
 Try the live demo without signing in:
-
-**Chat:** [tyunnie-pa.vercel.app/chat-demo](https://tyunnie-pa.vercel.app/chat-demo)
 
 **Dashboard:** [tyunnie-pa.vercel.app/demo](https://tyunnie-pa.vercel.app/demo)
 
@@ -294,6 +319,27 @@ The app is deployed on Vercel. To deploy your own:
 ## 📸 Screenshots
 
 > Add screenshots here
+
+---
+
+## 📋 Changelog
+
+### v0.2.0
+- Tyunnie panel is now expandable — full-screen chat mode with larger sprite
+- Daily briefing card generated on load, pinned above chat history
+- Removed standalone chat page — dashboard is now the single entry point
+- Scrollable chat history in both collapsed and expanded panel modes
+- Animated panel expand/collapse transitions
+- Demo mode cleaned up — no more separate chat-demo page
+- Global search modal (`Cmd+K`) across all data types
+
+### v0.1.0
+- Initial release — calendar, tasks, writing, projects, snippets, finance, music
+- Tyunnie AI panel with action execution
+- Google OAuth, Supabase auth
+- Mobile responsive layout
+- Sprite system with mood-based switching
+- Mini music player in Tyunnie panel
 
 ---
 
