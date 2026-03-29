@@ -111,6 +111,8 @@ type Props = {
     code: string;
   }) => void;
   activePanel?: string;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 };
 
 const SPRITE_GREETINGS = [
@@ -131,6 +133,8 @@ export default function TyunniePanel({
   onFinanceReset,
   onSnippetAdded,
   activePanel = "calendar",
+  isExpanded = false,
+  onToggleExpand,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -146,6 +150,11 @@ export default function TyunniePanel({
 
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── BREIFING ──
+  const [briefing, setBriefing] = useState<string | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+  const briefingFiredRef = useRef(false);
 
   // ── HELPERS ──
 
@@ -179,10 +188,12 @@ export default function TyunniePanel({
   }
 
   // Greet on first load
-  const [bubbles, setBubbles] = useState<Bubble[]>(() => {
+  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+
+  useEffect(() => {
     const greeting =
       SPRITE_GREETINGS[Math.floor(Math.random() * SPRITE_GREETINGS.length)];
-    return [
+    setBubbles([
       {
         id: Math.random().toString(36).slice(2),
         who: "tyunnie",
@@ -192,8 +203,8 @@ export default function TyunniePanel({
           ":" +
           new Date().getMinutes().toString().padStart(2, "0"),
       },
-    ];
-  });
+    ]);
+  }, []);
 
   // Scroll to bottom whenever bubbles change
   useEffect(() => {
@@ -201,6 +212,62 @@ export default function TyunniePanel({
       historyRef.current.scrollTop = historyRef.current.scrollHeight;
     }
   }, [bubbles, thinking, confirm]);
+
+  // ── DAILY BRIEFING ──
+  useEffect(() => {
+    if (briefingFiredRef.current) return;
+    if (
+      appData.events.length === 0 &&
+      appData.todos.length === 0 &&
+      appData.finance.length === 0
+    )
+      return;
+    briefingFiredRef.current = true;
+
+    const today = new Date().toISOString().split("T")[0];
+    const hour = new Date().getHours();
+    const timeOfDay =
+      hour < 12
+        ? "morning"
+        : hour < 17
+          ? "afternoon"
+          : hour < 21
+            ? "evening"
+            : "night";
+
+    const todayEvents = appData.events.filter((e) => e.date === today);
+    const overdue = appData.todos.filter(
+      (t) => !t.done && t.due && t.due < today,
+    );
+    const todayTodos = appData.todos.filter((t) => !t.done && t.due === today);
+    const balance =
+      appData.finance
+        .filter((f) => f.type === "income")
+        .reduce((s, f) => s + f.amount, 0) -
+      appData.finance
+        .filter((f) => f.type === "expense")
+        .reduce((s, f) => s + f.amount, 0);
+
+    setBriefingLoading(true);
+    fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: "briefing" }],
+        systemPrompt: `You are Tyunnie, a warm personal assistant. Give a SHORT 1-2 sentence ${timeOfDay} briefing. Be casual and direct like a close friend, no bullet points.
+Today: ${today} (${timeOfDay})
+Events today: ${todayEvents.length > 0 ? todayEvents.map((e) => e.title).join(", ") : "none"}
+Tasks due today: ${todayTodos.length > 0 ? todayTodos.map((t) => t.text).join(", ") : "none"}
+Overdue: ${overdue.length > 0 ? overdue.length + " task(s)" : "none"}
+Balance: RM${balance.toFixed(2)}
+No action blocks. Just a friendly 1-2 sentence greeting that covers what matters most today.`,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => setBriefing(d.text ?? null))
+      .catch(() => setBriefing(null))
+      .finally(() => setBriefingLoading(false));
+  }, [appData]);
 
   // ── SYSTEM PROMPT with full app context ──
   function buildSystemPrompt(): string {
@@ -305,7 +372,7 @@ Available actions:
 - reset_finance → Reset all entries for a specific month. data: { "year": 2026, "month": 3 }
 - add_snippet  → Generate and save a code snippet. data: { "name":"filename.py", "language":"py"|"js"|"ts"|"css"|"html"|"sql"|"bash"|"other", "code":"..." }
 - navigate  → data: { "panel":"calendar"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music" }
-- music_control → Control the music player. data: { "action": "play"|"pause"|"next"|"prev"|"toggle" }
+- music_control → Control music. data: { "action":"play"|"pause"|"next"|"prev"|"toggle", "trackName":"..." (optional, for going to a specific song) }
 
 STRICT RULES:
 - When user says "add task", "remind me to", "add to my todo", "create a task" → ALWAYS include add_todo action
@@ -352,7 +419,11 @@ STRICT RULES:
 - When user says "toggle music", "play or pause" → music_control with "toggle"
 - Example:
   Done, playing your music 🎵
-  <action>{"type":"music_control","data":{"action":"play"}}</action>`;
+  <action>{"type":"music_control","data":{"action":"play"}}</action>
+- When user says "go back to [song]", "play [song name]", "switch to [song]" → music_control with "play" and include "trackName"
+- Example:
+  Switching to that track for you 🎵
+  <action>{"type":"music_control","data":{"action":"play","trackName":"Song Name"}}</action>`;
   }
 
   // ── PARSE AND EXECUTE ACTION ──
@@ -464,6 +535,21 @@ STRICT RULES:
         }
         case "music_control": {
           const d = action.data;
+
+          if (d.trackName) {
+            const name = d.trackName.toLowerCase();
+            const index = music.tracks.findIndex(
+              (t) =>
+                t.title.toLowerCase().includes(name) ||
+                name.includes(t.title.toLowerCase()),
+            );
+            if (index !== -1) {
+              music.playTrack(index);
+              setCurrentMood("happy");
+              setTimeout(() => setCurrentMood(null), 4000);
+              break;
+            }
+          }
           switch (d.action) {
             case "play":
               if (!music.isPlaying) music.togglePlay();
@@ -478,7 +564,7 @@ STRICT RULES:
               music.nextTrack();
               break;
             case "prev":
-              music.prevTrack();
+              music.forcePrevTrack();
               break;
           }
           setCurrentMood("happy");
@@ -566,8 +652,10 @@ STRICT RULES:
 
   // ── RENDER ──
   return (
-    <div className="w-75 shrink-0 bg-[#111010] flex flex-col overflow-hidden border-l border-[#2a2520] relative">
-      {/* Subtle radial glow at bottom */}
+    <div
+      className={`${isExpanded ? "flex-1 flex-row" : "w-75 shrink-0 flex-col"} bg-[#111010] flex overflow-hidden border-l border-[#2a2520] relative`}
+    >
+      {/* Subtle radial glow */}
       <div
         className="absolute inset-0 pointer-events-none z-0"
         style={{
@@ -576,125 +664,175 @@ STRICT RULES:
         }}
       />
 
-      {/* ── MINI PLAYER ── only shows when a track is loaded */}
-      {music.currentTrack && (
-        <div className="shrink-0 px-3 pt-3 pb-2 border-b border-[#2a2520] z-10">
-          <div className="bg-[#1a1410] rounded-xl px-3 py-2 flex items-center gap-2.5">
-            {/* Cover */}
-            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
-              {music.currentTrack.cover ? (
-                <Image
-                  src={music.currentTrack.cover}
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">
-                  🎵
+      {/* ── EXPANDED SPRITE COLUMN (left side when expanded) ── */}
+      <div
+        className={`shrink-0 flex flex-col overflow-hidden border-r border-[#2a2520] relative z-10 transition-all duration-300 ease-in-out ${isExpanded ? "w-72 h-full opacity-100" : "w-0 h-0 opacity-0"}`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2520] shrink-0">
+          <span className="font-serif italic text-[#f97316] text-lg">
+            Tyunnie
+          </span>
+          <button
+            onClick={onToggleExpand}
+            className="w-8 h-8 rounded-xl bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all text-sm flex items-center justify-center"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Mini player in expanded view */}
+        {music.currentTrack && (
+          <div className="shrink-0 px-3 pt-3 pb-2 border-b border-[#2a2520]">
+            <div className="bg-[#1a1410] rounded-xl px-3 py-2 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
+                {music.currentTrack.cover ? (
+                  <Image
+                    src={music.currentTrack.cover}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">
+                    🎵
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-semibold text-white truncate leading-tight">
+                  {music.currentTrack.title}
                 </div>
-              )}
-            </div>
-
-            {/* Track info + progress */}
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-semibold text-white truncate leading-tight">
-                {music.currentTrack.title}
+                <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-tight">
+                  {music.currentTrack.artist}
+                </div>
+                <div className="h-0.5 bg-[#2a2520] rounded-full mt-1 overflow-hidden">
+                  <div
+                    className="h-full bg-[#f97316] rounded-full transition-all"
+                    style={{
+                      width: `${music.duration > 0 ? (music.progress / music.duration) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-tight">
-                {music.currentTrack.artist}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={music.prevTrack}
+                  className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
+                >
+                  ⏮
+                </button>
+                <button
+                  onClick={music.togglePlay}
+                  className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors"
+                >
+                  {music.isPlaying ? "⏸" : "▶"}
+                </button>
+                <button
+                  onClick={music.nextTrack}
+                  className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
+                >
+                  ⏭
+                </button>
               </div>
-              {/* Mini progress bar */}
-              <div className="h-0.5 bg-[#2a2520] rounded-full mt-1 overflow-hidden">
-                <div
-                  className="h-full bg-[#f97316] rounded-full transition-all"
-                  style={{
-                    width: `${music.duration > 0 ? (music.progress / music.duration) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={music.prevTrack}
-                className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
-              >
-                ⏮
-              </button>
-              <button
-                onClick={music.togglePlay}
-                className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors"
-              >
-                {music.isPlaying ? "⏸" : "▶"}
-              </button>
-              <button
-                onClick={music.nextTrack}
-                className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
-              >
-                ⏭
-              </button>
             </div>
           </div>
+        )}
+
+        {/* Big sprite — fills remaining space */}
+        <div className="flex-1 relative flex items-end justify-start overflow-hidden">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 100%, rgba(249,115,22,0.15) 0%, transparent 65%)",
+            }}
+          />
+          <Image
+            src={currentSprite}
+            alt="Tyunnie"
+            width={260}
+            height={330}
+            className="object-contain object-bottom relative z-2 transition-all duration-500"
+            style={{
+              filter: spriteGlow
+                ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
+                : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
+            }}
+            priority
+          />
         </div>
-      )}
+      </div>
 
-      {/* ── CHAT HISTORY ── */}
-      <div
-        ref={historyRef}
-        className="flex-1 overflow-y-auto px-3 pt-4 pb-2 flex flex-col justify-end gap-2.5 z-10 relative min-h-0"
-        style={{
-          scrollbarWidth: "thin",
-          scrollbarColor: "#2a2520 transparent",
-        }}
-      >
-        {bubbles.map((b, index) => {
-          // Fade bubbles that are more than 3 from the bottom
-          const distanceFromBottom = bubbles.length - 1 - index;
-          const opacity =
-            distanceFromBottom > 3
-              ? Math.max(0.15, 1 - (distanceFromBottom - 3) * 0.18)
-              : 1;
-
-          return (
-            <div
-              key={b.id}
-              className={`flex ${b.who === "tyunnie" ? "justify-start" : "justify-end"}`}
-              style={{
-                animation: "bubbleIn 0.3s ease",
-                opacity,
-                transition: "opacity 0.3s ease",
-              }}
-            >
-              <div
-                className={`
-                max-w-52.5 px-3.5 py-2.5 text-[12.5px] leading-[1.7] font-medium
-                ${
-                  b.who === "tyunnie"
-                    ? "bg-[#f97316] text-white rounded-[4px_16px_16px_16px]"
-                    : "bg-[#2a2520] text-[#e8ddd0] rounded-[16px_4px_16px_16px] border border-[#3a3028]"
-                }
-              `}
-              >
-                <span dangerouslySetInnerHTML={{ __html: b.text }} />
-                <div className="text-[9px] opacity-60 mt-1 text-right font-mono">
-                  {b.time}
+      {/* ── CHAT COLUMN (right side when expanded, full column when collapsed) ── */}
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0">
+        {/* Mini player — only in collapsed mode */}
+        {music.currentTrack && !isExpanded && (
+          <div className="shrink-0 px-3 pt-3 pb-2 border-b border-[#2a2520]">
+            <div className="bg-[#1a1410] rounded-xl px-3 py-2 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
+                {music.currentTrack.cover ? (
+                  <Image
+                    src={music.currentTrack.cover}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">
+                    🎵
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-semibold text-white truncate leading-tight">
+                  {music.currentTrack.title}
+                </div>
+                <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-tight">
+                  {music.currentTrack.artist}
+                </div>
+                <div className="h-0.5 bg-[#2a2520] rounded-full mt-1 overflow-hidden">
+                  <div
+                    className="h-full bg-[#f97316] rounded-full transition-all"
+                    style={{
+                      width: `${music.duration > 0 ? (music.progress / music.duration) * 100 : 0}%`,
+                    }}
+                  />
                 </div>
               </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={music.prevTrack}
+                  className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
+                >
+                  ⏮
+                </button>
+                <button
+                  onClick={music.togglePlay}
+                  className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors"
+                >
+                  {music.isPlaying ? "⏸" : "▶"}
+                </button>
+                <button
+                  onClick={music.nextTrack}
+                  className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
+                >
+                  ⏭
+                </button>
+              </div>
             </div>
-          );
-        })}
-
-        {/* Thinking dots */}
-        {thinking && (
-          <div className="flex justify-start">
-            <div className="bg-[#f97316] rounded-[16px_4px_16px_16px] px-4 py-3 flex gap-1 items-center">
+          </div>
+        )}
+        {/* ── DAILY BRIEFING CARD (pinned, outside scroll) ── */}
+        {briefingLoading && (
+          <div className="shrink-0 px-3 pt-3 pb-1">
+            <div className="bg-[#1e1b17] border border-[#2a2520] rounded-[4px_16px_16px_16px] px-3.5 py-2.5 flex gap-1.5 items-center">
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="w-1.5 h-1.5 rounded-full bg-white"
+                  className="w-1.5 h-1.5 rounded-full bg-[#f97316]"
                   style={{
                     animation: "thinkPulse 1.2s ease-in-out infinite",
                     animationDelay: `${i * 0.2}s`,
@@ -704,83 +842,171 @@ STRICT RULES:
             </div>
           </div>
         )}
-
-        {/* Confirmation card */}
-        {confirm && (
-          <div
-            className="bg-[#1e1b17] border border-[#f97316] rounded-xl p-3.5 mx-1"
-            style={{ animation: "bubbleIn 0.3s ease" }}
-          >
-            <div className="text-[10px] font-bold text-[#f97316] mb-2 tracking-wide">
-              ✦ {confirm.label}
-            </div>
+        {briefing && !briefingLoading && (
+          <div className="shrink-0 px-3 pt-3 pb-1">
             <div
-              className="text-[11px] text-[#c8b89a] leading-[1.8] mb-3"
-              dangerouslySetInnerHTML={{ __html: confirm.detail }}
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={confirm.onConfirm}
-                className="flex-1 bg-[#16a34a] text-white text-[11px] font-bold rounded-lg py-2 hover:opacity-90 transition-opacity"
-              >
-                Looks good ✓
-              </button>
-              <button
-                onClick={() => {
-                  setConfirm(null);
-                  addBubble("tyunnie", "No worries, I won't add it 🧡");
-                }}
-                className="flex-1 bg-transparent border border-[#3a3028] text-[#9a8f7e] text-[11px] font-bold rounded-lg py-2 hover:border-red-800 hover:text-red-400 transition-colors"
-              >
-                Cancel
-              </button>
+              className={`bg-[#1e1b17] border border-[#f97316]/30 rounded-[4px_16px_16px_16px] px-3.5 py-2.5 ${isExpanded ? "max-w-lg" : "max-w-52.5"}`}
+            >
+              <div className="text-[9px] font-bold text-[#f97316] uppercase tracking-widest mb-1.5 font-mono">
+                Daily briefing
+              </div>
+              <p className="text-[12px] text-[#c8b89a] leading-[1.7]">
+                {briefing}
+              </p>
             </div>
           </div>
         )}
-      </div>
 
-      {/* ── SPRITE ── */}
-      <div className="h-67.5 shrink-0 relative flex items-end justify-start overflow-hidden z-10">
-        {/* Top fade */}
+        {/* ── CHAT HISTORY ── */}
         <div
-          className="absolute top-0 left-0 right-0 h-14 pointer-events-none z-10"
-          style={{ background: "linear-gradient(#111010, transparent)" }}
-        />
-        <Image
-          src={currentSprite}
-          alt="Tyunnie"
-          width={180}
-          height={230}
-          className="object-contain object-top relative z-2 transition-all duration-500 -ml-2"
+          ref={historyRef}
+          className="flex-1 overflow-y-auto px-3 pt-3 pb-2 flex flex-col gap-2.5 relative min-h-0"
           style={{
-            filter: spriteGlow
-              ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
-              : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
+            scrollbarWidth: "thin",
+            scrollbarColor: "#2a2520 transparent",
           }}
-          priority
-        />
-      </div>
-
-      {/* ── CHAT INPUT ── */}
-      <div className="px-3 py-3 border-t border-[#2a2520] bg-black/30 flex gap-2 z-10 shrink-0">
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Talk to Tyunnie..."
-          rows={1}
-          className="flex-1 bg-[#1e1b17] border border-[#3a3028] rounded-xl text-[#e8ddd0] text-xs px-3 py-2.5 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors focus:border-[#f97316]"
-          style={{ minHeight: "40px", maxHeight: "80px" }}
-        />
-        <button
-          onClick={sendChat}
-          disabled={thinking || !input.trim()}
-          className="w-10 h-10 bg-[#f97316] rounded-xl text-white text-base flex items-center justify-center shrink-0 hover:bg-[#c2500f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
         >
-          ↑
-        </button>
+          <div className="flex-1" />
+          {bubbles.map((b, index) => {
+            const distanceFromBottom = bubbles.length - 1 - index;
+            const opacity =
+              distanceFromBottom > 3
+                ? Math.max(0.15, 1 - (distanceFromBottom - 3) * 0.18)
+                : 1;
+
+            return (
+              <div
+                key={b.id}
+                className={`flex ${b.who === "tyunnie" ? "justify-start" : "justify-end"}`}
+                style={{
+                  animation: "bubbleIn 0.3s ease",
+                  opacity,
+                  transition: "opacity 0.3s ease",
+                }}
+              >
+                <div
+                  className={`
+                    ${isExpanded ? "max-w-lg" : "max-w-52.5"} px-3.5 py-2.5 text-[12.5px] leading-[1.7] font-medium
+                    ${
+                      b.who === "tyunnie"
+                        ? "bg-[#f97316] text-white rounded-[4px_16px_16px_16px]"
+                        : "bg-[#2a2520] text-[#e8ddd0] rounded-[16px_4px_16px_16px] border border-[#3a3028]"
+                    }
+                  `}
+                >
+                  <span dangerouslySetInnerHTML={{ __html: b.text }} />
+                  <div className="text-[9px] opacity-60 mt-1 text-right font-mono">
+                    {b.time}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Thinking dots */}
+          {thinking && (
+            <div className="flex justify-start">
+              <div className="bg-[#f97316] rounded-[16px_4px_16px_16px] px-4 py-3 flex gap-1 items-center">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-white"
+                    style={{
+                      animation: "thinkPulse 1.2s ease-in-out infinite",
+                      animationDelay: `${i * 0.2}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Confirmation card */}
+          {confirm && (
+            <div
+              className="bg-[#1e1b17] border border-[#f97316] rounded-xl p-3.5 mx-1"
+              style={{ animation: "bubbleIn 0.3s ease" }}
+            >
+              <div className="text-[10px] font-bold text-[#f97316] mb-2 tracking-wide">
+                ✦ {confirm.label}
+              </div>
+              <div
+                className="text-[11px] text-[#c8b89a] leading-[1.8] mb-3"
+                dangerouslySetInnerHTML={{ __html: confirm.detail }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={confirm.onConfirm}
+                  className="flex-1 bg-[#16a34a] text-white text-[11px] font-bold rounded-lg py-2 hover:opacity-90 transition-opacity"
+                >
+                  Looks good ✓
+                </button>
+                <button
+                  onClick={() => {
+                    setConfirm(null);
+                    addBubble("tyunnie", "No worries, I won't add it 🧡");
+                  }}
+                  className="flex-1 bg-transparent border border-[#3a3028] text-[#9a8f7e] text-[11px] font-bold rounded-lg py-2 hover:border-red-800 hover:text-red-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── SPRITE (collapsed only) ── */}
+        {!isExpanded && (
+          <div className="h-67.5 shrink-0 relative flex items-end justify-start overflow-hidden">
+            <button
+              onClick={onToggleExpand}
+              className="absolute top-3 right-3 z-20 w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all text-xs flex items-center justify-center"
+              title="Expand chat"
+            >
+              ↗
+            </button>
+            <div
+              className="absolute top-0 left-0 right-0 h-14 pointer-events-none z-10"
+              style={{ background: "linear-gradient(#111010, transparent)" }}
+            />
+            <Image
+              src={currentSprite}
+              alt="Tyunnie"
+              width={180}
+              height={230}
+              className="object-contain object-top relative z-2 transition-all duration-500 -ml-2"
+              style={{
+                filter: spriteGlow
+                  ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
+                  : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
+              }}
+              priority
+            />
+          </div>
+        )}
+
+        {/* ── CHAT INPUT ── */}
+        <div className="px-3 py-3 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Talk to Tyunnie..."
+            rows={1}
+            className="flex-1 bg-[#1e1b17] border border-[#3a3028] rounded-xl text-[#e8ddd0] text-xs px-3 py-2.5 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors focus:border-[#f97316]"
+            style={{ minHeight: "40px", maxHeight: "80px" }}
+          />
+          <button
+            onClick={sendChat}
+            disabled={thinking || !input.trim()}
+            className="w-10 h-10 bg-[#f97316] rounded-xl text-white text-base flex items-center justify-center shrink-0 hover:bg-[#c2500f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
+          >
+            ↑
+          </button>
+        </div>
       </div>
+      {/* end chat column */}
 
       {/* Keyframe animations */}
       <style>{`

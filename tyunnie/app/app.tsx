@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function ChatPage() {
+export default function Home() {
   redirect("/dashboard");
 }

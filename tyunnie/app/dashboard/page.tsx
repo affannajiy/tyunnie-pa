@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -81,6 +81,7 @@ export default function Home() {
   const [todoRefreshKey, setTodoRefreshKey] = useState(0);
   const [draftRefreshKey, setDraftRefreshKey] = useState(0);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [tyunnieExpanded, setTyunnieExpanded] = useState(false);
   const [projectRefreshKey, setProjectRefreshKey] = useState(0);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
   const [snippetRefreshKey, setSnippetRefreshKey] = useState(0);
@@ -108,6 +109,18 @@ export default function Home() {
 
     return () => subscription.unsubscribe();
   }, [router]);
+
+  // ──── PAGE REFRESH ───
+  useEffect(() => {
+    sessionStorage.setItem("visitedDashboard", "true");
+
+    // Read panel from URL on mount
+    const params = new URLSearchParams(window.location.search);
+    const panel = params.get("panel");
+    if (panel && Object.keys(PANEL_LABELS).includes(panel)) {
+      setActivePanel(panel as Panel);
+    }
+  }, []);
 
   // ── KEYBOARD SHORTCUTS ──
   useEffect(() => {
@@ -392,14 +405,16 @@ export default function Home() {
         />
 
         {/* Main content */}
-        <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+        <div
+          className={`flex flex-col overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${tyunnieExpanded ? "w-0 opacity-0 pointer-events-none flex-none" : "opacity-100 flex-1"}`}
+        >
           {/* Topbar */}
           <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 gap-3 shrink-0">
             <button
-              onClick={() => router.push("/chat")}
+              onClick={() => setTyunnieExpanded(true)}
               className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1 hidden md:block"
             >
-              ← Chat
+              Chat →
             </button>
 
             <span className="font-serif italic text-xl text-[#111010]">
@@ -506,6 +521,7 @@ export default function Home() {
           className={`
       fixed inset-0 z-40 transition-transform duration-300
       md:relative md:inset-auto md:z-auto md:translate-x-0 md:flex md:shrink-0
+      ${tyunnieExpanded ? "md:flex-1" : ""}
       ${showMobileChat ? "translate-x-0" : "translate-x-full md:translate-x-0"}
     `}
         >
@@ -543,6 +559,8 @@ export default function Home() {
             onSnippetAdded={handleSnippetAdded}
             onFinanceReset={handleFinanceReset}
             activePanel={activePanel}
+            isExpanded={tyunnieExpanded}
+            onToggleExpand={() => setTyunnieExpanded((prev) => !prev)}
           />
         </div>
       </div>

@@ -154,6 +154,7 @@ export default function DemoPage() {
   const router = useRouter();
   const [activePanel, setActivePanel] = useState<Panel>("calendar");
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [tyunnieExpanded, setTyunnieExpanded] = useState(false);
 
   // Demo data state — starts with pre-populated data
   const [events, setEvents] = useState<Event[]>(DEMO_EVENTS);
@@ -279,14 +280,16 @@ export default function DemoPage() {
           onSignOut={() => router.push("/auth")}
         />
 
-        <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+        <div
+          className={`flex flex-col overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${tyunnieExpanded ? "w-0 opacity-0 pointer-events-none flex-none" : "opacity-100 flex-1"}`}
+        >
           {/* Topbar */}
           <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 gap-3 shrink-0">
             <button
-              onClick={() => router.push("/chat-demo")}
+              onClick={() => setTyunnieExpanded(true)}
               className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1 hidden md:block"
             >
-              ← Chat
+              Chat →
             </button>
             <span className="font-serif italic text-xl text-[#111010]">
               Tyunnie
@@ -370,6 +373,7 @@ export default function DemoPage() {
           className={`
         fixed inset-0 z-40 transition-transform duration-300
         md:relative md:inset-auto md:z-auto md:translate-x-0 md:flex md:shrink-0
+        ${tyunnieExpanded ? "md:flex-1" : ""}
         ${showMobileChat ? "translate-x-0" : "translate-x-full md:translate-x-0"}
       `}
         >
@@ -402,6 +406,8 @@ export default function DemoPage() {
             onFinanceAdded={handleFinanceAdded}
             onFinanceReset={handleFinanceReset}
             onSnippetAdded={handleSnippetAdded}
+            isExpanded={tyunnieExpanded}
+            onToggleExpand={() => setTyunnieExpanded((prev) => !prev)}
           />
         </div>
       </div>
