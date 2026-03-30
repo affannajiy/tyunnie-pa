@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-0.2.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2.0-f97316?style=flat-square)
 
 ---
 
@@ -19,7 +19,7 @@
 - Can add events, tasks, drafts, projects, finance entries, and code snippets via natural language
 - **Daily briefing** — personalised 1-2 sentence summary generated on load based on your data
 - **Expandable panel** — click Chat → to expand Tyunnie into a full-screen chat view with a larger sprite; click ✕ to collapse back
-- Persistent chat history within each session
+- Persistent chat history within each session, scrollable in both collapsed and expanded modes
 - Warm, personal tone inspired by Taehyun from TXT
 - **Sprite system** — 10 named sprites that react to active panel and Tyunnie's current mood
 
@@ -53,10 +53,14 @@
 - Tyunnie can generate and save code snippets
 
 ### 💰 Finance Tracker
-- Monthly income and expense tracking
+- Monthly income and expense tracking with **account tagging** (Maybank, MAE, Grab, GXBank, TnG, Wallet, ASB)
 - Navigate between months with ‹ › arrows
+- **Account balance pills** showing net balance per account at a glance
+- Filter entries by type and by account
+- Coloured account badge on each entry row
 - **Analytics tab** with:
   - 6-month income vs expenses bar chart
+  - **By Account** breakdown — income and expense bars per account
   - Spending by category donut chart
   - 50/30/20 rule tracker (Needs / Wants / Savings)
 - Reset month button
@@ -93,13 +97,14 @@
 | Layer | Technology |
 |-------|-----------|
 | Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
+| Language | TypeScript 5 |
 | Styling | Tailwind CSS v4 |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth + Google OAuth |
 | AI | Groq API (Llama 3.3 70B) |
 | Code Execution | JDoodle API |
-| Charts | Recharts |
+| Charts | Recharts 3 |
+| Date Utilities | date-fns 4 |
 | Fonts | Instrument Serif + Nunito + Geist Mono |
 | Deployment | Vercel |
 | Analytics | Vercel Analytics + Speed Insights |
@@ -201,12 +206,18 @@ create table finance (
   description text not null,
   amount numeric(10,2) not null,
   category text default 'Other',
+  account text default 'Wallet',
   date date not null,
   created_at timestamptz default now()
 );
 ```
 
 Enable RLS on all tables and add policies so users can only access their own data.
+
+> **Upgrading from v0.x?** Run this migration to add the account column:
+> ```sql
+> alter table finance add column account text default 'Wallet';
+> ```
 
 ### 4. Set up Google OAuth (optional)
 
@@ -269,6 +280,7 @@ tyunnie/
 │   ├── chat/page.tsx           # Redirects → /dashboard
 │   ├── chat-demo/page.tsx      # Redirects → /demo
 │   ├── demo/page.tsx           # Demo dashboard (no auth)
+│   ├── dashboard/page.tsx      # Main app (requires auth)
 │   ├── error.tsx               # Custom error page
 │   ├── not-found.tsx           # Custom 404 page
 │   ├── layout.tsx
@@ -282,7 +294,7 @@ tyunnie/
 │   ├── Writing.tsx
 │   ├── Projects.tsx
 │   ├── Snippets.tsx
-│   ├── Finance.tsx
+│   ├── Finance.tsx             # Finance tracker with account support
 │   └── Music.tsx
 ├── lib/
 │   ├── supabase.ts
@@ -323,6 +335,13 @@ The app is deployed on Vercel. To deploy your own:
 ---
 
 ## 📋 Changelog
+
+### v1.2.0
+- Finance tracker now supports account tagging (Maybank, MAE, Grab, GXBank, TnG, Wallet, ASB)
+- Account balance pills on the finance page showing net balance per account
+- Filter entries by account in the tracker view
+- New "By Account" analytics section with income and expense breakdown per account
+- Coloured account badge on each entry row
 
 ### v0.2.0
 - Tyunnie panel is now expandable — full-screen chat mode with larger sprite

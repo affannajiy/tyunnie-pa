@@ -61,6 +61,7 @@ export type FinanceEntry = {
   description: string;
   amount: number;
   category: string;
+  account: string;
   date: string; // "YYYY-MM-DD"
   created_at: string;
 };
@@ -336,11 +337,17 @@ export async function addFinanceEntry(
     amount: number;
     category: string;
     date: string;
+    account?: string;
   },
 ): Promise<FinanceEntry | null> {
+  const payload = {
+    ...entry,
+    account: entry.account ?? "Wallet",
+    user_id: userId,
+  };
   const { data, error } = await supabase
     .from("finance")
-    .insert({ ...entry, user_id: userId })
+    .insert(payload)
     .select()
     .single();
 
