@@ -103,6 +103,7 @@ type Props = {
     amount: number;
     category: string;
     date: string;
+    account?: string;
   }) => void;
   onFinanceReset: (year: number, month: number) => void;
   onSnippetAdded: (snip: {

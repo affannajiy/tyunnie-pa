@@ -115,6 +115,7 @@ const DEMO_FINANCE: FinanceEntry[] = [
     description: "Part-time salary",
     amount: 800,
     category: "Salary",
+    account: "Maybank", // ← add this
     date: new Date().toISOString().split("T")[0],
     created_at: "",
   },
@@ -125,6 +126,7 @@ const DEMO_FINANCE: FinanceEntry[] = [
     description: "Lunch",
     amount: 12.5,
     category: "Food",
+    account: "MAE", // ← add this
     date: new Date().toISOString().split("T")[0],
     created_at: "",
   },
@@ -135,6 +137,7 @@ const DEMO_FINANCE: FinanceEntry[] = [
     description: "Bus pass",
     amount: 30,
     category: "Transport",
+    account: "TnG", // ← add this
     date: new Date().toISOString().split("T")[0],
     created_at: "",
   },
@@ -238,17 +241,19 @@ export default function DemoPage() {
     amount: number;
     category: string;
     date: string;
+    account?: string;
   }) {
     const newEntry: FinanceEntry = {
       id: Date.now().toString(),
       user_id: DEMO_USER_ID,
       ...entry,
+      account: entry.account ?? "Wallet",
       created_at: "",
     };
     setFinance((prev) => [newEntry, ...prev]);
     setFinanceRefreshKey((prev) => prev + 1);
   }
-
+  
   async function handleFinanceReset(year: number, month: number) {
     const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
     setFinance((prev) => prev.filter((f) => !f.date.startsWith(monthPrefix)));

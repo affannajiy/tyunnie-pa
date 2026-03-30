@@ -347,6 +347,7 @@ export default function Home() {
     amount: number;
     category: string;
     date: string;
+    account?: string;
   }) {
     if (!user) return;
     const newEntry = await addFinanceEntry(user.id, entry);
