@@ -7,45 +7,52 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-1.2.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3.1-f97316?style=flat-square)
 
 ---
 
 ## ✨ Features
 
 ### 🤖 Tyunnie AI Panel
+
 - Context-aware AI assistant powered by **Groq (Llama 3.3 70B)**
 - Knows your calendar, tasks, drafts, projects, finances, and snippets
 - Can add events, tasks, drafts, projects, finance entries, and code snippets via natural language
 - **Daily briefing** — personalised 1-2 sentence summary generated on load based on your data
-- **Expandable panel** — click Chat → to expand Tyunnie into a full-screen chat view with a larger sprite; click ✕ to collapse back
+- **Expandable panel** — click Chat → to expand Tyunnie into a full-screen chat view with a larger sprite (desktop only); click ✕ to collapse back
 - Persistent chat history within each session, scrollable in both collapsed and expanded modes
 - Warm, personal tone inspired by Taehyun from TXT
 - **Sprite system** — 10 named sprites that react to active panel and Tyunnie's current mood
+- Mobile-optimised layout — sprite visible in background, input always accessible above tab bar
 
 ### 📅 Calendar
+
 - Month, Week, 3-Day, and Year views
 - Add and delete events
 - Upcoming events list
 - Tyunnie can schedule events with confirmation
 
 ### ✅ Tasks
+
 - Add tasks with tags (CS, Writing, Personal, Other)
 - Due dates, mark as done
 - Tyunnie can add tasks instantly via chat
 
 ### ✍️ Writing
+
 - Full draft editor with word count
 - Create, edit, and delete drafts
 - Tyunnie can generate draft templates
 
 ### 🗂️ Projects
+
 - Project cards with status (Planning, Active, Paused, Done)
 - Progress bars and Gantt chart for date-ranged projects
 - Inline progress slider
 - Tyunnie can create new projects
 
 ### 💻 Snippets
+
 - Code editor with syntax language support
 - Line numbers, Tab indentation, Cmd+S to save
 - **Live code execution** via JDoodle API (Python, JS, TS, Bash)
@@ -53,20 +60,22 @@
 - Tyunnie can generate and save code snippets
 
 ### 💰 Finance Tracker
+
 - Monthly income and expense tracking with **account tagging** (Maybank, MAE, Grab, GXBank, TnG, Wallet, ASB)
 - Navigate between months with ‹ › arrows
+- **Carried balance** — previous months' balance rolls over into the current month
 - **Account balance pills** showing net balance per account at a glance
 - Filter entries by type and by account
-- Coloured account badge on each entry row
 - **Analytics tab** with:
   - 6-month income vs expenses bar chart
-  - **By Account** breakdown — income and expense bars per account
+  - By Account breakdown — income and expense bars per account
   - Spending by category donut chart
   - 50/30/20 rule tracker (Needs / Wants / Savings)
 - Reset month button
 - Tyunnie can log entries and reset months
 
 ### 🎵 Music Player
+
 - Upload your own MP3s to `public/music/`
 - Play, pause, skip, previous, shuffle, repeat (none/all/one)
 - Seekable progress bar and volume control
@@ -75,45 +84,50 @@
 - **Mini player** in the Tyunnie panel with progress bar and controls
 
 ### 🔍 Global Search
+
 - `Cmd+K` / `Ctrl+K` to open search modal
 - Searches across all data types: events, tasks, drafts, projects, snippets, finance
 - Highlighted keyword matches, grouped by type
 - Click any result to jump straight to that panel
 
 ### 🔐 Authentication
+
 - Email/password sign up and login
 - **Google OAuth** one-click sign in
 - Auto session refresh and redirect on expiry
 
 ### 📱 Mobile Responsive
+
 - Bottom tab bar navigation on mobile
 - Tyunnie chat slides in as a full-screen overlay
-- Touch-friendly controls
+- Sprite visible in background without blocking chat input
+- Touch-friendly controls throughout
 
 ---
 
 ## 🚀 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS v4 |
-| Database | Supabase (PostgreSQL) |
-| Auth | Supabase Auth + Google OAuth |
-| AI | Groq API (Llama 3.3 70B) |
-| Code Execution | JDoodle API |
-| Charts | Recharts 3 |
-| Date Utilities | date-fns 4 |
-| Fonts | Instrument Serif + Nunito + Geist Mono |
-| Deployment | Vercel |
-| Analytics | Vercel Analytics + Speed Insights |
+| Layer          | Technology                             |
+| -------------- | -------------------------------------- |
+| Framework      | Next.js 16 (App Router)                |
+| Language       | TypeScript 5                           |
+| Styling        | Tailwind CSS v4                        |
+| Database       | Supabase (PostgreSQL)                  |
+| Auth           | Supabase Auth + Google OAuth           |
+| AI             | Groq API (Llama 3.3 70B)               |
+| Code Execution | JDoodle API                            |
+| Charts         | Recharts 3                             |
+| Date Utilities | date-fns 4                             |
+| Fonts          | Instrument Serif + Nunito + Geist Mono |
+| Deployment     | Vercel                                 |
+| Analytics      | Vercel Analytics + Speed Insights      |
 
 ---
 
 ## 🛠️ Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - A [Supabase](https://supabase.com) account
 - A [Groq](https://groq.com) API key
@@ -214,19 +228,33 @@ create table finance (
 
 Enable RLS on all tables and add policies so users can only access their own data.
 
-> **Upgrading from v0.x?** Run this migration to add the account column:
+### 4. Add database indexes (important for performance)
+
+Run this in the Supabase SQL editor to speed up all queries:
+
+```sql
+create index if not exists events_user_date    on events(user_id, date);
+create index if not exists todos_user_done     on todos(user_id, done);
+create index if not exists finance_user_date   on finance(user_id, date);
+create index if not exists snips_user_created  on snips(user_id, created_at);
+create index if not exists drafts_user_created on drafts(user_id, created_at);
+create index if not exists projects_user_created on projects(user_id, created_at);
+```
+
+> **Upgrading from v0.x?** Also run:
+>
 > ```sql
 > alter table finance add column account text default 'Wallet';
 > ```
 
-### 4. Set up Google OAuth (optional)
+### 5. Set up Google OAuth (optional)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → Create OAuth 2.0 Client
 2. Add `https://your-project.supabase.co/auth/v1/callback` as an authorised redirect URI
 3. Paste the Client ID and Secret into Supabase → Authentication → Providers → Google
 4. Set your Supabase Site URL and redirect URLs to your app's domain
 
-### 5. Add sprites (optional)
+### 6. Add sprites (optional)
 
 Create `public/sprites/` and add your sprite PNGs (recommended 360×460px transparent PNG):
 
@@ -243,7 +271,7 @@ tyun-celebrating.png
 tyun-concerned.png
 ```
 
-### 6. Add music (optional)
+### 7. Add music (optional)
 
 Create `public/music/` and add your MP3 files and a `playlist.json`:
 
@@ -258,7 +286,7 @@ Create `public/music/` and add your MP3 files and a `playlist.json`:
 ]
 ```
 
-### 7. Run the development server
+### 8. Run the development server
 
 ```bash
 npm run dev
@@ -288,13 +316,13 @@ tyunnie/
 │   └── globals.css
 ├── components/
 │   ├── Sidebar.tsx
-│   ├── TyunniePanel.tsx        # AI chat panel (expandable)
+│   ├── TyunniePanel.tsx        # AI chat panel (expandable, mobile-optimised)
 │   ├── Calendar.tsx
 │   ├── Todo.tsx
 │   ├── Writing.tsx
 │   ├── Projects.tsx
 │   ├── Snippets.tsx
-│   ├── Finance.tsx             # Finance tracker with account support
+│   ├── Finance.tsx             # Finance tracker with account + carry-over support
 │   └── Music.tsx
 ├── lib/
 │   ├── supabase.ts
@@ -336,7 +364,24 @@ The app is deployed on Vercel. To deploy your own:
 
 ## 📋 Changelog
 
+### v1.3.1
+
+- Removed global data loading spinner — panels render immediately on mount
+- Finance queries now scoped to last 12 months instead of all-time
+- Added Supabase indexes on all major query columns for faster lookups
+- Vercel Real Experience Score improved on `/dashboard`
+
+### v1.3.0
+
+- Mobile Tyunnie panel overhaul — sprite visible in background without blocking chat
+- Chat input now always accessible above the bottom tab bar on mobile
+- Expand mode restricted to desktop only
+- Removed duplicate close buttons on mobile
+- Briefing card full-width on mobile
+- Carried balance from previous months now visible in Finance tracker
+
 ### v1.2.0
+
 - Finance tracker now supports account tagging (Maybank, MAE, Grab, GXBank, TnG, Wallet, ASB)
 - Account balance pills on the finance page showing net balance per account
 - Filter entries by account in the tracker view
@@ -344,6 +389,7 @@ The app is deployed on Vercel. To deploy your own:
 - Coloured account badge on each entry row
 
 ### v0.2.0
+
 - Tyunnie panel is now expandable — full-screen chat mode with larger sprite
 - Daily briefing card generated on load, pinned above chat history
 - Removed standalone chat page — dashboard is now the single entry point
@@ -353,6 +399,7 @@ The app is deployed on Vercel. To deploy your own:
 - Global search modal (`Cmd+K`) across all data types
 
 ### v0.1.0
+
 - Initial release — calendar, tasks, writing, projects, snippets, finance, music
 - Tyunnie AI panel with action execution
 - Google OAuth, Supabase auth

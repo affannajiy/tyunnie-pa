@@ -85,7 +85,6 @@ export default function Home() {
   const [financeViewYear, setFinanceViewYear] = useState(
     new Date().getFullYear(),
   );
-  const [dataLoading, setDataLoading] = useState(true);
   const [todoRefreshKey, setTodoRefreshKey] = useState(0);
   const [draftRefreshKey, setDraftRefreshKey] = useState(0);
   const [showMobileChat, setShowMobileChat] = useState(false);
@@ -254,7 +253,6 @@ export default function Home() {
       setProjects(pr);
       setSnips(sn);
       setFinance(fi);
-      setDataLoading(false);
     }
 
     loadAll();
@@ -459,62 +457,53 @@ export default function Home() {
 
           {/* Panel content — add bottom padding on mobile for tab bar */}
           <div className="flex-1 overflow-y-auto p-4 md:p-7 pb-24 md:pb-7">
-            {dataLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center text-[#c5bdb0]">
-                  <div className="text-3xl mb-3 opacity-40">🧡</div>
-                  <p className="text-sm">Loading your data...</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                {activePanel === "calendar" && (
-                  <Calendar userId={user.id} onAction={() => {}} />
-                )}
-                {activePanel === "todo" && (
-                  <Todo
-                    userId={user.id}
-                    onAction={() => {}}
-                    refreshKey={todoRefreshKey}
-                  />
-                )}
-                {activePanel === "writing" && (
-                  <Writing
-                    userId={user.id}
-                    onAction={() => {}}
-                    refreshKey={draftRefreshKey}
-                  />
-                )}
-                {activePanel === "projects" && (
-                  <Projects
-                    userId={user.id}
-                    onAction={() => {}}
-                    refreshKey={projectRefreshKey}
-                  />
-                )}
-                {activePanel === "snippets" && (
-                  <Snippets
-                    userId={user.id}
-                    onAction={() => {}}
-                    refreshKey={snippetRefreshKey}
-                  />
-                )}
-                {activePanel === "finance" && (
-                  <Finance
-                    userId={user.id}
-                    onAction={() => {}}
-                    refreshKey={financeRefreshKey}
-                    viewMonth={financeViewMonth}
-                    viewYear={financeViewYear}
-                    onViewChange={(m, y) => {
-                      setFinanceViewMonth(m);
-                      setFinanceViewYear(y);
-                    }}
-                  />
-                )}
-                {activePanel === "music" && <Music />}
-              </>
-            )}
+            <>
+              {activePanel === "calendar" && (
+                <Calendar userId={user.id} onAction={() => {}} />
+              )}
+              {activePanel === "todo" && (
+                <Todo
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={todoRefreshKey}
+                />
+              )}
+              {activePanel === "writing" && (
+                <Writing
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={draftRefreshKey}
+                />
+              )}
+              {activePanel === "projects" && (
+                <Projects
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={projectRefreshKey}
+                />
+              )}
+              {activePanel === "snippets" && (
+                <Snippets
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={snippetRefreshKey}
+                />
+              )}
+              {activePanel === "finance" && (
+                <Finance
+                  userId={user.id}
+                  onAction={() => {}}
+                  refreshKey={financeRefreshKey}
+                  viewMonth={financeViewMonth}
+                  viewYear={financeViewYear}
+                  onViewChange={(m, y) => {
+                    setFinanceViewMonth(m);
+                    setFinanceViewYear(y);
+                  }}
+                />
+              )}
+              {activePanel === "music" && <Music />}
+            </>
           </div>
         </div>
 

@@ -314,14 +314,16 @@ export async function deleteSnip(id: string): Promise<void> {
 // ══════════════════════════════════════════════
 
 // Get all finance entries, newest first
-export async function getFinanceEntries(
-  userId: string,
-): Promise<FinanceEntry[]> {
+export async function getFinanceEntries(userId: string): Promise<FinanceEntry[]> {
   if (userId === "demo-user") return [];
+  // Only fetch last 12 months — enough for 6-month charts + carry-over
+  const since = new Date();
+  since.setMonth(since.getMonth() - 12);
   const { data, error } = await supabase
     .from("finance")
     .select("*")
     .eq("user_id", userId)
+    .gte("date", since.toISOString().split("T")[0])
     .order("date", { ascending: false });
 
   if (error) console.error("getFinanceEntries error:", error);
