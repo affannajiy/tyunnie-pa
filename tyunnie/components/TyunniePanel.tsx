@@ -225,49 +225,59 @@ export default function TyunniePanel({
       return;
     briefingFiredRef.current = true;
 
-    const today = new Date().toISOString().split("T")[0];
-    const hour = new Date().getHours();
-    const timeOfDay =
-      hour < 12
-        ? "morning"
-        : hour < 17
-          ? "afternoon"
-          : hour < 21
-            ? "evening"
-            : "night";
+    async function fetchBriefing() {
+      const today = new Date().toISOString().split("T")[0];
+      const hour = new Date().getHours();
+      const timeOfDay =
+        hour < 12
+          ? "morning"
+          : hour < 17
+            ? "afternoon"
+            : hour < 21
+              ? "evening"
+              : "night";
 
-    const todayEvents = appData.events.filter((e) => e.date === today);
-    const overdue = appData.todos.filter(
-      (t) => !t.done && t.due && t.due < today,
-    );
-    const todayTodos = appData.todos.filter((t) => !t.done && t.due === today);
-    const balance =
-      appData.finance
-        .filter((f) => f.type === "income")
-        .reduce((s, f) => s + f.amount, 0) -
-      appData.finance
-        .filter((f) => f.type === "expense")
-        .reduce((s, f) => s + f.amount, 0);
+      const todayEvents = appData.events.filter((e) => e.date === today);
+      const overdue = appData.todos.filter(
+        (t) => !t.done && t.due && t.due < today,
+      );
+      const todayTodos = appData.todos.filter(
+        (t) => !t.done && t.due === today,
+      );
+      const balance =
+        appData.finance
+          .filter((f) => f.type === "income")
+          .reduce((s, f) => s + f.amount, 0) -
+        appData.finance
+          .filter((f) => f.type === "expense")
+          .reduce((s, f) => s + f.amount, 0);
 
-    setBriefingLoading(true);
-    fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [{ role: "user", content: "briefing" }],
-        systemPrompt: `You are Tyunnie, a warm personal assistant. Give a SHORT 1-2 sentence ${timeOfDay} briefing. Be casual and direct like a close friend, no bullet points.
+      setBriefingLoading(true);
+      try {
+        const r = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "briefing" }],
+            systemPrompt: `You are Tyunnie, a warm personal assistant. Give a SHORT 1-2 sentence ${timeOfDay} briefing. Be casual and direct like a close friend, no bullet points.
 Today: ${today} (${timeOfDay})
 Events today: ${todayEvents.length > 0 ? todayEvents.map((e) => e.title).join(", ") : "none"}
 Tasks due today: ${todayTodos.length > 0 ? todayTodos.map((t) => t.text).join(", ") : "none"}
 Overdue: ${overdue.length > 0 ? overdue.length + " task(s)" : "none"}
 Balance: RM${balance.toFixed(2)}
 No action blocks. Just a friendly 1-2 sentence greeting that covers what matters most today.`,
-      }),
-    })
-      .then((r) => r.json())
-      .then((d) => setBriefing(d.text ?? null))
-      .catch(() => setBriefing(null))
-      .finally(() => setBriefingLoading(false));
+          }),
+        });
+        const d = await r.json();
+        setBriefing(d.text ?? null);
+      } catch {
+        setBriefing(null);
+      } finally {
+        setBriefingLoading(false);
+      }
+    }
+
+    fetchBriefing();
   }, [appData]);
 
   // ── SYSTEM PROMPT with full app context ──
@@ -654,7 +664,7 @@ STRICT RULES:
   // ── RENDER ──
   return (
     <div
-      className={`${isExpanded ? "flex-1 flex-row" : "w-75 shrink-0 flex-col"} bg-[#111010] flex overflow-hidden border-l border-[#2a2520] relative`}
+      className={`${isExpanded ? "md:flex-1 md:flex-row flex-col" : "w-full md:w-75 shrink-0 flex-col"} bg-[#111010] flex h-full overflow-hidden border-l border-[#2a2520] relative`}
     >
       {/* Subtle radial glow */}
       <div
@@ -757,6 +767,8 @@ STRICT RULES:
             height={330}
             className="object-contain object-bottom relative z-2 transition-all duration-500"
             style={{
+              width: "260px",
+              height: "auto",
               filter: spriteGlow
                 ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
                 : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
@@ -767,7 +779,7 @@ STRICT RULES:
       </div>
 
       {/* ── CHAT COLUMN (right side when expanded, full column when collapsed) ── */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0 min-h-0">
         {/* Mini player — only in collapsed mode */}
         {music.currentTrack && !isExpanded && (
           <div className="shrink-0 px-3 pt-3 pb-2 border-b border-[#2a2520]">
@@ -845,9 +857,7 @@ STRICT RULES:
         )}
         {briefing && !briefingLoading && (
           <div className="shrink-0 px-3 pt-3 pb-1">
-            <div
-              className={`bg-[#1e1b17] border border-[#f97316]/30 rounded-[4px_16px_16px_16px] px-3.5 py-2.5 ${isExpanded ? "max-w-lg" : "max-w-52.5"}`}
-            >
+            <div className="bg-[#1e1b17] border border-[#f97316]/30 rounded-2xl px-3.5 py-2.5 w-full">
               <div className="text-[9px] font-bold text-[#f97316] uppercase tracking-widest mb-1.5 font-mono">
                 Daily briefing
               </div>
@@ -861,13 +871,13 @@ STRICT RULES:
         {/* ── CHAT HISTORY ── */}
         <div
           ref={historyRef}
-          className="flex-1 overflow-y-auto px-3 pt-3 pb-2 flex flex-col gap-2.5 relative min-h-0"
+          className="flex-1 overflow-y-auto px-3 pt-3 pb-6 md:pb-2 flex flex-col gap-2.5 relative min-h-0 overscroll-contain"
           style={{
             scrollbarWidth: "thin",
             scrollbarColor: "#2a2520 transparent",
           }}
         >
-          <div className="flex-1" />
+          <div className="h-10 md:flex-1" />
           {bubbles.map((b, index) => {
             const distanceFromBottom = bubbles.length - 1 - index;
             const opacity =
@@ -887,7 +897,7 @@ STRICT RULES:
               >
                 <div
                   className={`
-                    ${isExpanded ? "max-w-lg" : "max-w-52.5"} px-3.5 py-2.5 text-[12.5px] leading-[1.7] font-medium
+                    ${isExpanded ? "max-w-lg" : "max-w-52.5"} px-3 py-2 md:px-3.5 md:py-2.5 text-[11px] md:text-[12.5px] leading-[1.6] font-medium
                     ${
                       b.who === "tyunnie"
                         ? "bg-[#f97316] text-white rounded-[4px_16px_16px_16px]"
@@ -956,38 +966,64 @@ STRICT RULES:
           )}
         </div>
 
-        {/* ── SPRITE (collapsed only) ── */}
+        {/* ── SPRITE (collapsed only) — absolute on mobile, normal flow on desktop ── */}
         {!isExpanded && (
-          <div className="h-67.5 shrink-0 relative flex items-end justify-start overflow-hidden">
-            <button
-              onClick={onToggleExpand}
-              className="absolute top-3 right-3 z-20 w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all text-xs flex items-center justify-center"
-              title="Expand chat"
-            >
-              ↗
-            </button>
-            <div
-              className="absolute top-0 left-0 right-0 h-14 pointer-events-none z-10"
-              style={{ background: "linear-gradient(#111010, transparent)" }}
-            />
-            <Image
-              src={currentSprite}
-              alt="Tyunnie"
-              width={180}
-              height={230}
-              className="object-contain object-top relative z-2 transition-all duration-500 -ml-2"
-              style={{
-                filter: spriteGlow
-                  ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
-                  : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
-              }}
-              priority
-            />
-          </div>
+          <>
+            {/* Mobile: sits behind bubbles, doesn't affect layout */}
+            <div className="md:hidden absolute bottom-16 left-0 w-48 h-56 pointer-events-none z-0">
+              <div
+                className="absolute top-0 left-0 right-0 h-10 pointer-events-none"
+                style={{ background: "linear-gradient(#111010, transparent)" }}
+              />
+              <Image
+                src={currentSprite}
+                alt="Tyunnie"
+                width={180}
+                height={230}
+                className="object-contain object-bottom w-full h-full transition-all duration-500"
+                style={{
+                  filter: spriteGlow
+                    ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
+                    : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
+                }}
+                priority
+              />
+            </div>
+
+            {/* Desktop: normal flow */}
+            <div className="h-67.5 shrink-0 relative hidden md:flex items-end justify-start overflow-hidden">
+              <button
+                onClick={onToggleExpand}
+                className="absolute top-3 right-3 z-20 w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all text-xs hidden md:flex items-center justify-center"
+                title="Expand chat"
+              >
+                ↗
+              </button>
+              <div
+                className="absolute top-0 left-0 right-0 h-14 pointer-events-none z-10"
+                style={{ background: "linear-gradient(#111010, transparent)" }}
+              />
+              <Image
+                src={currentSprite}
+                alt="Tyunnie"
+                width={180}
+                height={230}
+                className="object-contain object-bottom relative z-2 transition-all duration-500 -ml-2"
+                style={{
+                  width: "180px",
+                  height: "auto",
+                  filter: spriteGlow
+                    ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
+                    : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
+                }}
+                priority
+              />
+            </div>
+          </>
         )}
 
         {/* ── CHAT INPUT ── */}
-        <div className="px-3 py-3 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0">
+        <div className="px-3 pt-3 pb-4 md:pb-3 mb-16 md:mb-0 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0 relative z-20">
           <textarea
             ref={inputRef}
             value={input}
@@ -995,8 +1031,8 @@ STRICT RULES:
             onKeyDown={handleKeyDown}
             placeholder="Talk to Tyunnie..."
             rows={1}
-            className="flex-1 bg-[#1e1b17] border border-[#3a3028] rounded-xl text-[#e8ddd0] text-xs px-3 py-2.5 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors focus:border-[#f97316]"
-            style={{ minHeight: "40px", maxHeight: "80px" }}
+            className="flex-1 bg-[#1e1b17] border border-[#3a3028] rounded-xl text-[#e8ddd0] text-[11px] md:text-xs px-3 py-2 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors focus:border-[#f97316]"
+            style={{ minHeight: "36px", maxHeight: "72px" }}
           />
           <button
             onClick={sendChat}

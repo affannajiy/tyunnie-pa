@@ -61,7 +61,15 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
 
   // ── PANEL ──
-  const [activePanel, setActivePanel] = useState<Panel>("calendar");
+  const [activePanel, setActivePanel] = useState<Panel>(() => {
+    if (typeof window === "undefined") return "calendar";
+    const params = new URLSearchParams(window.location.search);
+    const panel = params.get("panel");
+    if (panel && Object.keys(PANEL_LABELS).includes(panel)) {
+      return panel as Panel;
+    }
+    return "calendar";
+  });
 
   // ── APP DATA ──
   // All data lives here so TyunniePanel always has up-to-date context
@@ -113,13 +121,6 @@ export default function Home() {
   // ──── PAGE REFRESH ───
   useEffect(() => {
     sessionStorage.setItem("visitedDashboard", "true");
-
-    // Read panel from URL on mount
-    const params = new URLSearchParams(window.location.search);
-    const panel = params.get("panel");
-    if (panel && Object.keys(PANEL_LABELS).includes(panel)) {
-      setActivePanel(panel as Panel);
-    }
   }, []);
 
   // ── KEYBOARD SHORTCUTS ──
@@ -535,7 +536,7 @@ export default function Home() {
           {/* Close button on mobile */}
           <button
             onClick={() => setShowMobileChat(false)}
-            className="md:hidden absolute top-4 left-4 z-50 w-9 h-9 bg-[#2a2520] rounded-xl flex items-center justify-center text-[#9a8f7e] text-lg"
+            className="md:hidden absolute top-4 right-4 z-50 w-9 h-9 bg-[#2a2520] rounded-xl flex items-center justify-center text-[#9a8f7e] text-lg"
           >
             ✕
           </button>

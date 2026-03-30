@@ -163,6 +163,11 @@ export default function Finance({
     .filter((e) => e.type === "expense")
     .reduce((s, e) => s + e.amount, 0);
   const monthBalance = monthIncome - monthExpenses;
+  const carriedBalance = allEntries
+    .filter((e) => e.date < monthPrefix)
+    .reduce((s, e) => s + (e.type === "income" ? e.amount : -e.amount), 0);
+
+  const runningBalance = carriedBalance + monthBalance;
 
   // Apply both type filter and account filter
   const filtered = monthEntries
@@ -369,8 +374,14 @@ export default function Finance({
             Balance
           </div>
           <div className="font-serif italic text-3xl text-white">
-            RM {monthBalance.toFixed(2)}
+            RM {runningBalance.toFixed(2)}
           </div>
+          {carriedBalance !== 0 && (
+            <div className="text-[10px] text-white/60 font-mono mt-1">
+              {carriedBalance >= 0 ? "+" : ""}RM {carriedBalance.toFixed(2)}{" "}
+              carried · RM {monthBalance.toFixed(2)} this month
+            </div>
+          )}
         </div>
       </div>
 
