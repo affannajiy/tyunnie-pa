@@ -8,7 +8,8 @@ export type Panel =
   | "projects"
   | "snippets"
   | "finance"
-  | "music";
+  | "music"
+  | "pomodoro";
 
 type Props = {
   active: Panel;
@@ -23,7 +24,8 @@ const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
   { panel: "projects", icon: "🗂️", label: "Proj" },
   { panel: "snippets", icon: "⌨️", label: "Snips" },
   { panel: "finance", icon: "💰", label: "Money" },
-  { panel: 'music',    icon: '🎵', label: 'Music' },
+  { panel: "music", icon: "🎵", label: "Music" },
+  { panel: "pomodoro", icon: "⏲️", label: "Focus" },
 ];
 
 export default function Sidebar({ active, onChange, onSignOut }: Props) {
@@ -62,7 +64,6 @@ export default function Sidebar({ active, onChange, onSignOut }: Props) {
 
         <div className="flex-1" />
 
-        {/* Sign out on desktop */}
         <button
           onClick={onSignOut}
           title="Sign out"
@@ -72,35 +73,39 @@ export default function Sidebar({ active, onChange, onSignOut }: Props) {
         </button>
       </div>
 
-      {/* ── MOBILE: bottom tab bar ── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#111010] border-t border-[#2a2520] flex items-center z-50 px-1 pb-safe">
-        {NAV_ITEMS.map(({ panel, icon, label }) => (
+      {/* ── MOBILE: scrollable bottom tab bar ── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#111010] border-t border-[#2a2520] z-50">
+        <div
+          className="flex items-center overflow-x-auto px-1"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {NAV_ITEMS.map(({ panel, icon, label }) => (
+            <button
+              key={panel}
+              onClick={() => onChange(panel)}
+              className={`
+                shrink-0 w-16 flex flex-col items-center justify-center py-2.5 gap-0.5
+                transition-all duration-200
+                ${active === panel ? "text-[#f97316]" : "text-[#4a4038]"}
+              `}
+            >
+              <span className="text-xl leading-none">{icon}</span>
+              <span className="text-[8px] font-bold uppercase tracking-wide font-mono">
+                {label}
+              </span>
+            </button>
+          ))}
+
           <button
-            key={panel}
-            onClick={() => onChange(panel)}
-            className={`
-              flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5
-              transition-all duration-200
-              ${active === panel ? "text-[#f97316]" : "text-[#4a4038]"}
-            `}
+            onClick={onSignOut}
+            className="shrink-0 w-14 flex flex-col items-center justify-center py-2.5 text-[#4a4038] hover:text-red-500 transition-all"
           >
-            <span className="text-xl leading-none">{icon}</span>
+            <span className="text-xl">↩</span>
             <span className="text-[8px] font-bold uppercase tracking-wide font-mono">
-              {label}
+              Out
             </span>
           </button>
-        ))}
-
-        {/* Sign out on mobile */}
-        <button
-          onClick={onSignOut}
-          className="shrink-0 flex flex-col items-center justify-center py-2.5 px-3 text-[#4a4038] hover:text-red-500 transition-all"
-        >
-          <span className="text-xl">↩</span>
-          <span className="text-[8px] font-bold uppercase tracking-wide font-mono">
-            Out
-          </span>
-        </button>
+        </div>
       </div>
     </>
   );

@@ -13,6 +13,7 @@ import Snippets from "@/components/Snippets";
 import Finance from "@/components/Finance";
 import Music from "@/components/Music";
 import { MusicProvider } from "@/lib/MusicContext";
+import Pomodoro from "@/components/Pomodoro";
 import type {
   Event,
   Todo as TodoType,
@@ -151,6 +152,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   snippets: "Snip Files",
   finance: "Finance",
   music: "Music",
+  pomodoro: "Pomodoro",
 };
 
 export default function DemoPage() {
@@ -253,7 +255,7 @@ export default function DemoPage() {
     setFinance((prev) => [newEntry, ...prev]);
     setFinanceRefreshKey((prev) => prev + 1);
   }
-  
+
   async function handleFinanceReset(year: number, month: number) {
     const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
     setFinance((prev) => prev.filter((f) => !f.date.startsWith(monthPrefix)));
@@ -370,6 +372,7 @@ export default function DemoPage() {
               />
             )}
             {activePanel === "music" && <Music />}
+            {activePanel === "pomodoro" && <Pomodoro userId={DEMO_USER_ID} />}
           </div>
         </div>
 
