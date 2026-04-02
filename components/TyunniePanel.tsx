@@ -33,21 +33,23 @@ const MONTHS = [
 type MoodType = "default" | "happy" | "concerned" | "celebrating" | "thinking";
 
 const PANEL_SPRITES: Record<string, string> = {
-  calendar: "/sprites/tyun-celebrating.png",
-  todo: "/sprites/tyun-focused.png",
-  writing: "/sprites/tyun-writing.png",
-  projects: "/sprites/tyun-serious.png",
-  snippets: "/sprites/tyun-coding.png",
-  finance: "/sprites/tyun-concerned.png",
-  music: "/sprites/tyun-happy.png",
+  calendar: "/sprites/tyun-panel-calendar.png",
+  todo: "/sprites/tyun-panel-todo.png",
+  writing: "/sprites/tyun-panel-writing.png",
+  projects: "/sprites/tyun-panel-projects.png",
+  snippets: "/sprites/tyun-panel-snippets.png",
+  finance: "/sprites/tyun-panel-finance.png",
+  music: "/sprites/tyun-panel-music.png",
+  pomodoro: "/sprites/tyun-panel-pomodoro.png",
+  games: "/sprites/tyun-panel-games.png",
 };
 
 const MOOD_SPRITES: Record<MoodType, string> = {
-  default: "/sprites/tyun-default.png",
-  happy: "/sprites/tyun-happy.png",
-  concerned: "/sprites/tyun-concerned.png",
-  celebrating: "/sprites/tyun-celebrating.png",
-  thinking: "/sprites/tyun-thinking.png",
+  default: "/sprites/tyun-mood-default.png",
+  happy: "/sprites/tyun-mood-happy.png",
+  concerned: "/sprites/tyun-mood-concerned.png",
+  celebrating: "/sprites/tyun-mood-celebrating.png",
+  thinking: "/sprites/tyun-mood-thinking.png",
 };
 
 type Message = {
@@ -113,6 +115,7 @@ type Props = {
   }) => void;
   activePanel?: string;
   isExpanded?: boolean;
+  userName?: string;
   onToggleExpand?: () => void;
 };
 
@@ -135,6 +138,7 @@ export default function TyunniePanel({
   onSnippetAdded,
   activePanel = "calendar",
   isExpanded = false,
+  userName = "",
   onToggleExpand,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -338,7 +342,7 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
     const viewM = appData.financeViewMonth ?? new Date().getMonth();
     const viewY = appData.financeViewYear ?? new Date().getFullYear();
 
-    return `You are Tyunnie — a warm, caring personal AI assistant based on Taehyun from TXT. You speak like a close, supportive friend. The user is a CS student who loves writing and ideas. Keep all replies short and personal (1–3 sentences max before any action block).
+    return `You are Tyunnie — a warm, caring personal AI assistant based on Taehyun from TXT. You speak like a close, supportive friend. The user is a CS student who loves writing and ideas.${userName ? ` Their name is ${userName} — use it naturally sometimes, not every message.` : ""} Keep all replies short and personal (1–3 sentences max before any action block). When the user is just greeting or chatting casually (hey, yo, sup, how are you, etc.) — just vibe with them like a friend. No data dumps, no balance, no task lists. Just talk.
 
 Today: ${today}
 
@@ -386,10 +390,12 @@ Available actions:
 - music_control → Control music. data: { "action":"play"|"pause"|"next"|"prev"|"toggle", "trackName":"..." (optional, for going to a specific song) }
 
 STRICT RULES:
+- NEVER use the navigate action unless the user explicitly asks to go somewhere or open a panel. Do NOT navigate automatically based on context.
 - When user says "add task", "remind me to", "add to my todo", "create a task" → ALWAYS include add_todo action
 - For add_todo: add it silently and immediately, tell the user it's done
 - For add_event: always confirm details first before adding
 - For financial questions: quote the exact RM balance from the data
+- NEVER mention the balance, income, or expenses unless the user explicitly asks about money, finance, or their balance
 - NEVER mention "action block" or "JSON" to the user
 - The action block MUST be the very last thing in your response, on its own line
 - Example of correct add_todo response:

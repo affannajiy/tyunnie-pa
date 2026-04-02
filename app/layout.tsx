@@ -44,6 +44,17 @@ export default function RootLayout({
       className={`${instrumentSerif.variable} ${nunito.variable}`}
     >
       <body className="font-sans antialiased">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+          try {
+            if (localStorage.getItem('tyunnie_theme') === 'dark') {
+              document.documentElement.classList.add('dark');
+            }
+          } catch(e) {}
+        `,
+          }}
+        />
         {children}
         <Analytics />
         <SpeedInsights />

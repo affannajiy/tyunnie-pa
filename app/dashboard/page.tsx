@@ -75,6 +75,24 @@ export default function Home() {
     return "calendar";
   });
 
+  // ── USERNAME ──
+  const [userName, setUserName] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("tyunnie_username") ?? "";
+  });
+
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("tyunnie_theme") === "dark";
+  });
+
+  function toggleTheme() {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem("tyunnie_theme", next ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", next);
+  }
+
   // ── APP DATA ──
   // All data lives here so TyunniePanel always has up-to-date context
   const [events, setEvents] = useState<Event[]>([]);
@@ -519,6 +537,16 @@ export default function Home() {
               {PANEL_LABELS[activePanel]}
             </span>
             <div className="flex-1" />
+
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              className="hidden md:flex w-8 h-8 rounded-xl border border-[#e8e2d8] bg-[#faf8f5] items-center justify-center text-sm text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+              title={isDark ? "Light mode" : "Dark mode"}
+            >
+              {isDark ? "☀️" : "🌙"}
+            </button>
+
             {/* Search button */}
             <button
               onClick={() => setSearchOpen(true)}
@@ -540,6 +568,21 @@ export default function Home() {
                 day: "numeric",
               })}
             </span>
+
+            {/* Name setting */}
+            <div className="hidden md:flex items-center gap-2">
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => {
+                  setUserName(e.target.value);
+                  localStorage.setItem("tyunnie_username", e.target.value);
+                }}
+                placeholder="Your name..."
+                maxLength={20}
+                className="bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-xs text-[#111010] outline-none focus:border-[#f97316] transition-colors w-32 placeholder:text-[#c5bdb0]"
+              />
+            </div>
 
             {/* Mobile chat toggle button */}
             <button
@@ -638,6 +681,7 @@ export default function Home() {
               financeViewMonth,
               financeViewYear,
             }}
+            userName={userName}
             onNavigate={handleNavigate}
             onEventAdded={handleEventAdded}
             onTodoAdded={handleTodoAdded}

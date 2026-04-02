@@ -2,24 +2,25 @@
 @import "tailwindcss";
 
 :root {
-  --bg:          #faf8f5;
-  --surface:     #ffffff;
-  --border:      #e8e2d8;
-  --orange:      #f97316;
+  --bg: #faf8f5;
+  --surface: #ffffff;
+  --border: #e8e2d8;
+  --orange: #f97316;
   --orange-soft: #fff0e6;
-  --orange-mid:  #fed7aa;
-  --orange-dim:  #c2500f;
-  --black:       #111010;
-  --text:        #2d2416;
-  --muted:       #9a8f7e;
-  --muted2:      #c5bdb0;
+  --orange-mid: #fed7aa;
+  --orange-dim: #c2500f;
+  --black: #111010;
+  --text: #2d2416;
+  --muted: #9a8f7e;
+  --muted2: #c5bdb0;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   overflow: hidden;
 }
@@ -28,12 +29,28 @@ html, body {
   scrollbar-width: thin;
   scrollbar-color: #e8e2d8 transparent;
 }
-::-webkit-scrollbar       { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #e8e2d8; border-radius: 2px; }
 
-.font-serif { font-family: var(--font-serif); }
-.font-sans  { font-family: var(--font-sans);  }
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e8e2d8;
+  border-radius: 2px;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
 
 /* Safe area for iPhone home indicator */
 .pb-safe {
@@ -41,7 +58,65 @@ html, body {
 }
 
 @theme {
-  --font-family-sans:  var(--font-sans),  sans-serif;
+  --font-family-sans: var(--font-sans), sans-serif;
   --font-family-serif: var(--font-serif), serif;
-  --font-family-mono:  "Geist Mono",      monospace;
+  --font-family-mono: "Geist Mono", monospace;
+}
+
+/* ── DARK MODE ── */
+.dark .bg-white {
+  background-color: #1c1917 !important;
+}
+
+.dark .bg-\[\#faf8f5\] {
+  background-color: #0f0e0d !important;
+}
+
+.dark .bg-\[\#f3f0ea\] {
+  background-color: #2a2520 !important;
+}
+
+.dark .bg-\[\#fff0e6\] {
+  background-color: #2a1a0a !important;
+}
+
+.dark .bg-\[\#faf8f5\].border {
+  background-color: #1c1917 !important;
+}
+
+.dark .border-\[\#e8e2d8\] {
+  border-color: #2a2520 !important;
+}
+
+.dark .border-\[\#fed7aa\] {
+  border-color: #7c3a0a !important;
+}
+
+.dark .text-\[\#111010\] {
+  color: #e8ddd0 !important;
+}
+
+.dark .text-\[\#2d2416\] {
+  color: #e8ddd0 !important;
+}
+
+.dark .text-\[\#9a8f7e\] {
+  color: #6b6259 !important;
+}
+
+.dark .text-\[\#c5bdb0\] {
+  color: #4a4038 !important;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #1c1917 !important;
+  color: #e8ddd0 !important;
+  border-color: #2a2520 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #4a4038 !important;
 }

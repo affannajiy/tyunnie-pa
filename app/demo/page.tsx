@@ -161,6 +161,17 @@ const PANEL_LABELS: Record<Panel, string> = {
 export default function DemoPage() {
   const router = useRouter();
   const [activePanel, setActivePanel] = useState<Panel>("calendar");
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("tyunnie_theme") === "dark";
+  });
+
+  function toggleTheme() {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem("tyunnie_theme", next ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", next);
+  }
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [tyunnieExpanded, setTyunnieExpanded] = useState(false);
 
@@ -312,6 +323,16 @@ export default function DemoPage() {
               Demo Mode
             </span>
             <div className="flex-1" />
+
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              className="hidden md:flex w-8 h-8 rounded-xl border border-[#e8e2d8] bg-[#faf8f5] items-center justify-center text-sm text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+              title={isDark ? "Light mode" : "Dark mode"}
+            >
+              {isDark ? "☀️" : "🌙"}
+            </button>
+
             <span className="font-mono text-[11px] text-[#9a8f7e] hidden md:block">
               {new Date().toLocaleDateString("en-MY", {
                 weekday: "long",
@@ -320,6 +341,7 @@ export default function DemoPage() {
                 day: "numeric",
               })}
             </span>
+
             <button
               onClick={() => setShowMobileChat(true)}
               className="md:hidden w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
