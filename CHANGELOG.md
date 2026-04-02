@@ -5,7 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.3.0] — 2026-04-03
+
+### Added
+
+- **Weather widget** (`components/Weather.tsx`) — city-based weather display in the topbar using Open-Meteo API. No location permission required — user types a city name, it geocodes and saves to `localStorage`. Persists across sessions until changed. Shows temperature, weather icon, and condition label. Click the widget anytime to change city. Hidden on mobile, visible on desktop only
+
+---
+
 ## [2.2.0] — 2026-04-02
+
+### Added
+
+- **Dark mode toggle** — 🌙/☀️ button in the topbar toggles the whole app between light and dark. Preference saved to `localStorage` and applied before first paint via an inline script in `layout.tsx` to prevent flash. CSS class overrides in `globals.css` using `.dark` selector on all major background, border, and text colors
+- **Confetti on task completion** — `canvas-confetti` burst fires in Tyunnie's orange palette when a task is marked as done in the Tasks panel
+- **Username input** — name field in the topbar persists to `localStorage`. Tyunnie receives the name in the system prompt and uses it naturally in conversation without repeating it every message
 
 ### Changed
 
@@ -13,6 +27,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Panel sprites now cover all 9 panels including Pomodoro and Games which previously fell back to default
 - Mood sprites (default, happy, concerned, celebrating, thinking) are now independent from panel sprites — switching panels no longer disrupts an active mood sprite
 - New sprite files added to `public/sprites/` for the new naming convention
+- Tyunnie system prompt updated — casual greetings (hey, yo, sup) now get casual conversational responses instead of data dumps
+- Tyunnie no longer volunteers balance, income, or expenses unless explicitly asked about money
+- Tyunnie no longer auto-navigates to panels based on context — navigation only happens when explicitly requested by the user
 
 ### Fixed
 

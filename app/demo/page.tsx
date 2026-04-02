@@ -15,6 +15,7 @@ import Music from "@/components/Music";
 import { MusicProvider } from "@/lib/MusicContext";
 import Pomodoro from "@/components/Pomodoro";
 import Games from "@/components/Games";
+import Weather from "@/components/Weather";
 
 import type {
   Event,
@@ -323,6 +324,8 @@ export default function DemoPage() {
               Demo Mode
             </span>
             <div className="flex-1" />
+
+            <Weather />
 
             {/* Dark mode toggle */}
             <button

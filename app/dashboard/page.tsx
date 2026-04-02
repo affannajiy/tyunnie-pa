@@ -18,6 +18,7 @@ import Music from "@/components/Music";
 import { MusicProvider } from "@/lib/MusicContext";
 import Pomodoro from "@/components/Pomodoro";
 import Games from "@/components/Games";
+import Weather from "@/components/Weather";
 
 import {
   getEvents,
@@ -537,6 +538,8 @@ export default function Home() {
               {PANEL_LABELS[activePanel]}
             </span>
             <div className="flex-1" />
+
+            <Weather />
 
             {/* Dark mode toggle */}
             <button
