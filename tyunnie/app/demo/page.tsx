@@ -14,6 +14,8 @@ import Finance from "@/components/Finance";
 import Music from "@/components/Music";
 import { MusicProvider } from "@/lib/MusicContext";
 import Pomodoro from "@/components/Pomodoro";
+import Games from "@/components/Games";
+
 import type {
   Event,
   Todo as TodoType,
@@ -153,6 +155,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   finance: "Finance",
   music: "Music",
   pomodoro: "Pomodoro",
+  games: "Games",
 };
 
 export default function DemoPage() {
@@ -373,6 +376,7 @@ export default function DemoPage() {
             )}
             {activePanel === "music" && <Music />}
             {activePanel === "pomodoro" && <Pomodoro userId={DEMO_USER_ID} />}
+            {activePanel === "games" && <Games />}
           </div>
         </div>
 

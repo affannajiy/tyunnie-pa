@@ -9,7 +9,8 @@ export type Panel =
   | "snippets"
   | "finance"
   | "music"
-  | "pomodoro";
+  | "pomodoro"
+  | "games";
 
 type Props = {
   active: Panel;
@@ -26,6 +27,7 @@ const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
   { panel: "finance", icon: "💰", label: "Money" },
   { panel: "music", icon: "🎵", label: "Music" },
   { panel: "pomodoro", icon: "⏲️", label: "Focus" },
+  { panel: "games", icon: "🎮", label: "Games" },
 ];
 
 export default function Sidebar({ active, onChange, onSignOut }: Props) {

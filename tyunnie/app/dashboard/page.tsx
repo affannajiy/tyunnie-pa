@@ -17,6 +17,7 @@ import Finance from "@/components/Finance";
 import Music from "@/components/Music";
 import { MusicProvider } from "@/lib/MusicContext";
 import Pomodoro from "@/components/Pomodoro";
+import Games from "@/components/Games";
 
 import {
   getEvents,
@@ -49,6 +50,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   finance: "Finance",
   music: "Music",
   pomodoro: "Pomodoro",
+  games: "Games",
 };
 
 export default function Home() {
@@ -150,6 +152,97 @@ export default function Home() {
             icon: string;
           }[] = [];
 
+          // ── Panel shortcuts ──
+          const PANEL_SHORTCUTS: {
+            keywords: string[];
+            label: string;
+            sub: string;
+            panel: Panel;
+            icon: string;
+          }[] = [
+            {
+              keywords: ["calendar", "events", "schedule"],
+              label: "Calendar",
+              sub: "View your schedule",
+              panel: "calendar",
+              icon: "📅",
+            },
+            {
+              keywords: ["todo", "tasks", "task", "remind"],
+              label: "Tasks",
+              sub: "View your to-do list",
+              panel: "todo",
+              icon: "✅",
+            },
+            {
+              keywords: ["writing", "drafts", "draft", "write"],
+              label: "Writing",
+              sub: "View your drafts",
+              panel: "writing",
+              icon: "✍️",
+            },
+            {
+              keywords: ["projects", "project"],
+              label: "Projects",
+              sub: "View your projects",
+              panel: "projects",
+              icon: "🗂️",
+            },
+            {
+              keywords: ["snippets", "snips", "code", "snippet"],
+              label: "Snippets",
+              sub: "View your code snippets",
+              panel: "snippets",
+              icon: "⌨️",
+            },
+            {
+              keywords: ["finance", "money", "budget", "expenses", "income"],
+              label: "Finance",
+              sub: "View your finance tracker",
+              panel: "finance",
+              icon: "💰",
+            },
+            {
+              keywords: ["music", "songs", "playlist"],
+              label: "Music",
+              sub: "Open music player",
+              panel: "music",
+              icon: "🎵",
+            },
+            {
+              keywords: ["pomodoro", "focus", "timer", "study"],
+              label: "Pomodoro",
+              sub: "Start a focus session",
+              panel: "pomodoro",
+              icon: "⏲️",
+            },
+            {
+              keywords: [
+                "games",
+                "game",
+                "play",
+                "tictactoe",
+                "tic tac toe",
+                "minesweeper",
+                "mines",
+                "sudoku",
+                "solitaire",
+                "cards",
+              ],
+              label: "Games",
+              sub: "Play a minigame",
+              panel: "games",
+              icon: "🎮",
+            },
+          ];
+
+          PANEL_SHORTCUTS.forEach(({ keywords, label, sub, panel, icon }) => {
+            if (keywords.some((k) => k.includes(q) || q.includes(k))) {
+              results.push({ type: "Panel", label, sub, panel, icon });
+            }
+          });
+
+          // ── Data results ──
           events
             .filter((e) => e.title.toLowerCase().includes(q))
             .forEach((e) =>
@@ -506,6 +599,7 @@ export default function Home() {
               )}
               {activePanel === "music" && <Music />}
               {activePanel === "pomodoro" && <Pomodoro userId={user.id} />}
+              {activePanel === "games" && <Games />}
             </>
           </div>
         </div>
@@ -625,6 +719,7 @@ export default function Home() {
                   {/* Group by type */}
                   {(
                     [
+                      "Panel",
                       "Event",
                       "Task",
                       "Draft",
