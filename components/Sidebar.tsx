@@ -18,6 +18,7 @@ type Props = {
   onChange: (panel: Panel) => void;
   onSignOut: () => void;
   userName?: string;
+  avatarUrl?: string | null;
 };
 
 const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
@@ -38,6 +39,7 @@ export default function Sidebar({
   onChange,
   onSignOut,
   userName,
+  avatarUrl,
 }: Props) {
   const initials = userName
     ? userName
@@ -75,15 +77,25 @@ export default function Sidebar({
             `}
           >
             {panel === "profile" ? (
-              <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                  active === "profile"
-                    ? "bg-[#f97316] text-white"
-                    : "bg-[#2a2520] text-[#c8b89a]"
-                }`}
-              >
-                {initials}
-              </div>
+              avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="avatar"
+                  className={`w-7 h-7 rounded-full object-cover transition-all ring-2 ${
+                    active === "profile" ? "ring-[#f97316]" : "ring-transparent"
+                  }`}
+                />
+              ) : (
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                    active === "profile"
+                      ? "bg-[#f97316] text-white"
+                      : "bg-[#2a2520] text-[#c8b89a]"
+                  }`}
+                >
+                  {initials}
+                </div>
+              )
             ) : (
               <span className="text-lg leading-none">{icon}</span>
             )}
@@ -121,17 +133,29 @@ export default function Sidebar({
               `}
             >
               {panel === "profile" ? (
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                    active === "profile"
-                      ? "bg-[#f97316] text-white"
-                      : "bg-[#2a2520] text-[#c8b89a]"
-                  }`}
-                >
-                  {initials}
-                </div>
+                avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="avatar"
+                    className={`w-7 h-7 rounded-full object-cover transition-all ring-2 ${
+                      active === "profile"
+                        ? "ring-[#f97316]"
+                        : "ring-transparent"
+                    }`}
+                  />
+                ) : (
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                      active === "profile"
+                        ? "bg-[#f97316] text-white"
+                        : "bg-[#2a2520] text-[#c8b89a]"
+                    }`}
+                  >
+                    {initials}
+                  </div>
+                )
               ) : (
-                <span className="text-xl leading-none">{icon}</span>
+                <span className="text-lg leading-none">{icon}</span>
               )}
               <span className="text-[8px] font-bold uppercase tracking-wide font-mono">
                 {label}

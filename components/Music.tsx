@@ -3,9 +3,11 @@
 
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
+import { useRef, useEffect, useState } from "react";
 
 export default function Music() {
   const {
+    analyser,
     tracks,
     currentIndex,
     isPlaying,
@@ -30,6 +32,35 @@ export default function Music() {
 
   const progressPct = duration > 0 ? (progress / duration) * 100 : 0;
 
+  const coverRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isPlaying || !analyser?.current) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (coverRef.current)
+        coverRef.current.style.boxShadow = "0 0 20px rgba(249,115,22,0.15)";
+      return;
+    }
+
+    const dataArray = new Uint8Array(analyser.current.frequencyBinCount);
+
+    function tick() {
+      if (!analyser?.current || !coverRef.current) return;
+      analyser.current.getByteFrequencyData(dataArray);
+      const slice = dataArray.slice(0, 10);
+      const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+      const g = avg / 255;
+      coverRef.current.style.boxShadow = `0 0 ${20 + g * 80}px ${g * 30}px rgba(249,115,22,${0.15 + g * 0.65})`;
+      rafRef.current = requestAnimationFrame(tick);
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [isPlaying, analyser]);
+
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)] bg-[#111010] rounded-2xl overflow-hidden border border-[#2a2520] relative">
       <div
@@ -43,13 +74,8 @@ export default function Music() {
       {/* ── LEFT: NOW PLAYING ── */}
       <div className="flex flex-col items-center justify-center p-8 lg:w-95 lg:shrink-0 z-10">
         <div
+          ref={coverRef}
           className="w-48 h-48 rounded-2xl mb-6 overflow-hidden"
-          style={{
-            boxShadow: isPlaying
-              ? "0 0 60px rgba(249,115,22,0.4)"
-              : "0 0 20px rgba(249,115,22,0.15)",
-            transition: "box-shadow 0.5s ease",
-          }}
         >
           {currentTrack?.cover ? (
             <Image
@@ -58,9 +84,6 @@ export default function Music() {
               width={192}
               height={192}
               className="w-full h-full object-cover"
-              style={{
-                animation: isPlaying ? "slowSpin 20s linear infinite" : "none",
-              }}
             />
           ) : (
             <div className="w-full h-full bg-[#1a1410] flex items-center justify-center">

@@ -83,6 +83,7 @@ export type Profile = {
   interests: string[];
   greeting_style: string;
   show_briefing: boolean;
+  avatar_url?: string | null;
 };
 
 // ══════════════════════════════════════════════

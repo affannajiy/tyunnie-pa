@@ -92,6 +92,8 @@ export default function Home() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("tyunnie_theme") === "dark";
   });
+  
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   function toggleTheme() {
     const next = !isDark;
@@ -369,6 +371,7 @@ export default function Home() {
       ]);
       const prof = await getProfile(user!.id);
       setProfile(prof);
+      if (prof?.avatar_url) setAvatarUrl(prof.avatar_url);
       // Sync from profile into local state
       if (prof) {
         if (prof.display_name) setUserName(prof.display_name);
@@ -540,6 +543,7 @@ export default function Home() {
           onChange={setActivePanel}
           onSignOut={handleSignOut}
           userName={userName}
+          avatarUrl={avatarUrl}
         />
 
         {/* Main content */}
@@ -656,6 +660,7 @@ export default function Home() {
                   onSave={(p) => {
                     setProfile(p);
                     if (p.display_name) setUserName(p.display_name);
+                    if (p.avatar_url !== undefined) setAvatarUrl(p.avatar_url ?? null);
                   }}
                   isDark={isDark}
                   toggleTheme={toggleTheme}

@@ -30,6 +30,7 @@ type MusicContextType = {
   shuffle: boolean;
   repeat: RepeatMode;
   currentTrack: Track | undefined;
+  analyser: React.RefObject<AnalyserNode | null>;
   togglePlay: () => void;
   playTrack: (index: number) => void;
   nextTrack: () => void;
@@ -72,6 +73,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const currentIndexRef = useRef(0);
   const shuffledOrderRef = useRef<number[]>([]);
   const tracksRef = useRef<Track[]>([]);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -91,6 +95,19 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, [tracks]);
 
   // ── HELPERS ──
+  function initAnalyser(audio: HTMLAudioElement) {
+    if (audioCtxRef.current) return; // already init'd
+    const ctx = new AudioContext();
+    const source = ctx.createMediaElementSource(audio);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    analyser.connect(ctx.destination);
+    audioCtxRef.current = ctx;
+    sourceRef.current = source;
+    analyserRef.current = analyser;
+  }
+
   function forcePrevTrack() {
     const tr = tracksRef.current;
     const so = shuffledOrderRef.current;
@@ -201,12 +218,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, [volume, isMuted]);
 
   // ── PLAYBACK ──
-  function togglePlay() {
+  async function togglePlay() {
     if (!audioRef.current || tracksRef.current.length === 0) return;
+    initAnalyser(audioRef.current); // null check already done above
+    if (audioCtxRef.current?.state === "suspended") {
+      await audioCtxRef.current.resume();
+    }
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      // If no src loaded yet, load the current track first
       if (
         !audioRef.current.src ||
         audioRef.current.src === window.location.href
@@ -284,6 +304,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         repeat,
         forcePrevTrack,
         currentTrack: tracks[currentIndex],
+        analyser: analyserRef,
         togglePlay,
         playTrack,
         nextTrack,

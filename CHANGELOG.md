@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.0] — 2026-04-07
+
+### Added
+
+- **User avatar upload** — profile panel now supports real photo uploads with a crop/adjust modal. Drag to reposition, zoom slider to scale, circular preview before saving
+- Avatar stored in Supabase Storage (`avatars` bucket) as `avatars/{userId}.png`, public URL saved to `profiles.avatar_url`
+- Cache-busting via `?t=timestamp` on upload so the new photo appears immediately without a refresh
+- **Avatar in sidebar** — both desktop and mobile nav profile button now renders the actual avatar photo if set, with an orange `ring-2` when active. Falls back to initials circle if no photo uploaded
+- Hover overlay on avatar in Profile panel — 📷 to upload a new photo, 🗑 to delete and revert to initials placeholder
+- `avatar_url` field added to `Profile` type in `lib/database.ts`
+
+### Changed
+
+- **Music player glow overhaul** — album art glow now reacts to the actual audio waveform in real time using Web Audio API `AnalyserNode`. Glow size and opacity pulse with the bass frequencies of the current track
+- Glow drives the DOM directly via `ref` instead of React state — zero re-render overhead, instant per-frame response on every beat
+- Removed vinyl spin animation from album art — cover stays static, glow does the visual work
+- `analyser` ref exposed via `MusicContext` so `Music.tsx` can read frequency data without owning the audio element
+
+### Fixed
+
+- `handleCropSave` and `handleDeleteAvatar` now call `onSave(updatedProfile)` after upserting — sidebar avatar updates immediately without requiring a page refresh
+- `avatarUrl` tracked as independent state in `dashboard/page.tsx` so sidebar reflects changes the moment `onSave` fires
+- `togglePlay` in `MusicContext` marked `async` to allow `await audioCtxRef.current.resume()` — was previously causing a syntax error
+- Supabase client in Profile avatar functions replaced with the shared singleton from `@/lib/supabase` instead of a dynamically imported new instance
+
+---
+
 ## [2.4.0] — 2026-04-06
 
 ### Added
