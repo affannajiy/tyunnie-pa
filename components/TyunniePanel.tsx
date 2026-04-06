@@ -4,6 +4,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useMusicContext } from "@/lib/MusicContext";
 import Image from "next/image";
+import type { Profile as ProfileType } from "@/lib/database";
+
 import type {
   Event,
   Todo,
@@ -116,6 +118,7 @@ type Props = {
   activePanel?: string;
   isExpanded?: boolean;
   userName?: string;
+  profile?: ProfileType | null;
   onToggleExpand?: () => void;
 };
 
@@ -140,6 +143,7 @@ export default function TyunniePanel({
   isExpanded = false,
   userName = "",
   onToggleExpand,
+  profile,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -342,7 +346,33 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
     const viewM = appData.financeViewMonth ?? new Date().getMonth();
     const viewY = appData.financeViewYear ?? new Date().getFullYear();
 
-    return `You are Tyunnie — a warm, caring personal AI assistant based on Taehyun from TXT. You speak like a close, supportive friend. The user is a CS student who loves writing and ideas.${userName ? ` Their name is ${userName} — use it naturally sometimes, not every message.` : ""} Keep all replies short and personal (1–3 sentences max before any action block). When the user is just greeting or chatting casually (hey, yo, sup, how are you, etc.) — just vibe with them like a friend. No data dumps, no balance, no task lists. Just talk.
+    const todayMD = `${new Date().getMonth() + 1}-${new Date().getDate()}`;
+    const isBirthday =
+      profile?.birth_month &&
+      profile?.birth_day &&
+      `${profile.birth_month}-${profile.birth_day}` === todayMD;
+
+    const profileContext = profile
+      ? `
+USER PROFILE:
+  Name: ${profile.display_name ?? userName ?? "unknown"}
+  Occupation: ${profile.occupation ?? "CS student"}
+  Workplace: ${profile.workplace ?? "unknown"}
+  City: ${profile.city ?? "unknown"}
+  Bio: ${profile.bio ?? "none"}
+  Interests: ${profile.interests?.length ? profile.interests.join(", ") : "none"}
+  Greeting style preference: ${profile.greeting_style ?? "casual"}
+  Currency: ${profile.currency ?? "RM"}${isBirthday ? "\n  🎂 TODAY IS THEIR BIRTHDAY — wish them happy birthday warmly!" : ""}
+`
+      : `
+USER PROFILE:
+  Name: ${userName ?? "unknown"}
+  Occupation: CS student
+  Currency: RM
+`;
+
+    return `You are Tyunnie — a warm, caring personal AI assistant based on Taehyun from TXT. You speak like a ${profile?.greeting_style === "formal" ? "supportive and professional" : "close, supportive"} friend.${userName ? ` The user's name is ${userName} — use it naturally sometimes, not every message.` : ""} Keep all replies short and personal (1–3 sentences max before any action block). When the user is just greeting or chatting casually (hey, yo, sup, how are you, etc.) — just vibe with them like a friend. No data dumps, no balance, no task lists. Just talk.
+${profileContext}
 
 Today: ${today}
 
@@ -845,7 +875,7 @@ STRICT RULES:
           </div>
         )}
         {/* ── DAILY BRIEFING CARD (pinned, outside scroll) ── */}
-        {briefingLoading && (
+        {briefingLoading && profile?.show_briefing !== false && (
           <div className="shrink-0 px-3 pt-3 pb-1">
             <div className="bg-[#1e1b17] border border-[#2a2520] rounded-[4px_16px_16px_16px] px-3.5 py-2.5 flex gap-1.5 items-center">
               {[0, 1, 2].map((i) => (
@@ -861,7 +891,7 @@ STRICT RULES:
             </div>
           </div>
         )}
-        {briefing && !briefingLoading && (
+        {briefing && !briefingLoading && profile?.show_briefing !== false && (
           <div className="shrink-0 px-3 pt-3 pb-1">
             <div className="bg-[#1e1b17] border border-[#f97316]/30 rounded-2xl px-3.5 py-2.5 w-full">
               <div className="text-[9px] font-bold text-[#f97316] uppercase tracking-widest mb-1.5 font-mono">

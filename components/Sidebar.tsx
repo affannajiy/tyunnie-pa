@@ -10,12 +10,14 @@ export type Panel =
   | "finance"
   | "music"
   | "pomodoro"
-  | "games";
+  | "games"
+  | "profile";
 
 type Props = {
   active: Panel;
   onChange: (panel: Panel) => void;
   onSignOut: () => void;
+  userName?: string;
 };
 
 const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
@@ -28,9 +30,24 @@ const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
   { panel: "music", icon: "🎵", label: "Music" },
   { panel: "pomodoro", icon: "⏲️", label: "Focus" },
   { panel: "games", icon: "🎮", label: "Games" },
+  { panel: "profile", icon: "👤", label: "Me" },
 ];
 
-export default function Sidebar({ active, onChange, onSignOut }: Props) {
+export default function Sidebar({
+  active,
+  onChange,
+  onSignOut,
+  userName,
+}: Props) {
+  const initials = userName
+    ? userName
+        .trim()
+        .split(" ")
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "ME";
   return (
     <>
       {/* ── DESKTOP: vertical left sidebar ── */}
@@ -57,7 +74,19 @@ export default function Sidebar({ active, onChange, onSignOut }: Props) {
               }
             `}
           >
-            <span className="text-lg leading-none">{icon}</span>
+            {panel === "profile" ? (
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                  active === "profile"
+                    ? "bg-[#f97316] text-white"
+                    : "bg-[#2a2520] text-[#c8b89a]"
+                }`}
+              >
+                {initials}
+              </div>
+            ) : (
+              <span className="text-lg leading-none">{icon}</span>
+            )}
             <span className="text-[6.5px] font-bold uppercase tracking-[1.2px] font-mono">
               {label}
             </span>
@@ -91,7 +120,19 @@ export default function Sidebar({ active, onChange, onSignOut }: Props) {
                 ${active === panel ? "text-[#f97316]" : "text-[#4a4038]"}
               `}
             >
-              <span className="text-xl leading-none">{icon}</span>
+              {panel === "profile" ? (
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                    active === "profile"
+                      ? "bg-[#f97316] text-white"
+                      : "bg-[#2a2520] text-[#c8b89a]"
+                  }`}
+                >
+                  {initials}
+                </div>
+              ) : (
+                <span className="text-xl leading-none">{icon}</span>
+              )}
               <span className="text-[8px] font-bold uppercase tracking-wide font-mono">
                 {label}
               </span>

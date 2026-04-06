@@ -157,6 +157,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   music: "Music",
   pomodoro: "Pomodoro",
   games: "Games",
+  profile: "Profile",
 };
 
 export default function DemoPage() {
@@ -300,6 +301,7 @@ export default function DemoPage() {
           active={activePanel}
           onChange={setActivePanel}
           onSignOut={() => router.push("/auth")}
+          userName="Demo"
         />
 
         <div
@@ -313,29 +315,19 @@ export default function DemoPage() {
             >
               Chat →
             </button>
+
             <span className="font-serif italic text-xl text-[#111010]">
               Tyunnie
             </span>
             <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
               {PANEL_LABELS[activePanel]}
             </span>
-            {/* Demo badge */}
-            <span className="text-[9px] font-bold uppercase tracking-[2px] text-white bg-[#111010] px-3 py-1 rounded-full">
-              Demo Mode
-            </span>
+
             <div className="flex-1" />
 
             <Weather />
 
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleTheme}
-              className="hidden md:flex w-8 h-8 rounded-xl border border-[#e8e2d8] bg-[#faf8f5] items-center justify-center text-sm text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
-              title={isDark ? "Light mode" : "Dark mode"}
-            >
-              {isDark ? "☀️" : "🌙"}
-            </button>
-
+            {/* Date */}
             <span className="font-mono text-[11px] text-[#9a8f7e] hidden md:block">
               {new Date().toLocaleDateString("en-MY", {
                 weekday: "long",
@@ -345,6 +337,7 @@ export default function DemoPage() {
               })}
             </span>
 
+            {/* Mobile chat toggle */}
             <button
               onClick={() => setShowMobileChat(true)}
               className="md:hidden w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
@@ -402,6 +395,24 @@ export default function DemoPage() {
             {activePanel === "music" && <Music />}
             {activePanel === "pomodoro" && <Pomodoro userId={DEMO_USER_ID} />}
             {activePanel === "games" && <Games />}
+            {activePanel === "profile" && (
+              <div className="max-w-xl mx-auto text-center py-16">
+                <div className="text-4xl mb-4">👤</div>
+                <h2 className="font-bold text-lg text-[#111010] mb-2">
+                  Profile not available in demo
+                </h2>
+                <p className="text-sm text-[#9a8f7e] mb-6">
+                  Create a free account to set up your profile, personalise
+                  Tyunnie, and save your data.
+                </p>
+                <button
+                  onClick={() => router.push("/auth")}
+                  className="bg-[#f97316] text-white font-bold rounded-xl px-6 py-3 text-sm hover:bg-[#c2500f] transition-all"
+                >
+                  Sign up free
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

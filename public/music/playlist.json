@@ -2,25 +2,121 @@
   {
     "title": "Heaven",
     "artist": "TXT",
-    "file": "/music/TXT - Heaven (Radio Ver.).mp3",
-    "cover": ""
-  },
-  {
-    "title": "Love Language",
-    "artist": "TXT",
-    "file": "/music/TXT - Love Language (Radio Ver.).mp3",
-    "cover": ""
+    "file": "/music/TXT - Heaven.mp3",
+    "cover": "/music/cover-star-chapter-sanctuary.jpg"
   },
   {
     "title": "Over The Moon",
     "artist": "TXT",
-    "file": "/music/TXT - Over The Moon (Radio Ver.).mp3",
-    "cover": ""
+    "file": "/music/TXT - Over The Moon.mp3",
+    "cover": "/music/cover-star-chapter-sanctuary.jpg"
+  },
+  {
+    "title": "Love Language",
+    "artist": "TXT",
+    "file": "/music/TXT - Love Language.mp3",
+    "cover": "/music/cover-love-language.jpg"
   },
   {
     "title": "Song of the Stars",
     "artist": "TXT",
-    "file": "/music/TXT - Song of the Stars (Radio Ver.).mp3",
-    "cover": ""
+    "file": "/music/TXT - Song of the Stars.mp3",
+    "cover": "/music/cover-star-chapter-together.jpg"
+  },
+  {
+    "title": "I'll See You There Tomorrow",
+    "artist": "TXT",
+    "file": "/music/TXT - I'll See You There Tomorrow.mp3",
+    "cover": "/music/cover-minisode-3-tomorrow.jpg"
+  },
+  {
+    "title": "Tinnitus (Wanna be a rock)",
+    "artist": "TXT",
+    "file": "/music/TXT - Tinnitus (Wanna be a rock).mp3",
+    "cover": "/music/cover-name-chapter-temptation.jpg"
+  },
+  {
+    "title": "Can't You See Me",
+    "artist": "TXT",
+    "file": "/music/TXT - Can't You See Me.mp3",
+    "cover": "/music/cover-dream-chapter-eternity.jpg"
+  },
+  {
+    "title": "butterflies",
+    "artist": "jvke",
+    "file": "/music/jvke - butterflies.mp3",
+    "cover": "/music/cover-butterflies.jpg"
+  },
+  {
+    "title": "So Far So Fake",
+    "artist": "Pierce The Veil",
+    "file": "/music/Pierce The Veil - So Far So Fake.mp3",
+    "cover": "/music/cover-so-far-so-fake.jpg"
+  },
+  {
+    "title": "Ending Scene",
+    "artist": "TSS",
+    "file": "/music/TSS - Ending Scene.mp3",
+    "cover": "/music/cover-ending-scene.jpg"
+  },
+  {
+    "title": "Kita Usahakan Lagi",
+    "artist": "Batas Senja",
+    "file": "/music/Batas Senja - Kita Usahakan Lagi.mp3",
+    "cover": "/music/cover-kita-usahakan-lagi.jpg"
+  },
+  {
+    "title": "Sandiwara Cinta",
+    "artist": "Repvblik",
+    "file": "/music/Repvblik - Sandiwara Cinta.mp3",
+    "cover": "/music/cover-sandiwara-cinta.jpg"
+  },
+  {
+    "title": "Sedetik Lebih",
+    "artist": "Anuar Zain",
+    "file": "/music/Anuar Zain - Sedetik Lebih.mp3",
+    "cover": "/music/cover-sedetik-lebih.jpg"
+  },
+  {
+    "title": "Jack Sparrow",
+    "artist": "Hans Zimmer",
+    "file": "/music/Hans Zimmer - Jack Sparrow.mp3",
+    "cover": "/music/cover-jack-sparrow.jpg"
+  },
+  {
+    "title": "Made in Thailand",
+    "artist": "Carabao",
+    "file": "/music/Carabao - Made in Thailand.mp3",
+    "cover": "/music/cover-made-in-thailand.jpg"
+  },
+  {
+    "title": "MR. RAINDROP",
+    "artist": "Amplified",
+    "file": "/music/Amplified - MR. RAINDROP.mp3",
+    "cover": "/music/cover-mr-raindrop.jpg"
+  },
+  {
+    "title": "Pasilyo",
+    "artist": "SunKissed Lola",
+    "file": "/music/SunKissed Lola - Pasilyo.mp3",
+    "cover": "/music/cover-pasilyo.jpg"
+  },
+  {
+    "title": "Ai to Highball",
+    "artist": "LET ME KNOW",
+    "file": "/music/LET ME KNOW - Ai to Highball.mp3",
+    "cover": "/music/cover-ai-to-highball.jpg"
+  },
+  {
+    "title": "I Warned Myself",
+    "artist": "Charlie Puth",
+    "file": "/music/Charlie Puth - I Warned Myself.mp3",
+    "cover": "/music/cover-i-warned-myself.jpg"
+  },
+  {
+    "title": "Close",
+    "artist": "Nick Jonas",
+    "file": "/music/Nick Jonas - Close.mp3",
+    "cover": "/music/cover-close.jpg"
   }
 ]

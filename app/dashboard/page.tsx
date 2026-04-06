@@ -19,6 +19,8 @@ import { MusicProvider } from "@/lib/MusicContext";
 import Pomodoro from "@/components/Pomodoro";
 import Games from "@/components/Games";
 import Weather from "@/components/Weather";
+import Profile from "@/components/Profile";
+import { getProfile, type Profile as ProfileType } from "@/lib/database";
 
 import {
   getEvents,
@@ -52,6 +54,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   music: "Music",
   pomodoro: "Pomodoro",
   games: "Games",
+  profile: "Profile",
 };
 
 export default function Home() {
@@ -64,6 +67,9 @@ export default function Home() {
   // ── AUTH ──
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  // ── PROFILE ──
+  const [profile, setProfile] = useState<ProfileType | null>(null);
 
   // ── PANEL ──
   const [activePanel, setActivePanel] = useState<Panel>(() => {
@@ -361,6 +367,23 @@ export default function Home() {
         getSnips(user!.id),
         getFinanceEntries(user!.id),
       ]);
+      const prof = await getProfile(user!.id);
+      setProfile(prof);
+      // Sync from profile into local state
+      if (prof) {
+        if (prof.display_name) setUserName(prof.display_name);
+        if (prof.theme === "dark" && !isDark) toggleTheme();
+        if (prof.city && prof.city_lat && prof.city_lon) {
+          localStorage.setItem(
+            "tyunnie_city",
+            JSON.stringify({
+              lat: prof.city_lat,
+              lon: prof.city_lon,
+              city: prof.city,
+            }),
+          );
+        }
+      }
       setEvents(ev);
       setTodos(td);
       setDrafts(dr);
@@ -516,6 +539,7 @@ export default function Home() {
           active={activePanel}
           onChange={setActivePanel}
           onSignOut={handleSignOut}
+          userName={userName}
         />
 
         {/* Main content */}
@@ -537,23 +561,13 @@ export default function Home() {
             <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
               {PANEL_LABELS[activePanel]}
             </span>
+
             <div className="flex-1" />
 
-            <Weather />
-
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleTheme}
-              className="hidden md:flex w-8 h-8 rounded-xl border border-[#e8e2d8] bg-[#faf8f5] items-center justify-center text-sm text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
-              title={isDark ? "Light mode" : "Dark mode"}
-            >
-              {isDark ? "☀️" : "🌙"}
-            </button>
-
-            {/* Search button */}
+            {/* Search — centered */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="hidden md:flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono"
+              className="hidden md:flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-1.5 text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono w-48 lg:w-64 xl:w-80"
             >
               <span>🔍</span>
               <span>Search</span>
@@ -562,7 +576,11 @@ export default function Home() {
               </span>
             </button>
 
-            {/* Date — hidden on mobile */}
+            <div className="flex-1" />
+
+            <Weather />
+
+            {/* Date */}
             <span className="font-mono text-[11px] text-[#9a8f7e] hidden md:block">
               {new Date().toLocaleDateString("en-MY", {
                 weekday: "long",
@@ -572,22 +590,7 @@ export default function Home() {
               })}
             </span>
 
-            {/* Name setting */}
-            <div className="hidden md:flex items-center gap-2">
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => {
-                  setUserName(e.target.value);
-                  localStorage.setItem("tyunnie_username", e.target.value);
-                }}
-                placeholder="Your name..."
-                maxLength={20}
-                className="bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-xs text-[#111010] outline-none focus:border-[#f97316] transition-colors w-32 placeholder:text-[#c5bdb0]"
-              />
-            </div>
-
-            {/* Mobile chat toggle button */}
+            {/* Mobile chat toggle */}
             <button
               onClick={() => setShowMobileChat(true)}
               className="md:hidden w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
@@ -646,6 +649,18 @@ export default function Home() {
               {activePanel === "music" && <Music />}
               {activePanel === "pomodoro" && <Pomodoro userId={user.id} />}
               {activePanel === "games" && <Games />}
+              {activePanel === "profile" && (
+                <Profile
+                  userId={user.id}
+                  onClose={() => setActivePanel("calendar")}
+                  onSave={(p) => {
+                    setProfile(p);
+                    if (p.display_name) setUserName(p.display_name);
+                  }}
+                  isDark={isDark}
+                  toggleTheme={toggleTheme}
+                />
+              )}
             </>
           </div>
         </div>
@@ -684,6 +699,7 @@ export default function Home() {
               financeViewMonth,
               financeViewYear,
             }}
+            profile={profile}
             userName={userName}
             onNavigate={handleNavigate}
             onEventAdded={handleEventAdded}

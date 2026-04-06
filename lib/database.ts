@@ -66,6 +66,52 @@ export type FinanceEntry = {
   created_at: string;
 };
 
+export type Profile = {
+  id: string;
+  display_name: string | null;
+  birth_day: number | null;
+  birth_month: number | null;
+  city: string | null;
+  city_lat: number | null;
+  city_lon: number | null;
+  theme: string;
+  locale: string;
+  currency: string;
+  occupation: string | null;
+  workplace: string | null;
+  bio: string | null;
+  interests: string[];
+  greeting_style: string;
+  show_briefing: boolean;
+};
+
+// ══════════════════════════════════════════════
+//  PROFILES
+// ══════════════════════════════════════════════
+
+export async function getProfile(userId: string): Promise<Profile | null> {
+  if (userId === "demo-user") return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+  return data ?? null;
+}
+
+export async function upsertProfile(
+  userId: string,
+  profile: Partial<Profile>,
+): Promise<Profile | null> {
+  if (userId === "demo-user") return null;
+  const { data } = await supabase
+    .from("profiles")
+    .upsert({ id: userId, ...profile, updated_at: new Date().toISOString() })
+    .select()
+    .single();
+  return data ?? null;
+}
+
 // ══════════════════════════════════════════════
 //  EVENTS  (Calendar)
 // ══════════════════════════════════════════════
@@ -314,7 +360,9 @@ export async function deleteSnip(id: string): Promise<void> {
 // ══════════════════════════════════════════════
 
 // Get all finance entries, newest first
-export async function getFinanceEntries(userId: string): Promise<FinanceEntry[]> {
+export async function getFinanceEntries(
+  userId: string,
+): Promise<FinanceEntry[]> {
   if (userId === "demo-user") return [];
   // Only fetch last 12 months — enough for 6-month charts + carry-over
   const since = new Date();

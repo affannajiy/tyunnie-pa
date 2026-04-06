@@ -5,6 +5,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.4.0] — 2026-04-06
+
+### Added
+
+- **User Profile panel** (`components/Profile.tsx`) — full profile management stored in Supabase `profiles` table
+- Fields: display name, birth day/month (birthday detected by Tyunnie on the day), city (synced with weather widget), occupation, workplace, bio, interests (15 tag options)
+- Preferences: greeting style (casual/formal), currency, locale, theme toggle, daily briefing toggle
+- Profile migrates existing `tyunnie_username`, `tyunnie_city`, and `tyunnie_theme` localStorage keys on first load
+- `getProfile` and `upsertProfile` functions added to `lib/database.ts` with `"demo-user"` early return guard
+- **Initials avatar in Sidebar** — profile nav item now shows a generated initials circle instead of the 👤 emoji. Orange when active, muted dark when inactive. Updates live as display name changes
+- **Avatar preview in Profile panel** — large orange initials circle at the top of the identity section, updates as you type
+- `userName` prop added to `Sidebar` so initials are generated from the actual display name
+- **Tyunnie profile context in system prompt** — full profile block injected including name, occupation, workplace, city, bio, interests, greeting style, currency, and birthday detection (`🎂 TODAY IS THEIR BIRTHDAY` flag)
+- Greeting style now switches Tyunnie's tone — `formal` triggers "supportive and professional" framing vs default casual
+- Album covers are added into the Music panel
+
+### Changed
+
+- Topbar simplified — name input and dark mode toggle removed from topbar, both now managed exclusively via the Profile panel. Search bar centred with two `flex-1` dividers. Width responsive: `w-48` → `w-64` → `w-80` across md/lg/xl breakpoints
+- Dark mode toggle moved to Profile panel under Preferences section
+- `profile` prop added to `TyunniePanel` — receives `ProfileType | null` from dashboard, no longer needs to fetch profile itself
+- Daily briefing visibility now gated on `profile?.show_briefing !== false` — defaults to showing when no profile exists
+- Demo page updated — sidebar receives `userName="Demo"` for initials display, profile panel shows a signup nudge instead of crashing
+
+### Fixed
+
+- Duplicate profile buttons removed from Sidebar — profile was appearing twice (once in `NAV_ITEMS` loop and once as a standalone button)
+- `isDark` and `toggleTheme` were accidentally declared outside `DemoPage` component — moved inside
+- `today` variable declared twice in `buildSystemPrompt()` — duplicate removed
+- Unused `getProfile` import removed from `TyunniePanel.tsx` — profile is now passed as a prop
+
+---
+
 ## [2.3.0] — 2026-04-03
 
 ### Added

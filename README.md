@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-2.3.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.4.0-f97316?style=flat-square)
 
 ---
 
@@ -18,11 +18,20 @@
 - Context-aware AI assistant powered by **Groq (Llama 3.3 70B)**
 - Knows your calendar, tasks, drafts, projects, finances, and snippets
 - Can add events, tasks, drafts, projects, finance entries, and code snippets via natural language
-- **Daily briefing** — personalised 1-2 sentence summary on load
+- **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
 - **Expandable panel** — desktop full-screen chat mode with larger sprite
 - **Sprite system** — separate panel sprites and mood sprites, reacts to active tab and emotional state
-- Calls you by name — set your name in the topbar, Tyunnie uses it naturally in conversation
+- Calls you by name and adapts tone based on your profile preferences
 - Mobile optimised — sprite floats as background, input always accessible
+
+### 👤 User Profile
+
+- Display name, date of birth (day + month), city, occupation, workplace, bio
+- Interest tags used by Tyunnie for personalised context
+- Greeting style (casual / formal), currency, locale preferences
+- Theme toggle (light / dark) and daily briefing toggle
+- Syncs to Supabase `profiles` table, migrates from localStorage on first load
+- Initials avatar in the sidebar nav, full avatar preview in the profile panel
 
 ### 📅 Calendar
 
@@ -53,7 +62,7 @@
 
 ### 🎵 Music Player
 
-- Upload your own MP3s, full playback controls, persistent across panels
+- Upload your own MP3s with album art (500×500px), full playback controls, persistent across panels
 
 ### ⏲️ Pomodoro Timer
 
@@ -73,11 +82,11 @@
 ### 🌤️ Weather Widget
 
 - City-based weather in the topbar — no location permission needed
-- Type a city name once, saved to localStorage permanently
+- Type a city name once, saved permanently
 
 ### 🌙 Dark Mode
 
-- Toggle between light and dark, preference persisted across sessions
+- Toggle from the Profile panel, preference persisted across sessions
 
 ### 🔐 Authentication
 
@@ -178,9 +187,19 @@ create table finance (
   account text default 'Wallet', date date not null,
   created_at timestamptz default now()
 );
+create table profiles (
+  id uuid references auth.users primary key,
+  display_name text, birth_day integer, birth_month integer,
+  city text, city_lat numeric, city_lon numeric,
+  theme text default 'light', locale text default 'en-MY',
+  currency text default 'RM', occupation text, workplace text,
+  bio text, interests text[] default '{}',
+  greeting_style text default 'casual', show_briefing boolean default true,
+  updated_at timestamptz default now()
+);
 ```
 
-Enable RLS on all tables. Add indexes for performance:
+Enable RLS on all tables. Add indexes:
 
 ```sql
 create index if not exists events_user_date      on events(user_id, date);
@@ -193,14 +212,14 @@ create index if not exists projects_user_created on projects(user_id, created_at
 
 ### 4. Add sprites (optional)
 
-Create `public/sprites/` with transparent PNG sprites (360×460px recommended). Two naming conventions:
+Create `public/sprites/` with transparent PNG sprites (360×460px recommended):
 
 - Panel sprites: `tyun-panel-calendar.png`, `tyun-panel-todo.png`, `tyun-panel-writing.png`, `tyun-panel-projects.png`, `tyun-panel-snippets.png`, `tyun-panel-finance.png`, `tyun-panel-music.png`, `tyun-panel-pomodoro.png`, `tyun-panel-games.png`
 - Mood sprites: `tyun-mood-default.png`, `tyun-mood-happy.png`, `tyun-mood-concerned.png`, `tyun-mood-celebrating.png`, `tyun-mood-thinking.png`
 
 ### 5. Add music (optional)
 
-Create `public/music/` with MP3 files and a `playlist.json`:
+Create `public/music/` with MP3 files, album art (500×500px JPEGs recommended), and a `playlist.json`:
 
 ```json
 [
@@ -238,6 +257,7 @@ tyunnie-pa/
 │   ├── Sidebar.tsx
 │   ├── TyunniePanel.tsx
 │   ├── Weather.tsx
+│   ├── Profile.tsx
 │   ├── Calendar.tsx
 │   ├── Todo.tsx
 │   ├── Writing.tsx
