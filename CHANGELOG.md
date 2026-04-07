@@ -2,6 +2,13 @@
 
 All notable changes to Tyunnie are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+---
+
+## [2.5.1] — 2026-04-07
+
+### Fixed
+
+- Corrected MP3 filenames in `public/music/playlist.json` — file paths were mismatched with actual filenames on disk, causing tracks to 404 and fail to play
 
 ---
 
