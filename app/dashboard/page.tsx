@@ -92,8 +92,9 @@ export default function Home() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("tyunnie_theme") === "dark";
   });
-  
+
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   function toggleTheme() {
     const next = !isDark;
@@ -156,12 +157,62 @@ export default function Home() {
   // ── KEYBOARD SHORTCUTS ──
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isTyping =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (e.target as HTMLElement)?.isContentEditable;
+
+      // Existing
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen((prev) => !prev);
       }
-      if (e.key === "Escape") setSearchOpen(false);
+      if (e.key === "Escape") {
+        setSearchOpen(false);
+        setShowShortcuts(false);
+      }
+
+      // Skip everything below if user is typing in a field
+      if (isTyping) return;
+
+      // ? to toggle shortcuts panel
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((prev) => !prev);
+      }
+
+      // Cmd/Ctrl + 1-9 for panels
+      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "9") {
+        e.preventDefault();
+        const panels: Panel[] = [
+          "calendar",
+          "todo",
+          "writing",
+          "projects",
+          "snippets",
+          "finance",
+          "music",
+          "pomodoro",
+          "games",
+        ];
+        const target = panels[parseInt(e.key) - 1];
+        if (target) setActivePanel(target);
+      }
+
+      // Cmd/Ctrl + P for profile
+      if ((e.metaKey || e.ctrlKey) && e.key === "p") {
+        e.preventDefault();
+        setActivePanel("profile");
+      }
+
+      // Cmd/Ctrl + / to toggle Tyunnie expand
+      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
+        e.preventDefault();
+        setTyunnieExpanded((prev) => !prev);
+      }
     }
+
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
@@ -551,53 +602,58 @@ export default function Home() {
           className={`flex flex-col overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${tyunnieExpanded ? "w-0 opacity-0 pointer-events-none flex-none" : "opacity-100 flex-1"}`}
         >
           {/* Topbar */}
-          <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 gap-3 shrink-0">
-            <button
-              onClick={() => setTyunnieExpanded(true)}
-              className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1 hidden md:block"
-            >
-              Chat →
-            </button>
-
-            <span className="font-serif italic text-xl text-[#111010]">
-              Tyunnie
-            </span>
-            <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
-              {PANEL_LABELS[activePanel]}
-            </span>
-
-            <div className="flex-1" />
-
-            {/* Search — centered */}
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="hidden md:flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-1.5 text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono w-48 lg:w-64 xl:w-80"
-            >
-              <span>🔍</span>
-              <span>Search</span>
-              <span className="bg-[#e8e2d8] rounded px-1.5 py-0.5 text-[9px] font-bold">
-                ⌘K
+          <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 shrink-0 relative">
+            {/* Left — Tyunnie + panel badge */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.refresh()}
+                className="font-serif italic text-xl text-[#111010] hover:text-[#f97316] transition-colors"
+              >
+                Tyunnie
+              </button>
+              <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+                {PANEL_LABELS[activePanel]}
               </span>
-            </button>
+            </div>
 
-            <div className="flex-1" />
+            {/* Search — absolutely centered */}
+            <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-1.5 text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono w-48 lg:w-64 xl:w-80"
+              >
+                <span>🔍</span>
+                <span>Search</span>
+                <span className="bg-[#e8e2d8] rounded px-1.5 py-0.5 text-[9px] font-bold">
+                  ⌘K
+                </span>
+              </button>
+            </div>
 
-            <Weather />
-
-            {/* Date */}
-            <span className="font-mono text-[11px] text-[#9a8f7e] hidden md:block">
-              {new Date().toLocaleDateString("en-MY", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
+            {/* Right side group */}
+            <div className="ml-auto hidden md:flex items-center gap-3">
+              <button
+                onClick={() => setShowShortcuts(true)}
+                title="Keyboard shortcuts"
+                className="flex items-center justify-center w-8 h-8 rounded-xl border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono text-xs font-bold"
+              >
+                ?
+              </button>
+              <Weather />
+              <span className="font-mono text-[11px] text-[#9a8f7e]">
+                {new Date().toLocaleDateString("en-MY", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
 
             {/* Mobile chat toggle */}
             <button
               onClick={() => setShowMobileChat(true)}
-              className="md:hidden w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
+              className="md:hidden ml-auto w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
             >
               🧡
             </button>
@@ -660,7 +716,8 @@ export default function Home() {
                   onSave={(p) => {
                     setProfile(p);
                     if (p.display_name) setUserName(p.display_name);
-                    if (p.avatar_url !== undefined) setAvatarUrl(p.avatar_url ?? null);
+                    if (p.avatar_url !== undefined)
+                      setAvatarUrl(p.avatar_url ?? null);
                   }}
                   isDark={isDark}
                   toggleTheme={toggleTheme}
@@ -891,6 +948,120 @@ export default function Home() {
                   {searchResults.length !== 1 ? "s" : ""}
                 </span>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-[#e8e2d8] overflow-hidden z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e2d8]">
+              <span className="font-serif italic text-[#f97316] text-sm">
+                Keyboard Shortcuts
+              </span>
+              <kbd className="text-[9px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-1.5 py-0.5 text-[#9a8f7e]">
+                ?
+              </kbd>
+            </div>
+
+            <div className="p-5 flex flex-col gap-5">
+              {/* Navigation */}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono mb-3">
+                  Navigation
+                </p>
+                <div className="flex flex-col gap-2">
+                  {[
+                    // Navigation section
+                    { keys: ["⌘ Ctrl", "1–9"], label: "Switch panels" },
+                    { keys: ["⌘ Ctrl", "P"], label: "Profile" },
+                    { keys: ["⌘ Ctrl", "/"], label: "Toggle Tyunnie chat" },
+
+                    // Search section
+                    { keys: ["⌘ Ctrl", "K"], label: "Global search" },
+                  ].map(({ keys, label }) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-sm text-[#111010]">{label}</span>
+                      <div className="flex items-center gap-1">
+                        {keys.map((k) => (
+                          <kbd
+                            key={k}
+                            className="text-[10px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-2 py-0.5 text-[#9a8f7e]"
+                          >
+                            {k}
+                          </kbd>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Search */}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono mb-3">
+                  Search
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-[#111010]">Global search</span>
+                  <div className="flex items-center gap-1">
+                    <kbd className="text-[10px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-2 py-0.5 text-[#9a8f7e]">
+                      ⌘
+                    </kbd>
+                    <kbd className="text-[10px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-2 py-0.5 text-[#9a8f7e]">
+                      K
+                    </kbd>
+                  </div>
+                </div>
+              </div>
+
+              {/* General */}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono mb-3">
+                  General
+                </p>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { keys: ["?"], label: "Toggle this panel" },
+                    { keys: ["Esc"], label: "Close modals" },
+                  ].map(({ keys, label }) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-sm text-[#111010]">{label}</span>
+                      <div className="flex items-center gap-1">
+                        {keys.map((k) => (
+                          <kbd
+                            key={k}
+                            className="text-[10px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-2 py-0.5 text-[#9a8f7e]"
+                          >
+                            {k}
+                          </kbd>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-[#f3f0ea] px-5 py-2.5">
+              <p className="text-[9px] font-mono text-[#c5bdb0]">
+                Shortcuts work on both Mac and Windows
+              </p>
             </div>
           </div>
         </div>

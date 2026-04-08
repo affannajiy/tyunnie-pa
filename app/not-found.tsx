@@ -17,7 +17,7 @@ export default function NotFound() {
       {/* Sprite */}
       <div className="relative mb-8 z-10">
         <Image
-          src="/sprite.png"
+          src="/sprites/tyun-mood-default.png"
           alt="Tyunnie"
           width={160}
           height={192}

@@ -2,6 +2,30 @@
 
 All notable changes to Tyunnie are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [2.6.0] — 2026-04-08
+
+### Added
+
+- **Keyboard shortcuts panel** — press `?` anywhere (outside input fields) to open a shortcuts reference modal. Also accessible via the `?` button in the topbar
+- Panel switching via `Ctrl/⌘ + 1–9` — maps to Calendar, Tasks, Writing, Projects, Snippets, Finance, Music, Pomodoro, Games in order
+- `Ctrl/⌘ + P` — jump to Profile panel
+- `Ctrl/⌘ + /` — toggle Tyunnie chat expand/collapse
+- `Ctrl/⌘ + K` — global search (existing, now documented in shortcuts panel)
+- `Esc` — closes any open modal (existing, now documented)
+- Shortcuts panel grouped into Navigation, Search, and General sections. Shows both `⌘` and `Ctrl` for cross-platform clarity
+
+### Changed
+
+- **Topbar refactor** — search bar now absolutely centered using `absolute left-1/2 -translate-x-1/2`, guaranteed to sit at the exact midpoint regardless of left/right content width
+- `?` shortcuts button, Weather widget, and date moved into a single right-side group using `ml-auto` to preserve search centering
+- "Chat →" expand button removed from topbar — Tyunnie panel toggling now handled via `Ctrl/⌘ + /` shortcut
+- **Tyunnie logo in topbar is now clickable** — calls `router.refresh()` to reload app data, styled with hover orange transition
+- **Demo topbar synced** — matches dashboard layout with centered search bar (shown as a disabled "not available in demo" label), clickable Tyunnie logo, and Chat button removed
+- **`not-found.tsx` and `error.tsx` sprite fixed** — sprite `src` was incorrectly set to `/public/sprites/...`, corrected to `/sprites/...` so Next.js resolves the path from the `public/` root correctly
+
 ---
 
 ## [2.5.1] — 2026-04-07

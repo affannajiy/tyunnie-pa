@@ -308,39 +308,45 @@ export default function DemoPage() {
           className={`flex flex-col overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${tyunnieExpanded ? "w-0 opacity-0 pointer-events-none flex-none" : "opacity-100 flex-1"}`}
         >
           {/* Topbar */}
-          <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 gap-3 shrink-0">
-            <button
-              onClick={() => setTyunnieExpanded(true)}
-              className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mr-1 hidden md:block"
-            >
-              Chat →
-            </button>
+          <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 shrink-0 relative">
+            {/* Left */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.refresh()}
+                className="font-serif italic text-xl text-[#111010] hover:text-[#f97316] transition-colors"
+              >
+                Tyunnie
+              </button>
+              <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+                {PANEL_LABELS[activePanel]}
+              </span>
+            </div>
 
-            <span className="font-serif italic text-xl text-[#111010]">
-              Tyunnie
-            </span>
-            <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
-              {PANEL_LABELS[activePanel]}
-            </span>
+            {/* Search — absolutely centered */}
+            <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
+              <div className="flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-1.5 text-xs text-[#9a8f7e] font-mono w-48 lg:w-64 xl:w-80 cursor-default select-none">
+                <span>🔍</span>
+                <span>Search not available in demo</span>
+              </div>
+            </div>
 
-            <div className="flex-1" />
-
-            <Weather />
-
-            {/* Date */}
-            <span className="font-mono text-[11px] text-[#9a8f7e] hidden md:block">
-              {new Date().toLocaleDateString("en-MY", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
+            {/* Right side group */}
+            <div className="ml-auto hidden md:flex items-center gap-3">
+              <Weather />
+              <span className="font-mono text-[11px] text-[#9a8f7e]">
+                {new Date().toLocaleDateString("en-MY", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
 
             {/* Mobile chat toggle */}
             <button
               onClick={() => setShowMobileChat(true)}
-              className="md:hidden w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
+              className="md:hidden ml-auto w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
             >
               🧡
             </button>
