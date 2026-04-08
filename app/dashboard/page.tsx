@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
+import Desk from "@/components/Desk";
 import Sidebar, { type Panel } from "@/components/Sidebar";
 import TyunniePanel from "@/components/TyunniePanel";
-import Calendar from "@/components/Calendar";
 import Todo from "@/components/Todo";
 import Writing from "@/components/Writing";
 import Projects from "@/components/Projects";
@@ -23,20 +23,18 @@ import Profile from "@/components/Profile";
 import { getProfile, type Profile as ProfileType } from "@/lib/database";
 
 import {
-  getEvents,
   getTodos,
   getDrafts,
   getProjects,
   getSnips,
   getFinanceEntries,
-  addEvent,
   addTodo,
+  toggleTodo,
   addDraft,
   addProject,
   addFinanceEntry,
   deleteFinanceEntry,
   addSnip,
-  type Event,
   type Todo as TodoType,
   type Draft,
   type Project,
@@ -45,7 +43,7 @@ import {
 } from "@/lib/database";
 
 const PANEL_LABELS: Record<Panel, string> = {
-  calendar: "Calendar",
+  desk: "Home",
   todo: "Tasks",
   writing: "Writing",
   projects: "Projects",
@@ -59,6 +57,9 @@ const PANEL_LABELS: Record<Panel, string> = {
 
 export default function Home() {
   const router = useRouter();
+  const [tyunniePrefill, setTyunniePrefill] = useState<string | undefined>(
+    undefined,
+  );
 
   // ── SEARCH ──
   const [searchOpen, setSearchOpen] = useState(false);
@@ -73,13 +74,13 @@ export default function Home() {
 
   // ── PANEL ──
   const [activePanel, setActivePanel] = useState<Panel>(() => {
-    if (typeof window === "undefined") return "calendar";
+    if (typeof window === "undefined") return "desk";
     const params = new URLSearchParams(window.location.search);
     const panel = params.get("panel");
     if (panel && Object.keys(PANEL_LABELS).includes(panel)) {
       return panel as Panel;
     }
-    return "calendar";
+    return "desk"; // ← was "calendar"
   });
 
   // ── USERNAME ──
@@ -88,13 +89,11 @@ export default function Home() {
     return localStorage.getItem("tyunnie_username") ?? "";
   });
 
+  // ── THEME ──
   const [isDark, setIsDark] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("tyunnie_theme") === "dark";
   });
-
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [showShortcuts, setShowShortcuts] = useState(false);
 
   function toggleTheme() {
     const next = !isDark;
@@ -103,9 +102,14 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", next);
   }
 
+  // ── AVATAR ──
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // ── SHORTCUTS ──
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
   // ── APP DATA ──
   // All data lives here so TyunniePanel always has up-to-date context
-  const [events, setEvents] = useState<Event[]>([]);
   const [todos, setTodos] = useState<TodoType[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -126,26 +130,34 @@ export default function Home() {
   const [snippetRefreshKey, setSnippetRefreshKey] = useState(0);
 
   // ── CHECK AUTH ON MOUNT ──
+  // Handle OAuth error redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    if (error) {
+      console.error("OAuth error:", params.get("error_description"));
+      window.history.replaceState({}, "", "/dashboard");
+    }
+  }, []);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
       if (error || !data.user) {
-        // Clear the bad session then redirect
         supabase.auth.signOut();
         router.push("/auth");
       } else {
         setUser(data.user);
-        setAuthLoading(false);
+        setAuthLoading(false); // ← this must run
       }
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !session)) {
         router.push("/auth");
       }
     });
-
     return () => subscription.unsubscribe();
   }, [router]);
 
@@ -186,7 +198,7 @@ export default function Home() {
       if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "9") {
         e.preventDefault();
         const panels: Panel[] = [
-          "calendar",
+          "desk",
           "todo",
           "writing",
           "projects",
@@ -238,13 +250,6 @@ export default function Home() {
             panel: Panel;
             icon: string;
           }[] = [
-            {
-              keywords: ["calendar", "events", "schedule"],
-              label: "Calendar",
-              sub: "View your schedule",
-              panel: "calendar",
-              icon: "📅",
-            },
             {
               keywords: ["todo", "tasks", "task", "remind"],
               label: "Tasks",
@@ -321,17 +326,6 @@ export default function Home() {
           });
 
           // ── Data results ──
-          events
-            .filter((e) => e.title.toLowerCase().includes(q))
-            .forEach((e) =>
-              results.push({
-                type: "Event",
-                label: e.title,
-                sub: `${e.date}${e.time ? " · " + e.time : ""}`,
-                panel: "calendar",
-                icon: "📅",
-              }),
-            );
           todos
             .filter((t) => t.text.toLowerCase().includes(q))
             .forEach((t) =>
@@ -412,8 +406,7 @@ export default function Home() {
     if (!user) return;
 
     async function loadAll() {
-      const [ev, td, dr, pr, sn, fi] = await Promise.all([
-        getEvents(user!.id),
+      const [td, dr, pr, sn, fi] = await Promise.all([
         getTodos(user!.id),
         getDrafts(user!.id),
         getProjects(user!.id),
@@ -423,7 +416,6 @@ export default function Home() {
       const prof = await getProfile(user!.id);
       setProfile(prof);
       if (prof?.avatar_url) setAvatarUrl(prof.avatar_url);
-      // Sync from profile into local state
       if (prof) {
         if (prof.display_name) setUserName(prof.display_name);
         if (prof.theme === "dark" && !isDark) toggleTheme();
@@ -438,14 +430,12 @@ export default function Home() {
           );
         }
       }
-      setEvents(ev);
       setTodos(td);
       setDrafts(dr);
       setProjects(pr);
       setSnips(sn);
       setFinance(fi);
     }
-
     loadAll();
   }, [user]);
 
@@ -460,25 +450,9 @@ export default function Home() {
   function handleNavigate(panel: string) {
     if (Object.keys(PANEL_LABELS).includes(panel)) {
       setActivePanel(panel as Panel);
+      setTyunnieExpanded(false);
     }
   }
-
-  // Called when Tyunnie confirms adding an event
-  async function handleEventAdded(ev: {
-    title: string;
-    date: string;
-    time: string;
-  }) {
-    if (!user) return;
-    const newEvent = await addEvent(user.id, ev);
-    if (newEvent) {
-      setEvents((prev) =>
-        [...prev, newEvent].sort((a, b) => a.date.localeCompare(b.date)),
-      );
-      setActivePanel("calendar");
-    }
-  }
-
   // Called when Tyunnie adds a task
   async function handleTodoAdded(todo: {
     text: string;
@@ -495,6 +469,12 @@ export default function Home() {
       setTodos((prev) => [newTodo, ...prev]);
       setTodoRefreshKey((prev) => prev + 1); // ← bump this
     }
+  }
+
+  async function handleTodoToggle(id: string, done: boolean) {
+    const { toggleTodo } = await import("@/lib/database");
+    await toggleTodo(id, done);
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done } : t)));
   }
 
   async function handleDraftAdded(draft: { title: string; body: string }) {
@@ -584,6 +564,7 @@ export default function Home() {
   }
 
   if (!user) return null;
+  const onDesk = activePanel === "desk";
 
   // ── MAIN APP ──
   return (
@@ -591,7 +572,10 @@ export default function Home() {
       <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
         <Sidebar
           active={activePanel}
-          onChange={setActivePanel}
+          onChange={(panel) => {
+            setActivePanel(panel);
+            setTyunnieExpanded(false);
+          }}
           onSignOut={handleSignOut}
           userName={userName}
           avatarUrl={avatarUrl}
@@ -599,7 +583,11 @@ export default function Home() {
 
         {/* Main content */}
         <div
-          className={`flex flex-col overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${tyunnieExpanded ? "w-0 opacity-0 pointer-events-none flex-none" : "opacity-100 flex-1"}`}
+          className={`flex flex-col overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${
+            tyunnieExpanded
+              ? "w-0 opacity-0 pointer-events-none flex-none"
+              : "opacity-100 flex-1"
+          }`}
         >
           {/* Topbar */}
           <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 shrink-0 relative">
@@ -662,8 +650,21 @@ export default function Home() {
           {/* Panel content — add bottom padding on mobile for tab bar */}
           <div className="flex-1 overflow-y-auto p-4 md:p-7 pb-24 md:pb-7">
             <>
-              {activePanel === "calendar" && (
-                <Calendar userId={user.id} onAction={() => {}} />
+              {activePanel === "desk" && (
+                <Desk
+                  profile={profile}
+                  userName={userName}
+                  todos={todos}
+                  projects={projects}
+                  finance={finance}
+                  financeViewMonth={financeViewMonth}
+                  financeViewYear={financeViewYear}
+                  onNavigate={(panel) => {
+                    setActivePanel(panel);
+                    setTyunnieExpanded(false);
+                  }}
+                  onTodoToggle={handleTodoToggle}
+                />
               )}
               {activePanel === "todo" && (
                 <Todo
@@ -712,7 +713,7 @@ export default function Home() {
               {activePanel === "profile" && (
                 <Profile
                   userId={user.id}
-                  onClose={() => setActivePanel("calendar")}
+                  onClose={() => setActivePanel("todo")}
                   onSave={(p) => {
                     setProfile(p);
                     if (p.display_name) setUserName(p.display_name);
@@ -730,11 +731,11 @@ export default function Home() {
         {/* TyunniePanel — desktop: always visible, mobile: slide-in overlay */}
         <div
           className={`
-      fixed inset-0 z-40 transition-transform duration-300
-      md:relative md:inset-auto md:z-auto md:translate-x-0 md:flex md:shrink-0
-      ${tyunnieExpanded ? "md:flex-1" : ""}
-      ${showMobileChat ? "translate-x-0" : "translate-x-full md:translate-x-0"}
-    `}
+  fixed inset-0 z-40 transition-transform duration-300
+  md:relative md:inset-auto md:z-auto md:translate-x-0 md:flex md:shrink-0
+  ${tyunnieExpanded ? "md:flex-1" : ""}
+  ${showMobileChat ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+`}
         >
           {/* Mobile backdrop */}
           <div
@@ -752,7 +753,6 @@ export default function Home() {
 
           <TyunniePanel
             appData={{
-              events,
               todos,
               drafts,
               projects,
@@ -764,7 +764,6 @@ export default function Home() {
             profile={profile}
             userName={userName}
             onNavigate={handleNavigate}
-            onEventAdded={handleEventAdded}
             onTodoAdded={handleTodoAdded}
             onDraftAdded={handleDraftAdded}
             onProjectAdded={handleProjectAdded}
@@ -773,7 +772,15 @@ export default function Home() {
             onFinanceReset={handleFinanceReset}
             activePanel={activePanel}
             isExpanded={tyunnieExpanded}
-            onToggleExpand={() => setTyunnieExpanded((prev) => !prev)}
+            prefillInput={tyunniePrefill}
+            onPrefillConsumed={() => setTyunniePrefill(undefined)}
+            onToggleExpand={() => {
+              if (onDesk && tyunnieExpanded) {
+                setTyunnieExpanded(false);
+              } else {
+                setTyunnieExpanded((prev) => !prev);
+              }
+            }}
           />
         </div>
       </div>
@@ -845,7 +852,6 @@ export default function Home() {
                   {(
                     [
                       "Panel",
-                      "Event",
                       "Task",
                       "Draft",
                       "Project",

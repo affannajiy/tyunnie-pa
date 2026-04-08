@@ -2,7 +2,7 @@
 "use client";
 
 export type Panel =
-  | "calendar"
+  | "desk"
   | "todo"
   | "writing"
   | "projects"
@@ -22,7 +22,7 @@ type Props = {
 };
 
 const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
-  { panel: "calendar", icon: "📅", label: "Cal" },
+  { panel: "desk", icon: "🏠", label: "Home" },
   { panel: "todo", icon: "✅", label: "Tasks" },
   { panel: "writing", icon: "✍️", label: "Write" },
   { panel: "projects", icon: "🗂️", label: "Proj" },

@@ -50,24 +50,45 @@ export default function AuthPage() {
     });
     if (error) setError(error.message);
   }
-
   // Show this after signup — Supabase sends a confirmation email by default
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center px-4">
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-10 w-full max-w-md text-center">
-          <div className="text-4xl mb-4">📬</div>
-          <h2 className="font-bold text-xl mb-2">Check your email</h2>
-          <p className="text-[#9a8f7e] text-sm">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to
-            activate your account, then come back and log in.
+          {/* Icon */}
+          <div className="w-16 h-16 rounded-full bg-[#fff0e6] border border-[#fed7aa] flex items-center justify-center text-2xl mx-auto mb-5">
+            📬
+          </div>
+
+          {/* Heading */}
+          <h2 className="font-serif italic text-2xl text-[#111010] mb-2">
+            Check your email
+          </h2>
+          <p className="text-[10px] font-bold uppercase tracking-[3px] text-[#f97316] font-mono mb-5">
+            Almost there
           </p>
+
+          {/* Message */}
+          <div className="bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-5 py-4 mb-6 text-left">
+            <p className="text-sm text-[#9a8f7e] leading-relaxed">
+              We sent a confirmation link to{" "}
+              <span className="font-semibold text-[#111010]">{email}</span>.
+              Click it to activate your account, then come back and log in.
+            </p>
+          </div>
+
+          {/* Warning */}
+          <p className="text-[10px] font-mono text-[#c5bdb0] mb-6 leading-relaxed">
+            Didn't receive it? Check your spam folder. The link expires in 24
+            hours.
+          </p>
+
           <button
             onClick={() => {
               setMode("login");
               setSignupSuccess(false);
             }}
-            className="mt-6 text-[#f97316] text-sm font-semibold hover:underline"
+            className="w-full py-3 rounded-xl bg-[#f97316] text-white font-bold text-sm uppercase tracking-widest hover:bg-[#c2500f] transition-all"
           >
             Back to login
           </button>

@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-2.6.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.0.0-f97316?style=flat-square)
 
 ---
 
@@ -16,7 +16,7 @@
 ### 🤖 Tyunnie AI Panel
 
 - Context-aware AI assistant powered by **Groq (Llama 3.3 70B)**
-- Knows your calendar, tasks, drafts, projects, finances, and snippets
+- Knows your desk, tasks, drafts, projects, finances, and snippets
 - Can add events, tasks, drafts, projects, finance entries, and code snippets via natural language
 - **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
 - **Expandable panel** — desktop full-screen chat mode with larger sprite
@@ -33,10 +33,18 @@
 - Syncs to Supabase `profiles` table, migrates from localStorage on first load
 - Initials avatar in the sidebar nav, full avatar preview in the profile panel
 
-### 📅 Calendar
+### 🏠 Tyunnie's Desk (Home)
 
-- Month, Week, 3-Day, and Year views
-- Add and delete events, upcoming events list
+- Personalized landing dashboard — the first thing you see on login
+- **Hero section** — time-aware greeting, date, "Welcome home" message, and Taehyun sprite flush at the card edge
+- **Today's Focus** — top 3 tasks by due date with inline done toggles and overdue indicators
+- **Life Progress** — circular rings for task completion % and project progress, plus monthly balance
+- **Focus Timer** — inline Pomodoro mini-timer (25/5 cycle) that runs without leaving the Desk
+- **Now Playing** — music card with album art glow, track info, progress bar, and controls
+- **Recent Activity** — vertical timeline of latest completed tasks and finance entries
+- **Tyunnie's Corner** — dark card with large AI-generated daily quote in serif italic
+- **Quick Navigation** — 2×3 icon grid for fast access to Writing, Finance, Snippets, Projects, Games, Profile
+- AI one-liner generated fresh each visit by Groq, cached per tab session
 
 ### ✅ Tasks
 
@@ -243,22 +251,12 @@ npm run dev
 ## 📁 Project Structure
 
 ```
-tyunnie-pa/
-├── app/
-│   ├── api/
-│   │   ├── chat/route.ts       # Groq AI endpoint
-│   │   └── run/route.ts        # JDoodle code execution
-│   ├── auth/page.tsx
-│   ├── demo/page.tsx           # No-auth demo
-│   ├── dashboard/page.tsx      # Main app
-│   ├── layout.tsx
-│   └── globals.css
 ├── components/
 │   ├── Sidebar.tsx
 │   ├── TyunniePanel.tsx
+│   ├── Desk.tsx          # Landing dashboard
 │   ├── Weather.tsx
 │   ├── Profile.tsx
-│   ├── Calendar.tsx
 │   ├── Todo.tsx
 │   ├── Writing.tsx
 │   ├── Projects.tsx
@@ -275,7 +273,8 @@ tyunnie-pa/
 ├── lib/
 │   ├── supabase.ts
 │   ├── database.ts
-│   └── MusicContext.tsx
+│   ├── MusicContext.tsx
+│   └── useSpeech.ts
 └── public/
     ├── sprites/
     └── music/

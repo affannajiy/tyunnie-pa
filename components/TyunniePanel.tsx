@@ -5,15 +5,8 @@ import { useState, useRef, useEffect } from "react";
 import { useMusicContext } from "@/lib/MusicContext";
 import Image from "next/image";
 import type { Profile as ProfileType } from "@/lib/database";
-
-import type {
-  Event,
-  Todo,
-  Draft,
-  Project,
-  Snip,
-  FinanceEntry,
-} from "@/lib/database";
+import { useSpeech } from "@/lib/useSpeech";
+import type { Todo, Draft, Project, Snip, FinanceEntry } from "@/lib/database";
 
 const MONTHS = [
   "January",
@@ -74,7 +67,6 @@ type ConfirmPayload = {
 
 // All app data passed in so Tyunnie knows your context
 type AppData = {
-  events: Event[];
   todos: Todo[];
   drafts: Draft[];
   projects: Project[];
@@ -88,8 +80,6 @@ type Props = {
   appData: AppData;
   // Called when Tyunnie triggers a panel switch
   onNavigate: (panel: string) => void;
-  // Called when Tyunnie adds an event (after confirmation)
-  onEventAdded: (event: { title: string; date: string; time: string }) => void;
   // Called when Tyunnie adds a task
   onTodoAdded: (todo: { text: string; tag: string; due: string }) => void;
   onDraftAdded: (draft: { title: string; body: string }) => void;
@@ -120,6 +110,8 @@ type Props = {
   userName?: string;
   profile?: ProfileType | null;
   onToggleExpand?: () => void;
+  prefillInput?: string;
+  onPrefillConsumed?: () => void;
 };
 
 const SPRITE_GREETINGS = [
@@ -132,7 +124,6 @@ const SPRITE_GREETINGS = [
 export default function TyunniePanel({
   appData,
   onNavigate,
-  onEventAdded,
   onTodoAdded,
   onDraftAdded,
   onProjectAdded,
@@ -144,6 +135,8 @@ export default function TyunniePanel({
   userName = "",
   onToggleExpand,
   profile,
+  prefillInput,
+  onPrefillConsumed,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -151,6 +144,13 @@ export default function TyunniePanel({
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [spriteGlow, setSpriteGlow] = useState(false);
   const music = useMusicContext();
+  const {
+    listening,
+    supported,
+    toggle: toggleMic,
+  } = useSpeech({
+    onResult: (transcript) => setInput(transcript),
+  });
 
   const [currentMood, setCurrentMood] = useState<MoodType | null>(null);
   const currentSprite = currentMood
@@ -215,6 +215,14 @@ export default function TyunniePanel({
     ]);
   }, []);
 
+  useEffect(() => {
+    if (prefillInput) {
+      setInput(prefillInput);
+      onPrefillConsumed?.();
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [prefillInput]);
+
   // Scroll to bottom whenever bubbles change
   useEffect(() => {
     if (historyRef.current) {
@@ -224,14 +232,11 @@ export default function TyunniePanel({
 
   // ── DAILY BRIEFING ──
   useEffect(() => {
-    if (briefingFiredRef.current) return;
-    if (
-      appData.events.length === 0 &&
-      appData.todos.length === 0 &&
-      appData.finance.length === 0
-    )
+    if (sessionStorage.getItem("tyunnie_briefing")) {
+      setBriefing(sessionStorage.getItem("tyunnie_briefing"));
       return;
-    briefingFiredRef.current = true;
+    }
+    if (appData.todos.length === 0 && appData.finance.length === 0) return;
 
     async function fetchBriefing() {
       const today = new Date().toISOString().split("T")[0];
@@ -245,7 +250,6 @@ export default function TyunniePanel({
               ? "evening"
               : "night";
 
-      const todayEvents = appData.events.filter((e) => e.date === today);
       const overdue = appData.todos.filter(
         (t) => !t.done && t.due && t.due < today,
       );
@@ -269,7 +273,6 @@ export default function TyunniePanel({
             messages: [{ role: "user", content: "briefing" }],
             systemPrompt: `You are Tyunnie, a warm personal assistant. Give a SHORT 1-2 sentence ${timeOfDay} briefing. Be casual and direct like a close friend, no bullet points.
 Today: ${today} (${timeOfDay})
-Events today: ${todayEvents.length > 0 ? todayEvents.map((e) => e.title).join(", ") : "none"}
 Tasks due today: ${todayTodos.length > 0 ? todayTodos.map((t) => t.text).join(", ") : "none"}
 Overdue: ${overdue.length > 0 ? overdue.length + " task(s)" : "none"}
 Balance: RM${balance.toFixed(2)}
@@ -277,7 +280,9 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
           }),
         });
         const d = await r.json();
-        setBriefing(d.text ?? null);
+        const text = d.text ?? null;
+        setBriefing(text); // ← inside here
+        if (text) sessionStorage.setItem("tyunnie_briefing", text); // ← inside here
       } catch {
         setBriefing(null);
       } finally {
@@ -286,11 +291,11 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
     }
 
     fetchBriefing();
-  }, [appData]);
+  }, []);
 
   // ── SYSTEM PROMPT with full app context ──
   function buildSystemPrompt(): string {
-    const { events, todos, drafts, projects, snips, finance } = appData;
+    const { todos, drafts, projects, snips, finance } = appData;
     const today = new Date().toISOString().split("T")[0];
 
     const totalIncome = finance
@@ -300,14 +305,6 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
       .filter((f) => f.type === "expense")
       .reduce((s, f) => s + f.amount, 0);
     const balance = totalIncome - totalExpenses;
-
-    const upcomingEvents =
-      events
-        .filter((e) => e.date >= today)
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(0, 10)
-        .map((e) => `• ${e.date} ${e.time ?? ""}: ${e.title}`)
-        .join("\n") || "None";
 
     const pendingTodos =
       todos
@@ -384,9 +381,6 @@ FINANCE:
   Balance:  RM${balance.toFixed(2)}
   Recent:
 ${recentFinance}
-
-CALENDAR (upcoming):
-${upcomingEvents}
 
 TASKS (pending):
 ${pendingTodos}
@@ -482,33 +476,6 @@ STRICT RULES:
         case "navigate":
           onNavigate(action.data.panel);
           break;
-
-        case "add_event": {
-          setCurrentMood("thinking");
-          const d = action.data;
-          setConfirm({
-            label: "Add to Calendar?",
-            detail: `
-              <strong>📅 ${d.title}</strong><br/>
-              Date: <strong>${d.date}</strong><br/>
-              Time: <strong>${d.time || "Not specified"}</strong>
-            `,
-            onConfirm: () => {
-              onEventAdded({
-                title: d.title,
-                date: d.date,
-                time: d.time ?? "",
-              });
-              setConfirm(null);
-              addBubble(
-                "tyunnie",
-                `Done! "${d.title}" is now on your calendar 📅`,
-                "celebrating",
-              );
-            },
-          });
-          break;
-        }
 
         case "add_todo": {
           const d = action.data;
@@ -1060,16 +1027,61 @@ STRICT RULES:
 
         {/* ── CHAT INPUT ── */}
         <div className="px-3 pt-3 pb-4 md:pb-3 mb-16 md:mb-0 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0 relative z-20">
+          {/* Mic button */}
+          {supported && (
+            <button
+              onClick={toggleMic}
+              title={listening ? "Stop listening" : "Voice input"}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 self-end transition-all ${
+                listening
+                  ? "bg-red-500/20 border border-red-500/40 text-red-400 animate-pulse"
+                  : "bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+              }`}
+            >
+              {listening ? (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="currentColor"
+                >
+                  <rect x="2" y="2" width="10" height="10" rx="2" />
+                </svg>
+              ) : (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <rect x="4.5" y="1" width="5" height="7" rx="2.5" />
+                  <path
+                    d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5"
+                    strokeLinecap="round"
+                  />
+                  <line x1="7" y1="12" x2="7" y2="14" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+          )}
+
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Talk to Tyunnie..."
+            placeholder={listening ? "Listening..." : "Talk to Tyunnie..."}
             rows={1}
-            className="flex-1 bg-[#1e1b17] border border-[#3a3028] rounded-xl text-[#e8ddd0] text-[11px] md:text-xs px-3 py-2 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors focus:border-[#f97316]"
+            className={`flex-1 bg-[#1e1b17] border rounded-xl text-[#e8ddd0] text-[11px] md:text-xs px-3 py-2 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors ${
+              listening
+                ? "border-red-500/40 placeholder:text-red-400/60"
+                : "border-[#3a3028] focus:border-[#f97316]"
+            }`}
             style={{ minHeight: "36px", maxHeight: "72px" }}
           />
+
           <button
             onClick={sendChat}
             disabled={thinking || !input.trim()}

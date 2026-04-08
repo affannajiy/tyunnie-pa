@@ -10,9 +10,10 @@ export type Event = {
   id: string;
   user_id: string;
   title: string;
-  date: string; // "YYYY-MM-DD"
-  time: string; // e.g. "8:00 PM"
+  date: string;
+  time: string;
   created_at: string;
+  // remove google_event_id and synced_from_google
 };
 
 export type Todo = {
@@ -84,6 +85,25 @@ export type Profile = {
   greeting_style: string;
   show_briefing: boolean;
   avatar_url?: string | null;
+  daily_quote_email?: boolean;
+};
+
+export type VaultEntry = {
+  id: string;
+  user_id: string;
+  name: string;
+  encrypted_data: string;
+  iv: string;
+  salt: string;
+  created_at: string;
+};
+
+export type VaultMeta = {
+  user_id: string;
+  pin_verifier: string;
+  pin_iv: string;
+  pin_salt: string;
+  created_at: string;
 };
 
 // ══════════════════════════════════════════════
@@ -140,7 +160,6 @@ export async function addEvent(
     .insert({ ...event, user_id: userId })
     .select()
     .single();
-
   if (error) console.error("addEvent error:", error);
   return data ?? null;
 }
@@ -450,4 +469,62 @@ export async function getFinanceSummary(
     expenses,
     balance: income - expenses,
   };
+}
+
+// ══════════════════════════════════════════════
+//  VAULT
+// ══════════════════════════════════════════════
+
+export async function getVaultEntries(userId: string): Promise<VaultEntry[]> {
+  if (userId === "demo-user") return [];
+  const { data, error } = await supabase
+    .from("vault")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) console.error("getVaultEntries error:", error);
+  return data ?? [];
+}
+
+export async function addVaultEntry(
+  userId: string,
+  entry: { name: string; encrypted_data: string; iv: string; salt: string },
+): Promise<VaultEntry | null> {
+  const { data, error } = await supabase
+    .from("vault")
+    .insert({ ...entry, user_id: userId })
+    .select()
+    .single();
+  if (error) console.error("addVaultEntry error:", error);
+  return data ?? null;
+}
+
+export async function deleteVaultEntry(id: string): Promise<void> {
+  const { error } = await supabase.from("vault").delete().eq("id", id);
+  if (error) console.error("deleteVaultEntry error:", error);
+}
+
+export async function updateVaultEntry(
+  id: string,
+  updates: { name: string; encrypted_data: string; iv: string; salt: string },
+): Promise<void> {
+  const { error } = await supabase.from("vault").update(updates).eq("id", id);
+  if (error) console.error("updateVaultEntry error:", error);
+}
+
+export async function getVaultMeta(userId: string): Promise<VaultMeta | null> {
+  if (userId === "demo-user") return null;
+  const { data } = await supabase
+    .from("vault_meta")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+  return data ?? null;
+}
+
+export async function setVaultMeta(
+  userId: string,
+  meta: { pin_verifier: string; pin_iv: string; pin_salt: string },
+): Promise<void> {
+  await supabase.from("vault_meta").upsert({ user_id: userId, ...meta });
 }

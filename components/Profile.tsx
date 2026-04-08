@@ -5,6 +5,22 @@ import { useState, useEffect } from "react";
 import { getProfile, upsertProfile, type Profile } from "@/lib/database";
 import { useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  getVaultEntries,
+  addVaultEntry,
+  updateVaultEntry,
+  deleteVaultEntry,
+  getVaultMeta,
+  setVaultMeta as saveVaultMeta,
+  type VaultEntry,
+  type VaultMeta,
+} from "@/lib/database";
+import {
+  encryptData,
+  decryptData,
+  createPinVerifier,
+  verifyPin,
+} from "@/lib/crypto";
 
 const MONTHS = [
   "January",
@@ -100,6 +116,430 @@ export default function Profile({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cropImgRef = useRef<HTMLImageElement | null>(null);
+  // Vault
+  const [vaultMeta, setVaultMeta] = useState<VaultMeta | null>(null);
+  const [vaultMetaLoading, setVaultMetaLoading] = useState(true);
+  const [vaultLocked, setVaultLocked] = useState(true);
+  const [vaultPin, setVaultPin] = useState(""); // active session PIN
+  const [pinInput, setPinInput] = useState(""); // what user is typing
+  const [pinConfirm, setPinConfirm] = useState(""); // confirm on setup
+  const [pinStep, setPinStep] = useState<"enter" | "confirm">("enter");
+  const [pinAttempts, setPinAttempts] = useState(0);
+  const [pinError, setPinError] = useState("");
+  const [pinLocked, setPinLocked] = useState(false);
+  const [vaultEntries, setVaultEntries] = useState<VaultEntry[]>([]);
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [showAddEntry, setShowAddEntry] = useState(false);
+  const [newEntryName, setNewEntryName] = useState("");
+  const [newEntryUsername, setNewEntryUsername] = useState("");
+  const [newEntryPassword, setNewEntryPassword] = useState("");
+  const [newEntryNotes, setNewEntryNotes] = useState("");
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  const [decryptedEntries, setDecryptedEntries] = useState<
+    Record<string, { username: string; password: string; notes: string }>
+  >({});
+  const [savingEntry, setSavingEntry] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [otpStep, setOtpStep] = useState<
+    "idle" | "sending" | "verify" | "new_pin"
+  >("idle");
+  const [changingPin, setChangingPin] = useState(false);
+  const [newPinInput, setNewPinInput] = useState("");
+  const [newPinConfirm, setNewPinConfirm] = useState("");
+  const [newPinStep, setNewPinStep] = useState<"enter" | "confirm">("enter");
+  const [newPinError, setNewPinError] = useState("");
+  const [savingPin, setSavingPin] = useState(false);
+  const [otpInput, setOtpInput] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const [dailyQuoteEmail, setDailyQuoteEmail] = useState(false);
+
+  async function handleAddEntry() {
+    if (!newEntryName.trim() || !newEntryPassword.trim()) return;
+    setSavingEntry(true);
+    const plain = JSON.stringify({
+      username: newEntryUsername,
+      password: newEntryPassword,
+      notes: newEntryNotes,
+    });
+    const { encrypted, iv, salt } = await encryptData(plain, vaultPin);
+    const saved = await addVaultEntry(userId, {
+      name: newEntryName,
+      encrypted_data: encrypted,
+      iv,
+      salt,
+    });
+    if (saved) {
+      setVaultEntries((prev) => [saved, ...prev]);
+      setDecryptedEntries((prev) => ({
+        ...prev,
+        [saved.id]: {
+          username: newEntryUsername,
+          password: newEntryPassword,
+          notes: newEntryNotes,
+        },
+      }));
+      setNewEntryName("");
+      setNewEntryUsername("");
+      setNewEntryPassword("");
+      setNewEntryNotes("");
+      setShowAddEntry(false);
+    }
+    setSavingEntry(false);
+  }
+
+  async function handleDeleteEntry(id: string) {
+    await deleteVaultEntry(id);
+    setVaultEntries((prev) => prev.filter((e) => e.id !== id));
+    setDecryptedEntries((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  async function handleEditEntry(id: string) {
+    if (!editName.trim() || !editPassword.trim()) return;
+    setSavingEdit(true);
+    const plain = JSON.stringify({
+      username: editUsername,
+      password: editPassword,
+      notes: editNotes,
+    });
+    const { encrypted, iv, salt } = await encryptData(plain, vaultPin);
+    // Update in Supabase — add updateVaultEntry to database.ts
+    await updateVaultEntry(id, {
+      name: editName,
+      encrypted_data: encrypted,
+      iv,
+      salt,
+    });
+    // Update local state
+    setVaultEntries((prev) =>
+      prev.map((e) =>
+        e.id === id
+          ? { ...e, name: editName, encrypted_data: encrypted, iv, salt }
+          : e,
+      ),
+    );
+    setDecryptedEntries((prev) => ({
+      ...prev,
+      [id]: {
+        username: editUsername,
+        password: editPassword,
+        notes: editNotes,
+      },
+    }));
+    setEditingId(null);
+    setSavingEdit(false);
+  }
+
+  // Pin
+  async function handlePinDigit(digit: string) {
+    if (pinLocked) return;
+
+    const isSetup = !vaultMeta;
+
+    if (isSetup) {
+      if (pinStep === "enter") {
+        const next = pinInput + digit;
+        setPinInput(next);
+        if (next.length === 6) {
+          // Move to confirm step
+          setPinStep("confirm");
+          setPinError("");
+        }
+      } else {
+        // Confirm step
+        const next = pinConfirm + digit;
+        setPinConfirm(next);
+        if (next.length === 6) {
+          if (next !== pinInput) {
+            setPinError("PINs don't match. Try again.");
+            setPinInput("");
+            setPinConfirm("");
+            setPinStep("enter");
+          } else {
+            // Set up vault
+            const { verifier, iv, salt } = await createPinVerifier(next);
+            await saveVaultMeta(userId, {
+              // ← use renamed version
+              pin_verifier: verifier,
+              pin_iv: iv,
+              pin_salt: salt,
+            });
+            const newMeta: VaultMeta = {
+              user_id: userId,
+              pin_verifier: verifier,
+              pin_iv: iv,
+              pin_salt: salt,
+              created_at: new Date().toISOString(),
+            };
+            setVaultMeta(newMeta); // ← this is fine, it's the useState setter
+            setVaultPin(next);
+            setVaultLocked(false);
+            setPinInput("");
+            setPinConfirm("");
+            setPinStep("enter");
+            // Send notification email
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (user?.email) {
+              fetch("/api/vault-notify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: user.email, type: "setup" }),
+              });
+            }
+          }
+        }
+      }
+    } else {
+      // Unlock flow
+      const next = pinInput + digit;
+      setPinInput(next);
+      if (next.length === 6) {
+        setVaultLoading(true);
+        const ok = await verifyPin(
+          next,
+          vaultMeta.pin_verifier,
+          vaultMeta.pin_iv,
+          vaultMeta.pin_salt,
+        );
+        if (!ok) {
+          const attempts = pinAttempts + 1;
+          setPinAttempts(attempts);
+          setPinInput("");
+          if (attempts >= 3) {
+            setPinLocked(true);
+            setPinError("Too many attempts. Vault locked for this session.");
+          } else {
+            setPinError(
+              `Wrong PIN. ${3 - attempts} attempt${3 - attempts === 1 ? "" : "s"} remaining.`,
+            );
+          }
+          setVaultLoading(false);
+          return;
+        }
+        // Correct PIN — load and decrypt entries
+        const entries = await getVaultEntries(userId);
+        const decrypted: Record<
+          string,
+          { username: string; password: string; notes: string }
+        > = {};
+        for (const entry of entries) {
+          try {
+            const plain = await decryptData(
+              entry.encrypted_data,
+              entry.iv,
+              entry.salt,
+              next,
+            );
+            decrypted[entry.id] = JSON.parse(plain);
+          } catch {
+            decrypted[entry.id] = { username: "?", password: "?", notes: "" };
+          }
+        }
+        setVaultEntries(entries);
+        setDecryptedEntries(decrypted);
+        setVaultPin(next);
+        setVaultLocked(false);
+        setPinInput("");
+        setPinAttempts(0);
+        setPinError("");
+        setVaultLoading(false);
+      }
+    }
+  }
+
+  function handlePinBackspace() {
+    if (pinStep === "confirm") {
+      setPinConfirm((p) => p.slice(0, -1));
+    } else {
+      setPinInput((p) => p.slice(0, -1));
+    }
+  }
+
+  async function handleNewPinDigit(digit: string) {
+    if (newPinStep === "enter") {
+      const next = newPinInput + digit;
+      setNewPinInput(next);
+      if (next.length === 6) {
+        setNewPinStep("confirm");
+        setNewPinError("");
+      }
+    } else {
+      const next = newPinConfirm + digit;
+      setNewPinConfirm(next);
+      if (next.length === 6) {
+        if (next !== newPinInput) {
+          setNewPinError("PINs don't match. Try again.");
+          setNewPinInput("");
+          setNewPinConfirm("");
+          setNewPinStep("enter");
+          return;
+        }
+        // Re-encrypt all entries with new PIN
+        setSavingPin(true);
+        try {
+          for (const entry of vaultEntries) {
+            const dec = decryptedEntries[entry.id];
+            if (!dec) continue;
+            const plain = JSON.stringify(dec);
+            const { encrypted, iv, salt } = await encryptData(plain, next);
+            await updateVaultEntry(entry.id, {
+              name: entry.name,
+              encrypted_data: encrypted,
+              iv,
+              salt,
+            });
+          }
+          // Update vault meta with new PIN verifier
+          const { verifier, iv, salt } = await createPinVerifier(next);
+          await saveVaultMeta(userId, {
+            pin_verifier: verifier,
+            pin_iv: iv,
+            pin_salt: salt,
+          });
+          setVaultMeta((prev) =>
+            prev
+              ? { ...prev, pin_verifier: verifier, pin_iv: iv, pin_salt: salt }
+              : prev,
+          );
+          setVaultPin(next);
+          // Send notification email
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user?.email) {
+            fetch("/api/vault-notify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: user.email, type: "change" }),
+            });
+          }
+          // Reset change PIN UI
+          setChangingPin(false);
+          setNewPinInput("");
+          setNewPinConfirm("");
+          setNewPinStep("enter");
+          setNewPinError("");
+        } finally {
+          setSavingPin(false);
+        }
+      }
+    }
+  }
+
+  function handleNewPinBackspace() {
+    if (newPinStep === "confirm") {
+      setNewPinConfirm((p) => p.slice(0, -1));
+    } else {
+      setNewPinInput((p) => p.slice(0, -1));
+    }
+  }
+
+  async function handleRequestOtp() {
+    setOtpSending(true);
+    setOtpError("");
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.email) {
+        setOtpError("No email on account.");
+        return;
+      }
+      const res = await fetch("/api/vault-notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email, type: "pin_change_request" }),
+      });
+      if (!res.ok) throw new Error();
+      setOtpStep("verify");
+      setOtpInput("");
+    } catch {
+      setOtpError("Failed to send code. Try again.");
+    } finally {
+      setOtpSending(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (otpInput.length !== 6) return;
+    setOtpSending(true);
+    setOtpError("");
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.email) return;
+      const res = await fetch("/api/vault-notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          type: "verify",
+          otp: otpInput,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setOtpError(json.error ?? "Invalid code.");
+        return;
+      }
+      setOtpStep("new_pin");
+      setNewPinInput("");
+      setNewPinConfirm("");
+      setNewPinStep("enter");
+      setNewPinError("");
+    } catch {
+      setOtpError("Verification failed. Try again.");
+    } finally {
+      setOtpSending(false);
+    }
+  }
+
+  //Auto Lock
+  useEffect(() => {
+    if (vaultLocked) return; // only run when vault is open
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    function resetTimer() {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setVaultLocked(true);
+        setVaultPin("");
+        setDecryptedEntries({});
+        setVaultEntries([]);
+        setPinInput("");
+        setPinStep("enter");
+        setPinError("");
+      }, 30000); // 30 seconds
+    }
+
+    const events = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "touchstart",
+      "scroll",
+    ];
+    events.forEach((e) => window.addEventListener(e, resetTimer));
+    resetTimer(); // start the timer immediately on unlock
+
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+    };
+  }, [vaultLocked]);
 
   useEffect(() => {
     getProfile(userId).then((p) => {
@@ -119,6 +559,7 @@ export default function Profile({
         setGreetingStyle(p.greeting_style ?? "casual");
         setShowBriefing(p.show_briefing ?? true);
         setAvatarUrl(p.avatar_url ?? null);
+        setDailyQuoteEmail(p.daily_quote_email ?? false);
       } else {
         // Migrate from localStorage
         const lsName = localStorage.getItem("tyunnie_username");
@@ -136,6 +577,11 @@ export default function Profile({
         if (lsTheme === "dark" && !isDark) toggleTheme();
       }
       setLoading(false);
+      // Load vault meta separately
+      getVaultMeta(userId).then((meta) => {
+        setVaultMeta(meta);
+        setVaultMetaLoading(false);
+      });
     });
   }, [userId]);
 
@@ -274,6 +720,7 @@ export default function Profile({
       greeting_style: greetingStyle,
       show_briefing: showBriefing,
       avatar_url: avatarUrl,
+      daily_quote_email: dailyQuoteEmail,
     };
     const saved = await upsertProfile(userId, profile);
     // Sync localStorage keys
@@ -645,6 +1092,510 @@ export default function Profile({
               />
             </button>
           </div>
+          {/* Daily Quote Email */}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#e8e2d8]">
+            <div>
+              <p className="text-sm font-semibold text-[#111010]">
+                Daily Quote Email
+              </p>
+              <p className="text-[10px] text-[#9a8f7e]">
+                Receive a daily message from Taehyun every morning
+              </p>
+            </div>
+            <button
+              onClick={() => setDailyQuoteEmail((p) => !p)}
+              className={`w-11 h-6 rounded-full transition-all relative ${dailyQuoteEmail ? "bg-[#f97316]" : "bg-[#e8e2d8]"}`}
+            >
+              <div
+                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${dailyQuoteEmail ? "left-5" : "left-0.5"}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Vault */}
+        <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono">
+              🔐 Password Vault
+            </p>
+            {!vaultLocked && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setChangingPin((prev) => !prev);
+                    setNewPinInput("");
+                    setNewPinConfirm("");
+                    setNewPinStep("enter");
+                    setNewPinError("");
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
+                >
+                  🔑 Change PIN
+                </button>
+                <button
+                  onClick={() => {
+                    setVaultLocked(true);
+                    setVaultPin("");
+                    setDecryptedEntries({});
+                    setVaultEntries([]);
+                    setPinInput("");
+                    setPinStep("enter");
+                    setPinError("");
+                    setChangingPin(false);
+                    setOtpStep("idle");
+                    setOtpInput("");
+                    setOtpError("");
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-400 hover:bg-red-100 hover:border-red-300 hover:text-red-500 transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
+                >
+                  🔒 Lock
+                </button>
+              </div>
+            )}
+          </div>
+          {!vaultLocked && changingPin && (
+            <div className="mb-4 p-4 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl">
+              {/* Step 1 — Request OTP */}
+              {otpStep === "idle" && (
+                <div>
+                  <p className="text-xs text-[#9a8f7e] mb-4 leading-relaxed">
+                    To change your vault PIN, we'll send a verification code to
+                    your email first.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleRequestOtp}
+                      disabled={otpSending}
+                      className="flex-1 py-2.5 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                    >
+                      {otpSending ? "Sending..." : "Send verification code"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setChangingPin(false);
+                        setOtpStep("idle");
+                        setOtpError("");
+                      }}
+                      className="px-4 py-2.5 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-[#f97316] transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {otpError && (
+                    <p className="text-[10px] text-red-400 mt-2 font-mono">
+                      {otpError}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Step 2 — Enter OTP */}
+              {otpStep === "verify" && (
+                <div>
+                  <p className="text-xs text-[#9a8f7e] mb-4 leading-relaxed">
+                    Enter the 6-digit code sent to your email. It expires in 10
+                    minutes.
+                  </p>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={otpInput}
+                      onChange={(e) =>
+                        setOtpInput(
+                          e.target.value.replace(/\D/g, "").slice(0, 6),
+                        )
+                      }
+                      onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
+                      placeholder="000000"
+                      className="flex-1 bg-white border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-center tracking-[6px] font-mono outline-none focus:border-[#f97316] transition-colors"
+                    />
+                    <button
+                      onClick={handleVerifyOtp}
+                      disabled={otpSending || otpInput.length !== 6}
+                      className="px-4 py-2.5 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                    >
+                      {otpSending ? "..." : "Verify"}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={handleRequestOtp}
+                      disabled={otpSending}
+                      className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+                    >
+                      Resend code
+                    </button>
+                    <button
+                      onClick={() => {
+                        setChangingPin(false);
+                        setOtpStep("idle");
+                        setOtpError("");
+                        setOtpInput("");
+                      }}
+                      className="text-[10px] font-mono text-[#c5bdb0] hover:text-red-400 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {otpError && (
+                    <p className="text-[10px] text-red-400 mt-2 font-mono">
+                      {otpError}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3 — Set new PIN */}
+              {otpStep === "new_pin" && (
+                <div>
+                  <p className="text-xs text-[#9a8f7e] mb-4 leading-relaxed">
+                    {newPinStep === "enter"
+                      ? "Enter your new 6-digit PIN."
+                      : "Confirm your new PIN."}
+                  </p>
+                  {/* PIN dots */}
+                  <div className="flex justify-center gap-3 mb-5">
+                    {Array.from({ length: 6 }).map((_, i) => {
+                      const current =
+                        newPinStep === "confirm" ? newPinConfirm : newPinInput;
+                      return (
+                        <div
+                          key={i}
+                          className={`w-4 h-4 rounded-full border-2 transition-all ${
+                            i < current.length
+                              ? "bg-[#f97316] border-[#f97316]"
+                              : "bg-transparent border-[#e8e2d8]"
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                  {/* PIN pad */}
+                  <div className="grid grid-cols-3 gap-2 max-w-50 mx-auto mb-3">
+                    {[
+                      "1",
+                      "2",
+                      "3",
+                      "4",
+                      "5",
+                      "6",
+                      "7",
+                      "8",
+                      "9",
+                      "",
+                      "0",
+                      "⌫",
+                    ].map((key, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          if (key === "⌫") handleNewPinBackspace();
+                          else if (key !== "") handleNewPinDigit(key);
+                        }}
+                        disabled={key === "" || savingPin}
+                        className={`h-12 rounded-xl text-sm font-bold transition-all ${
+                          key === ""
+                            ? "invisible"
+                            : key === "⌫"
+                              ? "text-[#9a8f7e] hover:bg-white border border-[#e8e2d8]"
+                              : "bg-white border border-[#e8e2d8] text-[#111010] hover:border-[#f97316] hover:text-[#f97316] active:scale-95"
+                        }`}
+                      >
+                        {savingPin ? "..." : key}
+                      </button>
+                    ))}
+                  </div>
+                  {newPinError && (
+                    <p className="text-[10px] text-red-400 text-center font-mono">
+                      {newPinError}
+                    </p>
+                  )}
+                  {savingPin && (
+                    <p className="text-[10px] text-[#9a8f7e] text-center font-mono mt-2">
+                      Re-encrypting entries...
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {vaultMetaLoading ? (
+            <p className="text-xs text-[#c5bdb0] font-mono text-center py-4">
+              Loading...
+            </p>
+          ) : vaultLocked ? (
+            <div>
+              {/* Setup vs unlock heading */}
+              <p className="text-xs text-[#9a8f7e] mb-4 leading-relaxed">
+                {!vaultMeta
+                  ? pinStep === "enter"
+                    ? "Set a 6-digit PIN to protect your vault. This PIN is never stored — keep it safe."
+                    : "Confirm your PIN."
+                  : pinLocked
+                    ? "Vault locked for this session due to too many attempts."
+                    : "Enter your 6-digit PIN to unlock your vault."}
+              </p>
+
+              {!pinLocked && (
+                <>
+                  {/* PIN dots */}
+                  <div className="flex justify-center gap-3 mb-5">
+                    {Array.from({ length: 6 }).map((_, i) => {
+                      const current =
+                        pinStep === "confirm" ? pinConfirm : pinInput;
+                      return (
+                        <div
+                          key={i}
+                          className={`w-4 h-4 rounded-full border-2 transition-all ${
+                            i < current.length
+                              ? "bg-[#f97316] border-[#f97316]"
+                              : "bg-transparent border-[#e8e2d8]"
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* PIN pad */}
+                  <div className="grid grid-cols-3 gap-2 max-w-50 mx-auto mb-3">
+                    {[
+                      "1",
+                      "2",
+                      "3",
+                      "4",
+                      "5",
+                      "6",
+                      "7",
+                      "8",
+                      "9",
+                      "",
+                      "0",
+                      "⌫",
+                    ].map((key, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          if (key === "⌫") handlePinBackspace();
+                          else if (key !== "") handlePinDigit(key);
+                        }}
+                        disabled={key === ""}
+                        className={`h-12 rounded-xl text-sm font-bold transition-all ${
+                          key === ""
+                            ? "invisible"
+                            : key === "⌫"
+                              ? "text-[#9a8f7e] hover:bg-[#faf8f5] border border-[#e8e2d8]"
+                              : "bg-[#faf8f5] border border-[#e8e2d8] text-[#111010] hover:border-[#f97316] hover:text-[#f97316] active:scale-95"
+                        }`}
+                      >
+                        {vaultLoading && key === "0" ? "..." : key}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {pinError && (
+                <p className="text-[10px] text-red-400 text-center mt-2 font-mono">
+                  {pinError}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              {/* Entry list */}
+              <div className="flex flex-col gap-2 mb-3">
+                {vaultEntries.length === 0 && (
+                  <p className="text-xs text-[#c5bdb0] font-mono text-center py-4">
+                    No entries yet. Add your first password below.
+                  </p>
+                )}
+                {vaultEntries.map((entry) => {
+                  const dec = decryptedEntries[entry.id];
+                  const revealed = revealedIds.has(entry.id);
+                  const isEditing = editingId === entry.id;
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className="bg-[#faf8f5] border border-[#e8e2d8] rounded-xl p-3"
+                    >
+                      {isEditing ? (
+                        <div className="flex flex-col gap-2">
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="Site / App name *"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                          />
+                          <input
+                            type="text"
+                            value={editUsername}
+                            onChange={(e) => setEditUsername(e.target.value)}
+                            placeholder="Username / Email"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                          />
+                          <input
+                            type="password"
+                            value={editPassword}
+                            onChange={(e) => setEditPassword(e.target.value)}
+                            placeholder="Password *"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                          />
+                          <input
+                            type="text"
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            placeholder="Notes (optional)"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                          />
+                          <div className="flex gap-2 mt-1">
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-[#f97316] transition-all"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleEditEntry(entry.id)}
+                              disabled={savingEdit}
+                              className="flex-1 py-2 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                            >
+                              {savingEdit ? "Saving..." : "Save"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-semibold text-[#111010]">
+                              {entry.name}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() =>
+                                  setRevealedIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.has(entry.id)
+                                      ? next.delete(entry.id)
+                                      : next.add(entry.id);
+                                    return next;
+                                  })
+                                }
+                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+                              >
+                                {revealed ? "Hide" : "Show"}
+                              </button>
+                              <button
+                                onClick={() =>
+                                  navigator.clipboard.writeText(
+                                    dec?.password ?? "",
+                                  )
+                                }
+                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+                              >
+                                Copy
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingId(entry.id);
+                                  setEditName(entry.name);
+                                  setEditUsername(dec?.username ?? "");
+                                  setEditPassword(dec?.password ?? "");
+                                  setEditNotes(dec?.notes ?? "");
+                                }}
+                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteEntry(entry.id)}
+                                className="text-[10px] font-mono text-[#c5bdb0] hover:text-red-400 transition-colors"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                          {dec?.username && (
+                            <p className="text-[11px] text-[#9a8f7e] font-mono">
+                              {dec.username}
+                            </p>
+                          )}
+                          <p className="text-[11px] font-mono text-[#9a8f7e] mt-0.5">
+                            {revealed ? dec?.password : "••••••••••••"}
+                          </p>
+                          {revealed && dec?.notes && (
+                            <p className="text-[10px] text-[#c5bdb0] font-mono mt-1">
+                              {dec.notes}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add entry */}
+              {showAddEntry ? (
+                <div className="border border-[#e8e2d8] rounded-xl p-4 flex flex-col gap-2">
+                  <input
+                    type="text"
+                    value={newEntryName}
+                    onChange={(e) => setNewEntryName(e.target.value)}
+                    placeholder="Site / App name *"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  />
+                  <input
+                    type="text"
+                    value={newEntryUsername}
+                    onChange={(e) => setNewEntryUsername(e.target.value)}
+                    placeholder="Username / Email"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  />
+                  <input
+                    type="password"
+                    value={newEntryPassword}
+                    onChange={(e) => setNewEntryPassword(e.target.value)}
+                    placeholder="Password *"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  />
+                  <input
+                    type="text"
+                    value={newEntryNotes}
+                    onChange={(e) => setNewEntryNotes(e.target.value)}
+                    placeholder="Notes (optional)"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  />
+                  <div className="flex gap-2 mt-1">
+                    <button
+                      onClick={() => setShowAddEntry(false)}
+                      className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-[#f97316] transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddEntry}
+                      disabled={savingEntry}
+                      className="flex-1 py-2 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                    >
+                      {savingEntry ? "Saving..." : "Save Entry"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAddEntry(true)}
+                  className="w-full py-2.5 rounded-xl border border-dashed border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono"
+                >
+                  + Add entry
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Save */}
