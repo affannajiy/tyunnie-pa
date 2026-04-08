@@ -251,6 +251,14 @@ npm run dev
 ## 📁 Project Structure
 
 ```
+├── app/
+│   ├── api/
+│   │   ├── chat/route.ts
+│   │   └── run/route.ts
+│   ├── auth/page.tsx
+│   ├── dashboard/page.tsx
+│   ├── layout.tsx
+│   └── globals.css
 ├── components/
 │   ├── Sidebar.tsx
 │   ├── TyunniePanel.tsx
@@ -285,8 +293,6 @@ npm run dev
 ## 🌐 Demo
 
 **Live:** [tyunnie-pa.vercel.app](https://tyunnie-pa.vercel.app)
-
-**Demo (no login):** [tyunnie-pa.vercel.app/demo](https://tyunnie-pa.vercel.app/demo)
 
 ---
 

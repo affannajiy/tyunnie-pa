@@ -68,6 +68,64 @@ function CircularProgress({
   );
 }
 
+function DeskWeather() {
+  const [weather, setWeather] = useState<{
+    temp: number;
+    condition: string;
+    icon: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("tyunnie_city");
+    if (!stored) return;
+    try {
+      const { lat, lon } = JSON.parse(stored);
+      fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=weathercode`
+      )
+        .then((r) => r.json())
+        .then((d) => {
+          const code = d.current_weather?.weathercode ?? 0;
+          const temp = Math.round(d.current_weather?.temperature ?? 0);
+          const condition =
+            code === 0 ? "Clear" :
+            code <= 3 ? "Cloudy" :
+            code <= 48 ? "Foggy" :
+            code <= 67 ? "Rainy" :
+            code <= 77 ? "Snowy" :
+            code <= 82 ? "Showers" : "Stormy";
+          const icon =
+            code === 0 ? "☀️" :
+            code <= 3 ? "⛅" :
+            code <= 48 ? "🌫️" :
+            code <= 67 ? "🌧️" :
+            code <= 77 ? "❄️" :
+            code <= 82 ? "🌦️" : "⛈️";
+          setWeather({ temp, condition, icon });
+        });
+    } catch {}
+  }, []);
+
+  return (
+    <div className="bg-white rounded-3xl p-4 border border-[#f0ece8] shadow-sm flex flex-col items-center justify-center gap-1">
+      {weather ? (
+        <>
+          <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">Weather</p>
+          <p className="text-3xl leading-none">{weather.icon}</p>
+          <p className="text-xl font-bold text-[#1a1208] font-mono leading-none">{weather.temp}°C</p>
+          <p className="text-[9px] font-mono text-[#b09880]">{weather.condition}</p>
+        </>
+      ) : (
+        <>
+          <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">Weather</p>
+          <div className="text-2xl opacity-20">🌤️</div>
+          <p className="text-[9px] text-[#c5bdb0] font-mono">No city set</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Desk({
   profile,
   userName,
@@ -81,6 +139,14 @@ export default function Desk({
 }: Props) {
   const music = useMusicContext();
   const [oneliner, setOneliner] = useState<string | null>(null);
+
+  // Clock
+  const [clock, setClock] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Pomodoro
   const [pomRunning, setPomRunning] = useState(false);
@@ -570,37 +636,36 @@ Just one sentence, no quotes, no action blocks.`,
 
       {/* ── BOTTOM: TWO COLUMNS ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Left 65% — Recent Activity + Quick Capture */}
-        <div className="lg:col-span-8 flex flex-col gap-5">
-          <div className="bg-white rounded-3xl p-6 border border-[#f0ece8] shadow-sm flex-1">
-            <div className="flex items-center gap-3 mb-5">
+        {/* Left col — Recent Activity + Quick Capture inside */}
+        <div className="lg:col-span-8">
+          <div className="bg-white rounded-3xl p-6 border border-[#f0ece8] shadow-sm flex flex-col gap-4 h-full">
+            <div className="flex items-center gap-3">
               <span className="font-serif italic text-[#f97316] text-base">
                 Recent Activity
               </span>
               <div className="flex-1 h-px bg-[#f0ece8]" />
             </div>
+
             {recentActivity.length === 0 ? (
               <p className="text-xs text-[#c5bdb0] italic py-4 text-center">
                 No recent activity. Go do something amazing! 🧡
               </p>
             ) : (
-              <div className="flex flex-col gap-1">
-                {recentActivity.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-4 py-3 border-b border-[#f8f4f0] last:border-0"
-                  >
-                    {/* Timeline dot */}
-                    <div className="flex flex-col items-center shrink-0">
-                      <div className="w-8 h-8 rounded-xl bg-orange-50 border border-[#fde8d0] flex items-center justify-center text-sm">
+              <div className="flex flex-col">
+                {recentActivity.slice(0, 3).map((item, i) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="flex flex-col items-center shrink-0 w-8">
+                      <div className="w-8 h-8 rounded-xl bg-orange-50 border border-[#fde8d0] flex items-center justify-center text-sm shrink-0">
                         {item.icon}
                       </div>
-                      {i < recentActivity.length - 1 && (
-                        <div className="w-px h-4 bg-[#f0ece8] mt-1" />
+                      {i < Math.min(recentActivity.length, 3) - 1 && (
+                        <div className="w-px flex-1 bg-[#f0ece8] my-1 min-h-3" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#1a1208] truncate">
+                    <div
+                      className={`flex-1 min-w-0 ${i < Math.min(recentActivity.length, 3) - 1 ? "pb-4" : ""}`}
+                    >
+                      <p className="text-xs font-semibold text-[#1a1208] truncate leading-tight">
                         {item.label}
                       </p>
                       <p className="text-[10px] text-[#b09880] font-mono">
@@ -611,22 +676,23 @@ Just one sentence, no quotes, no action blocks.`,
                 ))}
               </div>
             )}
-          </div>
 
-          {/* Quick Capture */}
-          <button
-            onClick={() => onNavigate("todo")}
-            className="w-full py-4 rounded-3xl border-2 border-dashed border-[#f0d8c8] text-[#b09880] text-sm font-medium hover:border-[#f97316] hover:text-[#f97316] hover:bg-orange-50/50 transition-all flex items-center justify-center gap-2"
-          >
-            <span className="text-lg">+</span>
-            Quick add a task
-          </button>
+            {/* Quick Capture inside the card */}
+            <div className="mt-auto pt-3 border-t border-[#f8f4f0]">
+              <button
+                onClick={() => onNavigate("todo")}
+                className="w-full py-3 rounded-2xl border-2 border-dashed border-[#f0d8c8] text-[#b09880] text-sm font-medium hover:border-[#f97316] hover:text-[#f97316] hover:bg-orange-50/50 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="text-lg">+</span>
+                Quick add a task
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Right 35% */}
         {/* Right col */}
         <div className="lg:col-span-4 flex flex-col gap-5">
-          {/* Tyunnie quote card — flex-1 to fill available space */}
+          {/* Tyunnie quote — flex-1 */}
           <div
             className="rounded-3xl overflow-hidden relative flex flex-col flex-1"
             style={{
@@ -659,32 +725,32 @@ Just one sentence, no quotes, no action blocks.`,
             </div>
           </div>
 
-          {/* Quick Nav — fixed height, sits at bottom */}
-          <div className="bg-white rounded-3xl p-5 border border-[#f0ece8] shadow-sm shrink-0">
-            <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest mb-4">
-              Quick Navigation
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { panel: "writing" as Panel, icon: "✍️", label: "Write" },
-                { panel: "finance" as Panel, icon: "💰", label: "Finance" },
-                { panel: "snippets" as Panel, icon: "⌨️", label: "Snips" },
-                { panel: "projects" as Panel, icon: "🗂️", label: "Projects" },
-                { panel: "games" as Panel, icon: "🎮", label: "Games" },
-                { panel: "profile" as Panel, icon: "👤", label: "Profile" },
-              ].map(({ panel, icon, label }) => (
-                <button
-                  key={panel}
-                  onClick={() => onNavigate(panel)}
-                  className="flex flex-col items-center gap-1.5 py-3 rounded-2xl border border-[#f0ece8] hover:border-[#f97316]/50 hover:bg-orange-50 transition-all group"
-                >
-                  <span className="text-xl">{icon}</span>
-                  <span className="text-[9px] font-mono text-[#b09880] uppercase tracking-wide group-hover:text-[#f97316] transition-colors">
-                    {label}
-                  </span>
-                </button>
-              ))}
+          {/* Weather + Clock — side by side */}
+          <div className="grid grid-cols-2 gap-3 shrink-0">
+            {/* Clock */}
+            <div className="bg-white rounded-3xl p-4 border border-[#f0ece8] shadow-sm flex flex-col items-center justify-center gap-1">
+              <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">
+                {clock.toLocaleDateString("en-MY", { weekday: "short" })}
+              </p>
+              <p className="text-2xl font-bold font-mono text-[#1a1208] leading-none tabular-nums">
+                {clock.toLocaleTimeString("en-MY", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: false,
+                })}
+              </p>
+              <p className="text-[9px] font-mono text-[#b09880]">
+                {clock.toLocaleDateString("en-MY", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
             </div>
+
+            {/* Weather */}
+            <DeskWeather />
           </div>
         </div>
       </div>

@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.1.0] — 2026-04-09
+
+### Added
+
+- **Real-time clock widget** on Tyunnie's Desk — displays live hours, minutes, and seconds (`HH:MM:SS`), day of week, and date. Updates every second via `setInterval` in a `useEffect`
+- **Weather widget on Desk** (`DeskWeather`) — inline component in `Desk.tsx` that pulls from Open-Meteo using the saved `tyunnie_city` from localStorage. Shows temperature, condition label, and weather emoji. Falls back gracefully to "No city set" if no city is configured
+- Clock and weather widgets displayed side-by-side in a `grid-cols-2` row below the Tyunnie quote card on the Desk
+- **Quick add a task** moved inside the Recent Activity card as a pinned bottom action, separated by a divider line
+- Recent Activity capped at 3 items on the Desk for a cleaner, less cluttered layout
+
+### Removed
+
+- `app/demo/` — demo route deleted. No longer needed for a personal app
+- `app/chat/` — standalone chat route deleted. Chat is fully integrated into the dashboard via TyunniePanel
+- `app/chat-demo/` — chat demo route deleted alongside demo removal
+
+---
+
 ## [3.0.3] — 2026-04-08
 
 ### Fixed
