@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.3] — 2026-04-08
+
+### Fixed
+
+- Replaced entire `lib/useSpeech.ts` with fully `any`-typed Speech API implementation — `SpeechRecognitionEvent`, `SpeechRecognitionErrorEvent`, and the recognition ref are all typed as `any` to prevent TypeScript production build failures on Vercel. The Web Speech API has no stable cross-environment type definitions and fighting the type system here is not worth it.
+
+---
+
 ## [3.0.2] — 2026-04-08
 
 ### Fixed
