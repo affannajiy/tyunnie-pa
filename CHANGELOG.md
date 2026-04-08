@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.2] — 2026-04-08
+
+### Fixed
+
+- `SpeechRecognitionErrorEvent` type error in `lib/useSpeech.ts` causing production build failure — same root cause as 3.0.1, remaining Speech API type annotation replaced with `any`
+
+---
+
 ## [3.0.1] — 2026-04-08
 
 ### Fixed

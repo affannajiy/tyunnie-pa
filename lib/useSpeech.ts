@@ -34,9 +34,9 @@ export function useSpeech({ onResult, onEnd }: UseSpeechOptions) {
       onResult(transcript);
     };
 
-    recognition.onend = () => {
+    recognition.onerror = (e: any) => {
+      console.error("Speech error:", e.error);
       setListening(false);
-      onEnd?.();
     };
 
     recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
