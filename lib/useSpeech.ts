@@ -27,9 +27,9 @@ export function useSpeech({ onResult, onEnd }: UseSpeechOptions) {
 
     recognition.onstart = () => setListening(true);
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
-        .map((r: SpeechRecognitionResult) => r[0].transcript)
+        .map((r: any) => r[0].transcript)
         .join("");
       onResult(transcript);
     };

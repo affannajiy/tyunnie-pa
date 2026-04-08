@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.1] — 2026-04-08
+
+### Fixed
+
+- `SpeechRecognitionEvent` type error in `lib/useSpeech.ts` causing production build failure on Vercel — replaced explicit type annotation with `any` since `SpeechRecognitionEvent` is a browser-only type that TypeScript's production compiler cannot resolve even with `global.d.ts` declarations
+
+---
+
 ## [3.0.0] — 2026-04-08
 
 ### Added
