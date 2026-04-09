@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.1.2] — 2026-04-09
+
+### Fixed
+
+- Root redirect was pointing to `/chat` instead of `/dashboard` in `next.config.ts` — this was the actual source of the startup 404, not `app/page.tsx` which was already correct. Updated `destination` from `/chat` to `/dashboard`
+
+### Added
+
+- `DEVNOTES.md` — developer reference document added to repo root. Covers known gotchas, non-obvious decisions, and recurring issues including the `next.config.ts` routing trap, Supabase session corruption, Speech API type failures, sessionStorage guard pattern, audio reactivity DOM pattern, sprite path conventions, and environment variable history
+
+---
+
+## [3.1.1] - 2026-04-09
+
+### Fixed
+- Rerouting `/` to `/dashboard` in `app/page.tsx` to avoid 404
+
+---
+
 ## [3.1.0] — 2026-04-09
 
 ### Added

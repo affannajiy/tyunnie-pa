@@ -39,7 +39,7 @@ export default function NotFound() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/chat"
+            href="/desk"
             className="px-6 py-3 bg-[#f97316] text-white font-bold rounded-xl text-xs uppercase tracking-widest hover:bg-[#c2500f] transition-all hover:-translate-y-px"
           >
             Go Home

@@ -67,7 +67,7 @@ export default function Error({
             Try Again
           </button>
           <Link
-            href="/chat"
+            href="/dashboard"
             className="px-6 py-3 bg-transparent border border-[#2a2520] text-[#9a8f7e] font-bold rounded-xl text-xs uppercase tracking-widest hover:border-[#f97316] hover:text-[#f97316] transition-all hover:-translate-y-px"
           >
             Go Home
