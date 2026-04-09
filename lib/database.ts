@@ -6,16 +6,6 @@ import { supabase } from "./supabase";
 //  TypeScript uses these to catch mistakes early.
 // ══════════════════════════════════════════════
 
-export type Event = {
-  id: string;
-  user_id: string;
-  title: string;
-  date: string;
-  time: string;
-  created_at: string;
-  // remove google_event_id and synced_from_google
-};
-
 export type Todo = {
   id: string;
   user_id: string;
@@ -106,6 +96,18 @@ export type VaultMeta = {
   created_at: string;
 };
 
+export type StickyNote = {
+  id: string;
+  user_id: string;
+  content: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  created_at: string;
+};
+
 // ══════════════════════════════════════════════
 //  PROFILES
 // ══════════════════════════════════════════════
@@ -131,44 +133,6 @@ export async function upsertProfile(
     .select()
     .single();
   return data ?? null;
-}
-
-// ══════════════════════════════════════════════
-//  EVENTS  (Calendar)
-// ══════════════════════════════════════════════
-
-// Get all events for this user, sorted by date ascending
-export async function getEvents(userId: string): Promise<Event[]> {
-  if (userId === "demo-user") return [];
-  const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: true });
-
-  if (error) console.error("getEvents error:", error);
-  return data ?? [];
-}
-
-// Add a new event
-export async function addEvent(
-  userId: string,
-  event: { title: string; date: string; time: string },
-): Promise<Event | null> {
-  const { data, error } = await supabase
-    .from("events")
-    .insert({ ...event, user_id: userId })
-    .select()
-    .single();
-  if (error) console.error("addEvent error:", error);
-  return data ?? null;
-}
-
-// Delete an event by its ID
-export async function deleteEvent(id: string): Promise<void> {
-  const { error } = await supabase.from("events").delete().eq("id", id);
-
-  if (error) console.error("deleteEvent error:", error);
 }
 
 // ══════════════════════════════════════════════
@@ -527,4 +491,63 @@ export async function setVaultMeta(
   meta: { pin_verifier: string; pin_iv: string; pin_salt: string },
 ): Promise<void> {
   await supabase.from("vault_meta").upsert({ user_id: userId, ...meta });
+}
+
+export async function getStickyNotes(userId: string): Promise<StickyNote[]> {
+  if (userId === "demo-user") return [];
+  const { data } = await supabase
+    .from("sticky_notes")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  return data ?? [];
+}
+
+export async function createStickyNote(
+  userId: string,
+  x: number,
+  y: number,
+): Promise<StickyNote | null> {
+  if (userId === "demo-user") return null;
+  const { data } = await supabase
+    .from("sticky_notes")
+    .insert({
+      user_id: userId,
+      content: "",
+      x,
+      y,
+      width: 220,
+      height: 160,
+      color: "yellow",
+    })
+    .select()
+    .single();
+  return data ?? null;
+}
+
+export async function updateStickyNote(
+  id: string,
+  patch: Partial<
+    Pick<StickyNote, "content" | "x" | "y" | "width" | "height" | "color">
+  >,
+): Promise<void> {
+  await supabase.from("sticky_notes").update(patch).eq("id", id);
+}
+
+export async function deleteStickyNote(id: string): Promise<void> {
+  await supabase.from("sticky_notes").delete().eq("id", id);
+}
+
+export async function completeTodo(id: string): Promise<void> {
+  await supabase.from("todos").update({ done: true }).eq("id", id);
+}
+
+export async function updateProjectProgress(
+  id: string,
+  progress: number,
+  status?: string,
+): Promise<void> {
+  const patch: Record<string, unknown> = { progress };
+  if (status) patch.status = status;
+  await supabase.from("projects").update(patch).eq("id", id);
 }

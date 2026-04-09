@@ -28,7 +28,8 @@ const MONTHS = [
 type MoodType = "default" | "happy" | "concerned" | "celebrating" | "thinking";
 
 const PANEL_SPRITES: Record<string, string> = {
-  calendar: "/sprites/tyun-panel-calendar.png",
+  desk: "/sprites/tyun-panel-desk.png",
+  profile: "/sprites/tyun-panel-profile.png",
   todo: "/sprites/tyun-panel-todo.png",
   writing: "/sprites/tyun-panel-writing.png",
   projects: "/sprites/tyun-panel-projects.png",
@@ -74,6 +75,7 @@ type AppData = {
   finance: FinanceEntry[];
   financeViewMonth?: number;
   financeViewYear?: number;
+  stickyNotes?: { id: string; content: string; color: string }[];
 };
 
 type Props = {
@@ -112,10 +114,15 @@ type Props = {
   onToggleExpand?: () => void;
   prefillInput?: string;
   onPrefillConsumed?: () => void;
+  onStickyCleared?: (id: string) => void;
+  onTodoCompleted?: (id: string) => void;
+  onProjectUpdated?: (id: string, progress: number, status?: string) => void;
+  onStickyUpdated?: (id: string, content: string) => void;
+  onPomodoroStart?: (task: string) => void;
 };
 
 const SPRITE_GREETINGS = [
-  "Hey, I'm here 🧡 Talk to me — ask about your balance, add an event, check your drafts. I know everything.",
+  "Hey, I'm here 🧡 Talk to me — ask about your balance, check your drafts. I know everything.",
   "Welcome back! What are we working on today?",
   "Hey you 🧡 I've been waiting. What do you need?",
   "I'm here. What's on your mind?",
@@ -130,13 +137,18 @@ export default function TyunniePanel({
   onFinanceAdded,
   onFinanceReset,
   onSnippetAdded,
-  activePanel = "calendar",
+  activePanel = "desk",
   isExpanded = false,
   userName = "",
   onToggleExpand,
   profile,
   prefillInput,
   onPrefillConsumed,
+  onStickyCleared,
+  onTodoCompleted,
+  onProjectUpdated,
+  onStickyUpdated,
+  onPomodoroStart,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -236,8 +248,6 @@ export default function TyunniePanel({
       setBriefing(sessionStorage.getItem("tyunnie_briefing"));
       return;
     }
-    if (appData.todos.length === 0 && appData.finance.length === 0) return;
-
     async function fetchBriefing() {
       const today = new Date().toISOString().split("T")[0];
       const hour = new Date().getHours();
@@ -309,7 +319,10 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
     const pendingTodos =
       todos
         .filter((t) => !t.done)
-        .map((t) => `• [${t.tag}] ${t.text}${t.due ? ` (due ${t.due})` : ""}`)
+        .map(
+          (t) =>
+            `• [id:${t.id}] [${t.tag}] ${t.text}${t.due ? ` (due ${t.due})` : ""}`,
+        )
         .join("\n") || "None";
 
     const draftList =
@@ -324,7 +337,7 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
       projects
         .map(
           (p) =>
-            `• ${p.name} [${p.status}] ${p.progress}%${p.start_date ? ` (${p.start_date} → ${p.end_date})` : ""}`,
+            `• [id:${p.id}] ${p.name} [${p.status}] ${p.progress}%${p.start_date ? ` (${p.start_date} → ${p.end_date})` : ""}`,
         )
         .join("\n") || "None";
 
@@ -394,6 +407,18 @@ ${projectList}
 CODE SNIPS:
 ${snipList}
 
+STICKY NOTES (inbox):
+${
+  appData.stickyNotes?.filter((s) => s.content.trim()).length
+    ? appData.stickyNotes
+        .filter((s) => s.content.trim())
+        .map(
+          (s, i) => `${i + 1}. [id:${s.id}] [${s.color}] ${s.content.trim()}`,
+        )
+        .join("\n")
+    : "None"
+}
+
 === ACTIONS ===
 You MUST append an action block at the end of your reply using EXACTLY this format with no variations:
 <action>{"type":"ACTION","data":{...}}</action>
@@ -403,21 +428,25 @@ Do NOT use $, [, {, or any other character instead of <.
 The format must be exactly: <action> at the start and </action> at the end.
 
 Available actions:
-- add_event → ALWAYS show confirmation first. data: { "title":"...", "date":"YYYY-MM-DD", "time":"..." }
 - add_todo  → Add immediately, NO confirmation needed. data: { "text":"...", "tag":"cs"|"write"|"personal"|"other", "due":"YYYY-MM-DD or empty string" }
 - add_draft → Create a writing draft immediately. data: { "title":"...", "body":"..." }
 - add_project → Create a project immediately. data: { "name":"...", "status":"planning"|"active"|"paused"|"done", "description":"...", "start_date":"YYYY-MM-DD or empty", "end_date":"YYYY-MM-DD or empty", "progress": 0 }
 - add_finance → Add an income or expense entry immediately. data: { "type":"income"|"expense", "description":"...", "amount": 0.00, "category":"Food"|"Transport"|"Education"|"Entertainment"|"Salary"|"Freelance"|"Utilities"|"Shopping"|"Other", "date":"YYYY-MM-DD" }
 - reset_finance → Reset all entries for a specific month. data: { "year": 2026, "month": 3 }
 - add_snippet  → Generate and save a code snippet. data: { "name":"filename.py", "language":"py"|"js"|"ts"|"css"|"html"|"sql"|"bash"|"other", "code":"..." }
-- navigate  → data: { "panel":"calendar"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music" }
+- navigate  → data: { "panel":"desk"|"profile"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music" }
 - music_control → Control music. data: { "action":"play"|"pause"|"next"|"prev"|"toggle", "trackName":"..." (optional, for going to a specific song) }
+- clear_sticky → Clear a sticky note's content. data: { "id": "uuid" }
+- edit_sticky → Replace a sticky note's content with new text. data: { "id": "uuid", "content": "new text" }
+- complete_todo → Mark a task as done. data: { "id": "uuid" }
+- update_project → Update a project's progress or status. data: { "id": "uuid", "progress": 0-100, "status": "planning"|"active"|"paused"|"done" (optional) }
+- start_pomodoro → Navigate to Pomodoro with a task loaded. data: { "task": "task description" }
+IMPORTANT: If the user is only READING, asking about, or discussing sticky note content — do NOT append any action block at all. Only append clear_sticky if the user uses the words "clear", "wipe", "erase", "empty", or "delete" on the note.
 
 STRICT RULES:
 - NEVER use the navigate action unless the user explicitly asks to go somewhere or open a panel. Do NOT navigate automatically based on context.
 - When user says "add task", "remind me to", "add to my todo", "create a task" → ALWAYS include add_todo action
 - For add_todo: add it silently and immediately, tell the user it's done
-- For add_event: always confirm details first before adding
 - For financial questions: quote the exact RM balance from the data
 - NEVER mention the balance, income, or expenses unless the user explicitly asks about money, finance, or their balance
 - NEVER mention "action block" or "JSON" to the user
@@ -464,13 +493,41 @@ STRICT RULES:
 - When user says "go back to [song]", "play [song name]", "switch to [song]" → music_control with "play" and include "trackName"
 - Example:
   Switching to that track for you 🎵
-  <action>{"type":"music_control","data":{"action":"play","trackName":"Song Name"}}</action>`;
+  <action>{"type":"music_control","data":{"action":"play","trackName":"Song Name"}}</action>
+- ONLY use clear_sticky when user EXPLICITLY says "clear", "wipe", "erase", "empty", or "delete" the sticky note. Reading, summarizing, or asking what's on a sticky note does NOT trigger clear_sticky.
+- When user asks "what did I write", "what's on my sticky", "read my note" → just tell them the content, do NOT use clear_sticky
+- When user says "clear sticky", "wipe my note", "erase that note", "empty sticky" → use clear_sticky with the EXACT id value from [id:...] in STICKY NOTES above, NOT the color
+- Example:
+  Done, cleared that sticky for you 🧡
+  <action>{"type":"clear_sticky","data":{"id":"uuid-here"}}</action>
+  - When user says "mark done", "complete task", "finish [task]", "check off" → use complete_todo with the EXACT id from TASKS above
+- Example:
+  Done, marked that task as complete! ✅
+  <action>{"type":"complete_todo","data":{"id":"uuid-here"}}</action>
+- When user says "update project progress", "set progress to X%", "project is X% done" → use update_project
+- Example:
+  Updated! Project is now at 75% 🗂️
+  <action>{"type":"update_project","data":{"id":"uuid-here","progress":75}}</action>
+- When user says "edit my sticky", "update my note", "change sticky to" → use edit_sticky with the new content
+- Example:
+  Done, updated your sticky note 🧡
+  <action>{"type":"edit_sticky","data":{"id":"uuid-here","content":"new content here"}}</action>
+- When user says ONLY "go to pomodoro", "open pomodoro", "take me to pomodoro" with NO task mentioned → use navigate with panel "pomodoro" instead, do NOT use start_pomodoro
+- When user says "start pomodoro", "start a focus session", "pomodoro for [task]", "focus on [task]", "start timer" WITH a task or explicit start intent → use start_pomodoro
+- Example:
+  Starting a focus session for you 🍅
+  <action>{"type":"start_pomodoro","data":{"task":"Study for finals"}}</action>`;
   }
 
   // ── PARSE AND EXECUTE ACTION ──
   function executeAction(raw: string) {
     try {
-      const action = JSON.parse(raw.trim());
+      const action = JSON.parse(
+        raw
+          .trim()
+          .replace(/[^}]*$/, "")
+          .trim(),
+      );
 
       switch (action.type) {
         case "navigate":
@@ -545,6 +602,54 @@ STRICT RULES:
           });
           setCurrentMood("happy");
           setTimeout(() => setCurrentMood(null), 4000);
+          break;
+        }
+        case "clear_sticky": {
+          const d = action.data;
+          if (d.id && onStickyCleared) {
+            onStickyCleared(d.id);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+        case "complete_todo": {
+          const d = action.data;
+          if (d.id && onTodoCompleted) {
+            onTodoCompleted(d.id);
+            setCurrentMood("celebrating");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "update_project": {
+          const d = action.data;
+          if (d.id && onProjectUpdated) {
+            onProjectUpdated(d.id, d.progress ?? 0, d.status);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "edit_sticky": {
+          const d = action.data;
+          if (d.id && d.content !== undefined && onStickyUpdated) {
+            onStickyUpdated(d.id, d.content);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "start_pomodoro": {
+          const d = action.data;
+          if (onPomodoroStart) {
+            onPomodoroStart(d.task ?? "");
+            setCurrentMood("thinking");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
           break;
         }
         case "music_control": {
@@ -626,7 +731,9 @@ STRICT RULES:
         .replace(/\$action>/gi, "<action>")
         .replace(/\$\/action>/gi, "</action>")
         .replace(/\[action\]/gi, "<action>")
-        .replace(/\[\/action\]/gi, "</action>");
+        .replace(/\[\/action\]/gi, "</action>")
+        .replace(/<action\(/gi, "<action>")
+        .replace(/\)<\/action>/gi, "</action>");
 
       // Strip the action block from the visible message
       const actionMatch = normalized.match(/<action>([\s\S]*?)<\/action>/);

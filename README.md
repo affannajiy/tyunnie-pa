@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.1.2-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.2.0-f97316?style=flat-square)
 
 ---
 
@@ -17,7 +17,8 @@
 
 - Context-aware AI assistant powered by **Groq (Llama 3.3 70B)**
 - Knows your desk, tasks, drafts, projects, finances, and snippets
-- Can add events, tasks, drafts, projects, finance entries, and code snippets via natural language
+- Can add tasks, drafts, projects, finance entries, and code snippets via natural language
+- Can **complete tasks**, **update project progress**, **edit/clear sticky notes**, and **start Pomodoro sessions** with task pre-loading via natural language
 - **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
 - **Expandable panel** — desktop full-screen chat mode with larger sprite
 - **Sprite system** — separate panel sprites and mood sprites, reacts to active tab and emotional state
@@ -85,7 +86,13 @@
 
 ### 🔍 Global Search
 
-- `Cmd+K` / `Ctrl+K` — searches panels, events, tasks, drafts, projects, snippets, finance
+- `Cmd+K` / `Ctrl+K` — searches panels, tasks, drafts, projects, snippets, finance
+
+### 🗒️ Sticky Notes
+
+- Floating draggable, resizable notes that persist via Supabase
+- Spawn with `Ctrl+Shift+K` or the `+` button — five color themes
+- Tyunnie can read, edit, and clear sticky notes from chat
 
 ### 🌤️ Weather Widget
 
@@ -157,12 +164,6 @@ JDOODLE_CLIENT_SECRET=your-jdoodle-client-secret
 ### 3. Set up Supabase database
 
 ```sql
-create table events (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  title text not null, date date not null, time text,
-  created_at timestamptz default now()
-);
 create table todos (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
@@ -205,12 +206,56 @@ create table profiles (
   greeting_style text default 'casual', show_briefing boolean default true,
   updated_at timestamptz default now()
 );
+create table sticky_notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  content text default '',
+  x integer default 100,
+  y integer default 100,
+  width integer default 220,
+  height integer default 160,
+  color text default 'yellow',
+  created_at timestamptz default now()
+);
+-- Enable RLS on all tables
+alter table sticky_notes enable row level security;
+alter table todos enable row level security;
+alter table drafts enable row level security;
+alter table projects enable row level security;
+alter table snips enable row level security;
+alter table finance enable row level security;
+alter table profiles enable row level security;
+
+-- RLS policies — users can only access their own data
+create policy "owner" on todos     for all using (auth.uid() = user_id);
+create policy "owner" on drafts    for all using (auth.uid() = user_id);
+create policy "owner" on projects  for all using (auth.uid() = user_id);
+create policy "owner" on snips     for all using (auth.uid() = user_id);
+create policy "owner" on finance   for all using (auth.uid() = user_id);
+create policy "owner" on profiles  for all using (auth.uid() = id);
+
+-- Avatar storage bucket
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true);
+
+create policy "avatar_upload" on storage.objects
+  for insert with check (
+    bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "avatar_read" on storage.objects
+  for select using (bucket_id = 'avatars');
+
+create policy "avatar_delete" on storage.objects
+  for delete using (
+    bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]
+  );
+create policy "owner" on sticky_notes for all using (auth.uid() = user_id);
 ```
 
 Enable RLS on all tables. Add indexes:
 
 ```sql
-create index if not exists events_user_date      on events(user_id, date);
 create index if not exists todos_user_done       on todos(user_id, done);
 create index if not exists finance_user_date     on finance(user_id, date);
 create index if not exists snips_user_created    on snips(user_id, created_at);
@@ -222,7 +267,7 @@ create index if not exists projects_user_created on projects(user_id, created_at
 
 Create `public/sprites/` with transparent PNG sprites (360×460px recommended):
 
-- Panel sprites: `tyun-panel-calendar.png`, `tyun-panel-todo.png`, `tyun-panel-writing.png`, `tyun-panel-projects.png`, `tyun-panel-snippets.png`, `tyun-panel-finance.png`, `tyun-panel-music.png`, `tyun-panel-pomodoro.png`, `tyun-panel-games.png`
+- Panel sprites: `tyun-panel-desk.png`, `tyun-panel-profile.png`, `tyun-panel-todo.png`, `tyun-panel-writing.png`, `tyun-panel-projects.png`, `tyun-panel-snippets.png`, `tyun-panel-finance.png`, `tyun-panel-music.png`, `tyun-panel-pomodoro.png`, `tyun-panel-games.png`
 - Mood sprites: `tyun-mood-default.png`, `tyun-mood-happy.png`, `tyun-mood-concerned.png`, `tyun-mood-celebrating.png`, `tyun-mood-thinking.png`
 
 ### 5. Add music (optional)
@@ -272,6 +317,8 @@ npm run dev
 │   ├── Finance.tsx
 │   ├── Music.tsx
 │   ├── Pomodoro.tsx
+│   ├── StickyNote.tsx
+│   ├── StickyLayer.tsx
 │   ├── Games.tsx
 │   └── games/
 │       ├── TicTacToe.tsx

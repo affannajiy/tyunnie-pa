@@ -21,6 +21,14 @@ import Games from "@/components/Games";
 import Weather from "@/components/Weather";
 import Profile from "@/components/Profile";
 import { getProfile, type Profile as ProfileType } from "@/lib/database";
+import StickyLayer from "@/components/StickyLayer";
+import {
+  getStickyNotes,
+  completeTodo,
+  updateProjectProgress,
+  updateStickyNote,
+} from "@/lib/database";
+import type { StickyNote } from "@/lib/database";
 
 import {
   getTodos,
@@ -80,7 +88,7 @@ export default function Home() {
     if (panel && Object.keys(PANEL_LABELS).includes(panel)) {
       return panel as Panel;
     }
-    return "desk"; // ← was "calendar"
+    return "desk";
   });
 
   // ── USERNAME ──
@@ -128,6 +136,9 @@ export default function Home() {
   const [projectRefreshKey, setProjectRefreshKey] = useState(0);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
   const [snippetRefreshKey, setSnippetRefreshKey] = useState(0);
+  const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
+  const [pomodoroTask, setPomodoroTask] = useState<string>("");
+  const [pomodoroKey, setPomodoroKey] = useState(0);
 
   // ── CHECK AUTH ON MOUNT ──
   // Handle OAuth error redirect
@@ -406,12 +417,13 @@ export default function Home() {
     if (!user) return;
 
     async function loadAll() {
-      const [td, dr, pr, sn, fi] = await Promise.all([
+      const [td, dr, pr, sn, fi, stickies] = await Promise.all([
         getTodos(user!.id),
         getDrafts(user!.id),
         getProjects(user!.id),
         getSnips(user!.id),
         getFinanceEntries(user!.id),
+        getStickyNotes(user!.id),
       ]);
       const prof = await getProfile(user!.id);
       setProfile(prof);
@@ -435,6 +447,7 @@ export default function Home() {
       setProjects(pr);
       setSnips(sn);
       setFinance(fi);
+      setStickyNotes(stickies);
     }
     loadAll();
   }, [user]);
@@ -547,6 +560,49 @@ export default function Home() {
       setSnippetRefreshKey((prev) => prev + 1);
       setActivePanel("snippets"); // auto-navigate to snippets panel
     }
+  }
+
+  async function handleTodoCompleted(id: string) {
+    await completeTodo(id);
+    setTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, done: true } : t)),
+    );
+    setTodoRefreshKey((prev) => prev + 1);
+  }
+
+  async function handleProjectUpdated(
+    id: string,
+    progress: number,
+    status?: string,
+  ) {
+    await updateProjectProgress(id, progress, status);
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              progress,
+              ...(status ? { status: status as Project["status"] } : {}),
+            }
+          : p,
+      ),
+    );
+    setProjectRefreshKey((prev) => prev + 1);
+  }
+
+  async function handleStickyUpdated(id: string, content: string) {
+    await updateStickyNote(id, { content });
+    setStickyNotes((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, content } : n)),
+    );
+  }
+
+  function handlePomodoroStart(task: string) {
+    setPomodoroTask(task);
+    setPomodoroKey((k) => k + 1); // ← increment forces remount
+    sessionStorage.setItem("pomodoro_autostart", "1");
+    setActivePanel("pomodoro");
+    setTyunnieExpanded(false);
   }
 
   // ── LOADING SCREEN ──
@@ -708,7 +764,13 @@ export default function Home() {
                 />
               )}
               {activePanel === "music" && <Music />}
-              {activePanel === "pomodoro" && <Pomodoro userId={user.id} />}
+              {activePanel === "pomodoro" && (
+                <Pomodoro
+                  key={pomodoroKey}
+                  userId={user.id}
+                  initialTask={pomodoroTask}
+                />
+              )}
               {activePanel === "games" && <Games />}
               {activePanel === "profile" && (
                 <Profile
@@ -760,6 +822,7 @@ export default function Home() {
               finance,
               financeViewMonth,
               financeViewYear,
+              stickyNotes,
             }}
             profile={profile}
             userName={userName}
@@ -770,6 +833,14 @@ export default function Home() {
             onFinanceAdded={handleFinanceAdded}
             onSnippetAdded={handleSnippetAdded}
             onFinanceReset={handleFinanceReset}
+            onStickyCleared={async (id) => {
+              await import("@/lib/database").then(({ updateStickyNote }) =>
+                updateStickyNote(id, { content: "" }),
+              );
+              setStickyNotes((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, content: "" } : n)),
+              );
+            }}
             activePanel={activePanel}
             isExpanded={tyunnieExpanded}
             prefillInput={tyunniePrefill}
@@ -781,6 +852,10 @@ export default function Home() {
                 setTyunnieExpanded((prev) => !prev);
               }
             }}
+            onTodoCompleted={handleTodoCompleted}
+            onProjectUpdated={handleProjectUpdated}
+            onStickyUpdated={handleStickyUpdated}
+            onPomodoroStart={handlePomodoroStart}
           />
         </div>
       </div>
@@ -993,6 +1068,7 @@ export default function Home() {
 
                     // Search section
                     { keys: ["⌘ Ctrl", "K"], label: "Global search" },
+                    { keys: ["⌘ Ctrl", "⇧", "K"], label: "New sticky note" },
                   ].map(({ keys, label }) => (
                     <div
                       key={label}
@@ -1072,6 +1148,11 @@ export default function Home() {
           </div>
         </div>
       )}
+      <StickyLayer
+        userId={user.id}
+        notes={stickyNotes}
+        onNotesChange={setStickyNotes}
+      />
     </MusicProvider>
   );
 }

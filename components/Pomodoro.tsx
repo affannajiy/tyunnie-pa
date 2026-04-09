@@ -26,9 +26,10 @@ const MODE_COLORS: Record<Mode, string> = {
 
 type Props = {
   userId: string;
+  initialTask?: string;
 };
 
-export default function Pomodoro({ userId }: Props) {
+export default function Pomodoro({ userId, initialTask }: Props) {
   const [mode, setMode] = useState<Mode>("focus");
   const [secondsLeft, setSecondsLeft] = useState(DURATIONS.focus);
   const [running, setRunning] = useState(false);
@@ -40,10 +41,50 @@ export default function Pomodoro({ userId }: Props) {
 
   // Load pending todos for task linking
   useEffect(() => {
-    getTodos(userId).then((data) => setTodos(data.filter((t) => !t.done)));
+    getTodos(userId).then((data) => {
+      const pending = data.filter((t) => !t.done);
+      setTodos(pending);
+      const shouldStart = sessionStorage.getItem("pomodoro_autostart") === "1";
+      if (initialTask) {
+        const match = pending.find((t) =>
+          t.text.toLowerCase().includes(initialTask.toLowerCase()),
+        );
+        if (match) setLinkedTask(match.id);
+      }
+      if (shouldStart) {
+        sessionStorage.removeItem("pomodoro_autostart");
+        setRunning(true);
+      }
+    });
   }, [userId]);
 
   const handleDone = useCallback(() => {
+    // ── ALERT SOUND ──
+    try {
+      const ctx = new AudioContext();
+      const playBeep = (freq: number, start: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(
+          0.001,
+          ctx.currentTime + start + duration,
+        );
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + duration);
+      };
+      // Three ascending tones — classic Pomodoro done sound
+      playBeep(523, 0, 0.15); // C5
+      playBeep(659, 0.18, 0.15); // E5
+      playBeep(784, 0.36, 0.3); // G5
+    } catch {
+      /* ignore if audio context blocked */
+    }
+
     setRunning(false);
     setShowDone(true);
     setTimeout(() => setShowDone(false), 4000);

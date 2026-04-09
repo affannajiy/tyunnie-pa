@@ -5,6 +5,49 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.2.0] — 2026-04-09
+
+### Added
+
+- **Sticky notes system** — floating draggable, resizable sticky notes that persist across sessions via Supabase. Spawn with `Ctrl+Shift+K` or the `+` button. Five color themes (yellow, blue, green, pink, purple). Drag by header, resize from bottom-right corner. Debounced autosave on content change, position and size saved on drag/resize end
+- `sticky_notes` Supabase table with RLS — stores content, position (x/y), size (w/h), color, and user_id
+- `getStickyNotes`, `createStickyNote`, `updateStickyNote`, `deleteStickyNote` added to `lib/database.ts`
+- `StickyNote` type exported from `lib/database.ts`
+- `components/StickyNote.tsx` — individual sticky note component with drag, resize, color picker, and debounced content save
+- `components/StickyLayer.tsx` — manages all sticky notes, renders above all panels via `fixed` positioning, handles `Ctrl+Shift+K` keyboard shortcut
+- Sticky notes wired into `TyunniePanel` — Tyunnie can read all sticky note content via system prompt context
+- **Tyunnie sticky actions** — `clear_sticky` (wipe content), `edit_sticky` (replace content with new text) actions added to Tyunnie's action system
+- **Tyunnie todo actions** — `complete_todo` marks a task as done directly from chat using the task's UUID from system prompt context
+- **Tyunnie project actions** — `update_project` sets progress percentage and optionally updates status from chat
+- **Tyunnie Pomodoro action** — `start_pomodoro` navigates to Pomodoro panel, fuzzy-matches a task by name and pre-selects it, then auto-starts the timer via `sessionStorage` flag
+- `completeTodo` and `updateProjectProgress` added to `lib/database.ts`
+- Task and project IDs now exposed in Tyunnie's system prompt (`[id:uuid]` prefix) so Tyunnie can reference them precisely in actions
+- `Ctrl+Shift+K` shortcut documented in the keyboard shortcuts modal
+- Pomodoro done sound — three ascending sine tones (C5→E5→G5) generated via Web Audio API, fires when timer hits zero
+- `initialTask` prop on `Pomodoro` component — fuzzy-matches task name against pending todos on mount
+- `pomodoroKey` state in dashboard forces full Pomodoro remount on each Tyunnie-triggered session to guarantee clean autostart
+
+### Fixed
+
+- Sticky note textarea jitter — `useEffect` syncing `note.content` prop to local state now guarded by `isTypingRef` so prop updates from debounced saves don't reset mid-type content
+- `clear_sticky` AI confusion — model was passing color instead of UUID; system prompt updated with `[id:uuid]` prefix and explicit rule to use id not color
+- Groq model appending `%` or other trailing garbage to action JSON — `executeAction` now strips all non-`}` characters after the last `}` before parsing
+- Malformed `<action(...)` tag variant normalised in response processing
+- Pomodoro autostart race condition — switched from prop-based `autoStart` to `sessionStorage` flag (`pomodoro_autostart`) consumed on mount, eliminating async timing issues
+- `update_project` TypeScript error — `status` cast as `Project["status"]` to satisfy union type constraint
+- Duplicate `}: Props) {` parse errors in `TyunniePanel.tsx` from multiple edit sessions
+
+### Changed
+
+- `PANEL_SPRITES` map updated with `desk` and `profile` entries (`tyun-panel-desk.png`, `tyun-panel-profile.png`)
+- `navigate` action panel list updated to include `"desk"` and `"profile"`
+- `activePanel` default changed from `"calendar"` to `"desk"` in TyunniePanel
+- Daily briefing early-return data guard (`todos.length === 0 && finance.length === 0`) removed — briefing now always fires on first load regardless of data state
+- Pending todo list and project list in system prompt now include `[id:uuid]` prefix for each item
+- Pomodoro `key` prop set to `pomodoroKey` counter in dashboard — increments on each Tyunnie-triggered session, guarantees remount without ever resetting to a stale value
+
+---
+
 ## [3.1.2] — 2026-04-09
 
 ### Fixed
@@ -20,6 +63,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [3.1.1] - 2026-04-09
 
 ### Fixed
+
 - Rerouting `/` to `/dashboard` in `app/page.tsx` to avoid 404
 
 ---
