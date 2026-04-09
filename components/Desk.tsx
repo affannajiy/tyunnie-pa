@@ -16,6 +16,7 @@ type Props = {
   financeViewYear: number;
   onNavigate: (panel: Panel) => void;
   onTodoToggle: (id: string, done: boolean) => void;
+  onFocusMode: () => void;
 };
 
 function getGreeting(name: string) {
@@ -81,26 +82,40 @@ function DeskWeather() {
     try {
       const { lat, lon } = JSON.parse(stored);
       fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=weathercode`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=weathercode`,
       )
         .then((r) => r.json())
         .then((d) => {
           const code = d.current_weather?.weathercode ?? 0;
           const temp = Math.round(d.current_weather?.temperature ?? 0);
           const condition =
-            code === 0 ? "Clear" :
-            code <= 3 ? "Cloudy" :
-            code <= 48 ? "Foggy" :
-            code <= 67 ? "Rainy" :
-            code <= 77 ? "Snowy" :
-            code <= 82 ? "Showers" : "Stormy";
+            code === 0
+              ? "Clear"
+              : code <= 3
+                ? "Cloudy"
+                : code <= 48
+                  ? "Foggy"
+                  : code <= 67
+                    ? "Rainy"
+                    : code <= 77
+                      ? "Snowy"
+                      : code <= 82
+                        ? "Showers"
+                        : "Stormy";
           const icon =
-            code === 0 ? "☀️" :
-            code <= 3 ? "⛅" :
-            code <= 48 ? "🌫️" :
-            code <= 67 ? "🌧️" :
-            code <= 77 ? "❄️" :
-            code <= 82 ? "🌦️" : "⛈️";
+            code === 0
+              ? "☀️"
+              : code <= 3
+                ? "⛅"
+                : code <= 48
+                  ? "🌫️"
+                  : code <= 67
+                    ? "🌧️"
+                    : code <= 77
+                      ? "❄️"
+                      : code <= 82
+                        ? "🌦️"
+                        : "⛈️";
           setWeather({ temp, condition, icon });
         });
     } catch {}
@@ -110,14 +125,22 @@ function DeskWeather() {
     <div className="bg-white rounded-3xl p-4 border border-[#f0ece8] shadow-sm flex flex-col items-center justify-center gap-1">
       {weather ? (
         <>
-          <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">Weather</p>
+          <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">
+            Weather
+          </p>
           <p className="text-3xl leading-none">{weather.icon}</p>
-          <p className="text-xl font-bold text-[#1a1208] font-mono leading-none">{weather.temp}°C</p>
-          <p className="text-[9px] font-mono text-[#b09880]">{weather.condition}</p>
+          <p className="text-xl font-bold text-[#1a1208] font-mono leading-none">
+            {weather.temp}°C
+          </p>
+          <p className="text-[9px] font-mono text-[#b09880]">
+            {weather.condition}
+          </p>
         </>
       ) : (
         <>
-          <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">Weather</p>
+          <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">
+            Weather
+          </p>
           <div className="text-2xl opacity-20">🌤️</div>
           <p className="text-[9px] text-[#c5bdb0] font-mono">No city set</p>
         </>
@@ -136,6 +159,7 @@ export default function Desk({
   financeViewYear,
   onNavigate,
   onTodoToggle,
+  onFocusMode,
 }: Props) {
   const music = useMusicContext();
   const [oneliner, setOneliner] = useState<string | null>(null);
@@ -527,12 +551,20 @@ Just one sentence, no quotes, no action blocks.`,
               </button>
             </div>
           </div>
-          <button
-            onClick={() => onNavigate("pomodoro")}
-            className="text-[10px] font-mono text-[#f97316] hover:underline self-start"
-          >
-            Full Pomodoro →
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => onNavigate("pomodoro")}
+              className="text-[10px] font-mono text-[#f97316] hover:underline"
+            >
+              Full Pomodoro →
+            </button>
+            <button
+              onClick={onFocusMode}
+              className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+            >
+              🎯 Focus Mode
+            </button>
+          </div>
         </div>
 
         {/* 4. Music */}

@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.3.0] — 2026-04-09
+
+### Added
+
+- **Focus Mode** — fullscreen minimal overlay for distraction-free work. Triggered via `🎯 Focus Mode` button on the Desk's Focus Timer card or `Ctrl+Shift+F` shortcut
+- Focus Mode shows: task selector (pick from pending todos), large Pomodoro timer circle with start/pause/reset/skip controls, mini music player with album art glow and full controls, and existing sticky notes floating on top
+- Timer done sound fires on session complete (same C-E-G tone as Pomodoro panel)
+- `Esc` or Exit button to leave Focus Mode
+- `components/FocusMode.tsx` — new standalone component, `fixed inset-0 z-100` overlay with dark warm aesthetic matching Tyunnie's panel theme
+- `Ctrl+Shift+F` added to keyboard shortcuts modal
+
+### Changed
+
+- Focus Timer card on Desk now has two footer links: "Full Pomodoro →" and "🎯 Focus Mode"
+- `onFocusMode` prop added to `Desk` component
+- `focusMode` boolean state added to `dashboard/page.tsx`
+
+---
+
 ## [3.2.0] — 2026-04-09
 
 ### Added

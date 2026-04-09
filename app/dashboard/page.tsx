@@ -29,6 +29,7 @@ import {
   updateStickyNote,
 } from "@/lib/database";
 import type { StickyNote } from "@/lib/database";
+import FocusMode from "@/components/FocusMode";
 
 import {
   getTodos,
@@ -139,6 +140,7 @@ export default function Home() {
   const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
   const [pomodoroTask, setPomodoroTask] = useState<string>("");
   const [pomodoroKey, setPomodoroKey] = useState(0);
+  const [focusMode, setFocusMode] = useState(false);
 
   // ── CHECK AUTH ON MOUNT ──
   // Handle OAuth error redirect
@@ -233,6 +235,11 @@ export default function Home() {
       if ((e.metaKey || e.ctrlKey) && e.key === "/") {
         e.preventDefault();
         setTyunnieExpanded((prev) => !prev);
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        setFocusMode((prev) => !prev);
       }
     }
 
@@ -720,6 +727,7 @@ export default function Home() {
                     setTyunnieExpanded(false);
                   }}
                   onTodoToggle={handleTodoToggle}
+                  onFocusMode={() => setFocusMode(true)}
                 />
               )}
               {activePanel === "todo" && (
@@ -1069,6 +1077,7 @@ export default function Home() {
                     // Search section
                     { keys: ["⌘ Ctrl", "K"], label: "Global search" },
                     { keys: ["⌘ Ctrl", "⇧", "K"], label: "New sticky note" },
+                    { keys: ["⌘ Ctrl", "⇧", "F"], label: "Focus Mode" },
                   ].map(({ keys, label }) => (
                     <div
                       key={label}
@@ -1147,6 +1156,14 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+      {focusMode && (
+        <FocusMode
+          todos={todos}
+          stickyNotes={stickyNotes}
+          onStickyNotesChange={setStickyNotes}
+          onExit={() => setFocusMode(false)}
+        />
       )}
       <StickyLayer
         userId={user.id}

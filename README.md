@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.2.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.3.0-f97316?style=flat-square)
 
 ---
 
@@ -76,6 +76,12 @@
 ### ⏲️ Pomodoro Timer
 
 - 25/5/15 cycle, session dots, task linking, timer starts on first input
+
+### 🎯 Focus Mode
+
+- Fullscreen minimal overlay — task + Pomodoro timer + music player + sticky notes
+- Trigger via `🎯 Focus Mode` button on Desk or `Ctrl+Shift+F`
+- Timer done sound, `Esc` to exit
 
 ### 🎮 Games Hub
 
@@ -319,6 +325,7 @@ npm run dev
 │   ├── Pomodoro.tsx
 │   ├── StickyNote.tsx
 │   ├── StickyLayer.tsx
+│   ├── FocusMode.tsx
 │   ├── Games.tsx
 │   └── games/
 │       ├── TicTacToe.tsx
