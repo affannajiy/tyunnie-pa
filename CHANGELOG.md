@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.4.0] — 2026-04-10
+
+### Added
+
+- **Persistent Memory** — Tyunnie now remembers facts about you across sessions via a `memories` Supabase table. Memories persist through page refreshes and new sessions
+- Tyunnie saves memories when explicitly told ("remember that...", "note that...", "don't forget...") or proactively when important personal facts are revealed in conversation (preferences, schedules, goals, study habits)
+- Tyunnie can delete memories on request ("forget that", "remove that memory")
+- Memory context injected into every system prompt — Tyunnie reads all stored memories before responding, making him feel genuinely aware of your history
+- `Memory` type and `getMemories`, `addMemory`, `deleteMemory` functions added to `lib/database.ts`
+- `memories` loaded in `loadAll()` alongside todos, projects, finance, etc.
+- `save_memory` and `delete_memory` actions added to Tyunnie's action system with `[id:uuid]` prefix for precise targeting
+- `onMemoryAdded` and `onMemoryDeleted` props added to `TyunniePanel`
+- `memories` field added to `AppData` type
+
+### Changed
+
+- Memories capped at 40 most recent entries (ordered by `created_at` descending) to keep system prompt token usage manageable
+
+---
+
 ## [3.3.0] — 2026-04-09
 
 ### Added

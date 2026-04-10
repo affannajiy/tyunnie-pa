@@ -108,6 +108,13 @@ export type StickyNote = {
   created_at: string;
 };
 
+export type Memory = {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+};
+
 // ══════════════════════════════════════════════
 //  PROFILES
 // ══════════════════════════════════════════════
@@ -550,4 +557,30 @@ export async function updateProjectProgress(
   const patch: Record<string, unknown> = { progress };
   if (status) patch.status = status;
   await supabase.from("projects").update(patch).eq("id", id);
+}
+
+// ══════════════════════════════════════════════
+//  MEMORY
+// ══════════════════════════════════════════════
+export async function getMemories(userId: string): Promise<Memory[]> {
+  if (userId === "demo-user") return [];
+  const { data } = await supabase
+    .from("memories")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  return data ?? [];
+}
+
+export async function addMemory(
+  userId: string,
+  content: string,
+): Promise<void> {
+  if (userId === "demo-user") return;
+  await supabase.from("memories").insert({ user_id: userId, content });
+}
+
+export async function deleteMemory(id: string): Promise<void> {
+  await supabase.from("memories").delete().eq("id", id);
 }

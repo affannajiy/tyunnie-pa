@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.3.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.4.0-f97316?style=flat-square)
 
 ---
 
@@ -23,6 +23,7 @@
 - **Expandable panel** — desktop full-screen chat mode with larger sprite
 - **Sprite system** — separate panel sprites and mood sprites, reacts to active tab and emotional state
 - Calls you by name and adapts tone based on your profile preferences
+- **Persistent memory** — remembers facts about you across sessions, proactively saves preferences, goals, and habits
 - Mobile optimised — sprite floats as background, input always accessible
 
 ### 👤 User Profile
@@ -223,6 +224,12 @@ create table sticky_notes (
   color text default 'yellow',
   created_at timestamptz default now()
 );
+create table memories (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  content text not null,
+  created_at timestamptz default now()
+);
 -- Enable RLS on all tables
 alter table sticky_notes enable row level security;
 alter table todos enable row level security;
@@ -231,6 +238,7 @@ alter table projects enable row level security;
 alter table snips enable row level security;
 alter table finance enable row level security;
 alter table profiles enable row level security;
+alter table memories enable row level security;
 
 -- RLS policies — users can only access their own data
 create policy "owner" on todos     for all using (auth.uid() = user_id);
@@ -239,6 +247,7 @@ create policy "owner" on projects  for all using (auth.uid() = user_id);
 create policy "owner" on snips     for all using (auth.uid() = user_id);
 create policy "owner" on finance   for all using (auth.uid() = user_id);
 create policy "owner" on profiles  for all using (auth.uid() = id);
+create policy "owner" on memories for all using (auth.uid() = user_id);
 
 -- Avatar storage bucket
 insert into storage.buckets (id, name, public)

@@ -27,7 +27,11 @@ import {
   completeTodo,
   updateProjectProgress,
   updateStickyNote,
+  getMemories,
+  addMemory,
+  deleteMemory,
 } from "@/lib/database";
+import type { Memory } from "@/lib/database";
 import type { StickyNote } from "@/lib/database";
 import FocusMode from "@/components/FocusMode";
 
@@ -141,6 +145,7 @@ export default function Home() {
   const [pomodoroTask, setPomodoroTask] = useState<string>("");
   const [pomodoroKey, setPomodoroKey] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
+  const [memories, setMemories] = useState<Memory[]>([]);
 
   // ── CHECK AUTH ON MOUNT ──
   // Handle OAuth error redirect
@@ -424,13 +429,14 @@ export default function Home() {
     if (!user) return;
 
     async function loadAll() {
-      const [td, dr, pr, sn, fi, stickies] = await Promise.all([
+      const [td, dr, pr, sn, fi, stickies, mems] = await Promise.all([
         getTodos(user!.id),
         getDrafts(user!.id),
         getProjects(user!.id),
         getSnips(user!.id),
         getFinanceEntries(user!.id),
         getStickyNotes(user!.id),
+        getMemories(user!.id),
       ]);
       const prof = await getProfile(user!.id);
       setProfile(prof);
@@ -455,6 +461,7 @@ export default function Home() {
       setSnips(sn);
       setFinance(fi);
       setStickyNotes(stickies);
+      setMemories(mems);
     }
     loadAll();
   }, [user]);
@@ -831,6 +838,7 @@ export default function Home() {
               financeViewMonth,
               financeViewYear,
               stickyNotes,
+              memories,
             }}
             profile={profile}
             userName={userName}
@@ -864,6 +872,23 @@ export default function Home() {
             onProjectUpdated={handleProjectUpdated}
             onStickyUpdated={handleStickyUpdated}
             onPomodoroStart={handlePomodoroStart}
+            onMemoryAdded={async (content) => {
+              if (!user) return;
+              await addMemory(user.id, content);
+              setMemories((prev) => [
+                {
+                  id: crypto.randomUUID(),
+                  user_id: user.id,
+                  content,
+                  created_at: new Date().toISOString(),
+                },
+                ...prev,
+              ]);
+            }}
+            onMemoryDeleted={async (id) => {
+              await deleteMemory(id);
+              setMemories((prev) => prev.filter((m) => m.id !== id));
+            }}
           />
         </div>
       </div>

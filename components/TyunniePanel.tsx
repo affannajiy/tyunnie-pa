@@ -76,6 +76,7 @@ type AppData = {
   financeViewMonth?: number;
   financeViewYear?: number;
   stickyNotes?: { id: string; content: string; color: string }[];
+  memories?: { id: string; content: string }[];
 };
 
 type Props = {
@@ -119,6 +120,8 @@ type Props = {
   onProjectUpdated?: (id: string, progress: number, status?: string) => void;
   onStickyUpdated?: (id: string, content: string) => void;
   onPomodoroStart?: (task: string) => void;
+  onMemoryAdded?: (content: string) => void;
+  onMemoryDeleted?: (id: string) => void;
 };
 
 const SPRITE_GREETINGS = [
@@ -149,6 +152,8 @@ export default function TyunniePanel({
   onProjectUpdated,
   onStickyUpdated,
   onPomodoroStart,
+  onMemoryAdded,
+  onMemoryDeleted,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -407,6 +412,13 @@ ${projectList}
 CODE SNIPS:
 ${snipList}
 
+TYUNNIE'S MEMORIES (facts learned about the user across sessions):
+${
+  appData.memories?.length
+    ? appData.memories.map((m) => `• [id:${m.id}] ${m.content}`).join("\n")
+    : "None yet"
+}
+
 STICKY NOTES (inbox):
 ${
   appData.stickyNotes?.filter((s) => s.content.trim()).length
@@ -440,8 +452,10 @@ Available actions:
 - edit_sticky → Replace a sticky note's content with new text. data: { "id": "uuid", "content": "new text" }
 - complete_todo → Mark a task as done. data: { "id": "uuid" }
 - update_project → Update a project's progress or status. data: { "id": "uuid", "progress": 0-100, "status": "planning"|"active"|"paused"|"done" (optional) }
-- start_pomodoro → Navigate to Pomodoro with a task loaded. data: { "task": "task description" }
-IMPORTANT: If the user is only READING, asking about, or discussing sticky note content — do NOT append any action block at all. Only append clear_sticky if the user uses the words "clear", "wipe", "erase", "empty", or "delete" on the note.
+- start_pomodoro → Navigate to Pomodoro with a task loaded. data: { "task": "task description" } IMPORTANT: If the user is only READING, asking about, or discussing sticky note content — do NOT append any action block at all. Only append clear_sticky if the user uses the words "clear", "wipe", "erase", "empty", or "delete" on the note.
+- save_memory → Save an important fact about the user for future sessions. data: { "content": "fact to remember" }
+- delete_memory → Remove a memory that is no longer relevant. data: { "id": "uuid" }
+
 
 STRICT RULES:
 - NEVER use the navigate action unless the user explicitly asks to go somewhere or open a panel. Do NOT navigate automatically based on context.
@@ -516,7 +530,16 @@ STRICT RULES:
 - When user says "start pomodoro", "start a focus session", "pomodoro for [task]", "focus on [task]", "start timer" WITH a task or explicit start intent → use start_pomodoro
 - Example:
   Starting a focus session for you 🍅
-  <action>{"type":"start_pomodoro","data":{"task":"Study for finals"}}</action>`;
+  <action>{"type":"start_pomodoro","data":{"task":"Study for finals"}}</action>
+- When user says "remember that", "don't forget", "keep in mind", "note that" → use save_memory with the fact as content
+- When user says "forget that", "remove that memory", "delete that fact" → use delete_memory with the exact id from MEMORIES above
+- Also proactively save memories when user reveals important personal facts: preferences, schedules, goals, important dates, study habits, relationships
+- Example:
+  Got it, I'll remember that 🧠
+  <action>{"type":"save_memory","data":{"content":"User prefers studying at night"}}</action>
+- Memory delete example:
+  Done, I've forgotten that 🧡
+  <action>{"type":"delete_memory","data":{"id":"uuid-here"}}</action>`;
   }
 
   // ── PARSE AND EXECUTE ACTION ──
@@ -637,6 +660,26 @@ STRICT RULES:
           const d = action.data;
           if (d.id && d.content !== undefined && onStickyUpdated) {
             onStickyUpdated(d.id, d.content);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "save_memory": {
+          const d = action.data;
+          if (d.content && onMemoryAdded) {
+            onMemoryAdded(d.content);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "delete_memory": {
+          const d = action.data;
+          if (d.id && onMemoryDeleted) {
+            onMemoryDeleted(d.id);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
           }
