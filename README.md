@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.4.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.5.0-f97316?style=flat-square)
 
 ---
 
@@ -90,6 +90,7 @@
 - **Sudoku** — notes mode, 3-mistake limit, lazy timer
 - **Minesweeper** — first-click safe, flood fill, chord support
 - **Solitaire** — Klondike with full move validation
+- **Chess** — full legal move validation, castling, en passant, pawn promotion. vs Tyunnie bot (3 difficulties) or 2-player. 8 time controls (Bullet/Blitz/Rapid/Classical). Captured pieces display, move log, mobile touch support
 
 ### 🔍 Global Search
 
@@ -340,7 +341,8 @@ npm run dev
 │       ├── TicTacToe.tsx
 │       ├── Sudoku.tsx
 │       ├── Minesweeper.tsx
-│       └── Solitaire.tsx
+│       ├── Solitaire.tsx
+│       └── Chess.tsx
 ├── lib/
 │   ├── supabase.ts
 │   ├── database.ts

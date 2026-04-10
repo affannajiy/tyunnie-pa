@@ -6,8 +6,15 @@ import TicTacToe from "./games/TicTacToe";
 import Sudoku from "./games/Sudoku";
 import Minesweeper from "./games/Minesweeper";
 import Solitaire from "./games/Solitaire";
+import Chess from "./games/Chess";
 
-type Game = "tictactoe" | "sudoku" | "minesweeper" | "solitaire" | null;
+type Game =
+  | "tictactoe"
+  | "sudoku"
+  | "minesweeper"
+  | "solitaire"
+  | "chess"
+  | null;
 
 const GAME_CARDS = [
   {
@@ -36,6 +43,13 @@ const GAME_CARDS = [
     title: "Solitaire",
     desc: "Klondike. Tyunnie will judge your card choices.",
     icon: "🃏",
+    available: true,
+  },
+  {
+    id: "chess" as Game,
+    title: "Chess",
+    desc: "Full chess vs Tyunnie or a friend. He plays dirty on Hard.",
+    icon: "♟️",
     available: true,
   },
 ];
@@ -127,6 +141,14 @@ export default function Games() {
           </span>
         </div>
         <Solitaire />
+      </div>
+    );
+  }
+
+  if (activeGame === "chess") {
+    return (
+      <div>
+        <Chess onBack={() => setActiveGame(null)} />
       </div>
     );
   }

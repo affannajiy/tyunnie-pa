@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.5.0] — 2026-04-10
+
+### Added
+
+- **Chess** — full chess implementation in `components/games/Chess.tsx`
+- Complete legal move validation including castling (kingside + queenside), en passant, pawn promotion modal (Queen/Rook/Bishop/Knight)
+- Check, checkmate, and stalemate detection
+- **3 difficulty levels** — Easy (random moves), Medium (2-ply minimax with 40% random), Hard (3-ply minimax with alpha-beta pruning + piece-square tables for positional evaluation)
+- **2-player mode** — pass-and-play on same device
+- **vs Tyunnie bot** — play as White or Black; board flips when playing as Black
+- **Chess clock** — 8 standard time controls: No Timer, Bullet (1/2 min), Blitz (3/5 min), Rapid (10/15 min), Classical (30 min). Active clock highlighted in orange, red pulse animation when under 10 seconds, timeout triggers game end
+- **Captured pieces display** — separate panels showing pieces captured by White and Black
+- **Move log** — last 3 moves always visible, "Show all N moves" expander for full scrollable history in algebraic notation with check/checkmate symbols
+- Board highlights: selected square (orange), legal move dots, last move highlight, check highlight (red)
+- Pawn promotion modal on reaching back rank
+- Touch-friendly for mobile — tap to select, tap to move
+- Chess added to `Games.tsx` game card grid
+
+### Fixed
+
+- Chess timer — black's clock was not counting down due to missing `thinking` dependency in timer `useEffect` and incorrect bot-thinking guard; both fixed
+- White chess pieces now use filled symbols colored white with warm brown stroke for visibility on both light and dark squares
+
+---
+
 ## [3.4.0] — 2026-04-10
 
 ### Added
