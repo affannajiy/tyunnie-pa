@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.6.0] — 2026-04-13
+
+### Added
+
+- **Password Vault website field** — vault entries now support an optional Website URL field, stored encrypted alongside username/password/notes
+- Website URL displayed as a clickable `🔗` link on each entry (always visible once vault is unlocked, no need to click Show)
+- Website field included in add entry form, edit entry form, and local state on unlock
+- `newEntryWebsite` and `editWebsite` state added to Profile component
+
+### Fixed
+
+- **Vault RLS missing UPDATE policy** — Supabase `vault` table had SELECT, INSERT, DELETE policies but no UPDATE policy, causing edits to silently succeed (no error) but affect 0 rows. Added UPDATE policy: `create policy "Users can update own vault" on vault for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)`
+- `decrypted` local variable in `handlePinDigit` had narrower type annotation missing `website?` field, causing website to be dropped from state on re-unlock even after being correctly decrypted
+- All three entries of the `decryptedEntries` setter (add, edit, unlock) now include `website` in the object
+
+---
+
 ## [3.5.0] — 2026-04-10
 
 ### Added

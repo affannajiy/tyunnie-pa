@@ -447,7 +447,7 @@ Available actions:
 - reset_finance → Reset all entries for a specific month. data: { "year": 2026, "month": 3 }
 - add_snippet  → Generate and save a code snippet. data: { "name":"filename.py", "language":"py"|"js"|"ts"|"css"|"html"|"sql"|"bash"|"other", "code":"..." }
 - navigate  → data: { "panel":"desk"|"profile"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music" }
-- music_control → Control music. data: { "action":"play"|"pause"|"next"|"prev"|"toggle", "trackName":"..." (optional, for going to a specific song) }
+- music_control → Control music. data: { "action":"play"|"pause"|"next"|"prev"|"toggle"|"shuffle"|"repeat", "trackName":"..." (optional, for going to a specific song) }
 - clear_sticky → Clear a sticky note's content. data: { "id": "uuid" }
 - edit_sticky → Replace a sticky note's content with new text. data: { "id": "uuid", "content": "new text" }
 - complete_todo → Mark a task as done. data: { "id": "uuid" }
@@ -504,6 +504,13 @@ STRICT RULES:
 - Example:
   Done, playing your music 🎵
   <action>{"type":"music_control","data":{"action":"play"}}</action>
+- When user says "shuffle", "shuffle my music", "turn on shuffle", "randomise" → music_control with "shuffle"
+- When user says "repeat all", "loop playlist", "loop all" → music_control with "repeat" and repeatMode "all"
+- When user says "repeat this", "repeat this song", "loop this", "loop this one", "repeat one" → music_control with "repeat" and repeatMode "one"
+- When user says "turn off repeat", "stop repeating", "no repeat" → music_control with "repeat" and repeatMode "off"
+- Example:
+  Got it, looping this song 🎵
+  <action>{"type":"music_control","data":{"action":"repeat","repeatMode":"one"}}</action>
 - When user says "go back to [song]", "play [song name]", "switch to [song]" → music_control with "play" and include "trackName"
 - Example:
   Switching to that track for you 🎵
@@ -728,6 +735,22 @@ STRICT RULES:
             case "prev":
               music.forcePrevTrack();
               break;
+            case "shuffle":
+              music.toggleShuffle();
+              break;
+            case "repeat": {
+              const target = d.repeatMode as "all" | "one" | "off" | undefined;
+              if (!target) {
+                music.cycleRepeat();
+                break;
+              }
+              const current = music.repeat;
+              const order: Record<string, number> = { none: 0, all: 1, one: 2 };
+              const targetKey = target === "off" ? "none" : target;
+              const steps = (order[targetKey] - order[current] + 3) % 3;
+              for (let i = 0; i < steps; i++) music.cycleRepeat();
+              break;
+            }
           }
           setCurrentMood("happy");
           setTimeout(() => setCurrentMood(null), 4000);
@@ -776,7 +799,9 @@ STRICT RULES:
         .replace(/\[action\]/gi, "<action>")
         .replace(/\[\/action\]/gi, "</action>")
         .replace(/<action\(/gi, "<action>")
-        .replace(/\)<\/action>/gi, "</action>");
+        .replace(/\)<\/action>/gi, "</action>")
+        .replace(/<action=/gi, "<action>")
+        .replace(/<action =/gi, "<action>");
 
       // Strip the action block from the visible message
       const actionMatch = normalized.match(/<action>([\s\S]*?)<\/action>/);

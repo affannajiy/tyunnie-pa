@@ -372,8 +372,11 @@ Just one sentence, no quotes, no action blocks.`,
             alt="Tyunnie"
             width={200}
             height={240}
+            loading="eager"
             className="object-cover object-top hover:scale-105 transition-transform duration-500"
             style={{
+              width: "200px",
+              height: "auto",
               filter: "drop-shadow(0 -4px 20px rgba(249,115,22,0.3))",
               marginBottom: "-2px",
             }}

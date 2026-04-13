@@ -134,9 +134,13 @@ export default function Profile({
   const [newEntryUsername, setNewEntryUsername] = useState("");
   const [newEntryPassword, setNewEntryPassword] = useState("");
   const [newEntryNotes, setNewEntryNotes] = useState("");
+  const [newEntryWebsite, setNewEntryWebsite] = useState("");
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [decryptedEntries, setDecryptedEntries] = useState<
-    Record<string, { username: string; password: string; notes: string }>
+    Record<
+      string,
+      { username: string; password: string; notes: string; website?: string }
+    >
   >({});
   const [savingEntry, setSavingEntry] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -144,6 +148,7 @@ export default function Profile({
   const [editUsername, setEditUsername] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editWebsite, setEditWebsite] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [otpStep, setOtpStep] = useState<
     "idle" | "sending" | "verify" | "new_pin"
@@ -166,6 +171,7 @@ export default function Profile({
       username: newEntryUsername,
       password: newEntryPassword,
       notes: newEntryNotes,
+      website: newEntryWebsite,
     });
     const { encrypted, iv, salt } = await encryptData(plain, vaultPin);
     const saved = await addVaultEntry(userId, {
@@ -182,12 +188,14 @@ export default function Profile({
           username: newEntryUsername,
           password: newEntryPassword,
           notes: newEntryNotes,
+          website: newEntryWebsite,
         },
       }));
       setNewEntryName("");
       setNewEntryUsername("");
       setNewEntryPassword("");
       setNewEntryNotes("");
+      setNewEntryWebsite("");
       setShowAddEntry(false);
     }
     setSavingEntry(false);
@@ -210,6 +218,7 @@ export default function Profile({
       username: editUsername,
       password: editPassword,
       notes: editNotes,
+      website: editWebsite,
     });
     const { encrypted, iv, salt } = await encryptData(plain, vaultPin);
     // Update in Supabase — add updateVaultEntry to database.ts
@@ -233,6 +242,7 @@ export default function Profile({
         username: editUsername,
         password: editPassword,
         notes: editNotes,
+        website: editWebsite,
       },
     }));
     setEditingId(null);
@@ -331,7 +341,12 @@ export default function Profile({
         const entries = await getVaultEntries(userId);
         const decrypted: Record<
           string,
-          { username: string; password: string; notes: string }
+          {
+            username: string;
+            password: string;
+            notes: string;
+            website?: string;
+          }
         > = {};
         for (const entry of entries) {
           try {
@@ -1447,6 +1462,13 @@ export default function Profile({
                           />
                           <input
                             type="text"
+                            value={editWebsite}
+                            onChange={(e) => setEditWebsite(e.target.value)}
+                            placeholder="Website URL (optional)"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                          />
+                          <input
+                            type="text"
                             value={editNotes}
                             onChange={(e) => setEditNotes(e.target.value)}
                             placeholder="Notes (optional)"
@@ -1506,6 +1528,7 @@ export default function Profile({
                                   setEditUsername(dec?.username ?? "");
                                   setEditPassword(dec?.password ?? "");
                                   setEditNotes(dec?.notes ?? "");
+                                  setEditWebsite(dec?.website ?? "");
                                 }}
                                 className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
                               >
@@ -1527,6 +1550,16 @@ export default function Profile({
                           <p className="text-[11px] font-mono text-[#9a8f7e] mt-0.5">
                             {revealed ? dec?.password : "••••••••••••"}
                           </p>
+                          {dec?.website && (
+                            <a
+                              href={dec.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-[#f97316] font-mono mt-1 hover:underline block truncate"
+                            >
+                              🔗 {dec.website}
+                            </a>
+                          )}
                           {revealed && dec?.notes && (
                             <p className="text-[10px] text-[#c5bdb0] font-mono mt-1">
                               {dec.notes}
@@ -1561,6 +1594,13 @@ export default function Profile({
                     value={newEntryPassword}
                     onChange={(e) => setNewEntryPassword(e.target.value)}
                     placeholder="Password *"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  />
+                  <input
+                    type="text"
+                    value={newEntryWebsite}
+                    onChange={(e) => setNewEntryWebsite(e.target.value)}
+                    placeholder="Website URL (optional)"
                     className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
                   />
                   <input

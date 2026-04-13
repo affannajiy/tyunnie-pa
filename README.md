@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.5.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.6.0-f97316?style=flat-square)
 
 ---
 
@@ -34,6 +34,16 @@
 - Theme toggle (light / dark) and daily briefing toggle
 - Syncs to Supabase `profiles` table, migrates from localStorage on first load
 - Initials avatar in the sidebar nav, full avatar preview in the profile panel
+
+### 🔐 Password Vault
+
+- PIN-protected encrypted password storage — PIN is never stored, only a verifier
+- AES-GCM encryption via Web Crypto API with PBKDF2 key derivation
+- Stores site name, username, password, website URL, and notes per entry
+- Show/Hide password toggle, one-click copy to clipboard
+- Auto-locks after 30 seconds of inactivity
+- Change PIN via email OTP verification flow
+- 3-attempt lockout per session
 
 ### 🏠 Tyunnie's Desk (Home)
 
