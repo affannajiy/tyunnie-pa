@@ -366,6 +366,25 @@ Just one sentence, no quotes, no action blocks.`,
             </div>
           )}
         </div>
+        {/* Mobile: absolute positioned background sprite */}
+        <div className="md:hidden absolute bottom-0 right-0 z-0 pointer-events-none opacity-80">
+          <Image
+            src="/sprites/tyun-hero.png"
+            alt="Tyunnie"
+            width={120}
+            height={144}
+            loading="eager"
+            className="object-cover object-top"
+            style={{
+              width: "120px",
+              height: "auto",
+              filter: "drop-shadow(0 -4px 16px rgba(249,115,22,0.25))",
+              marginBottom: "-2px",
+            }}
+          />
+        </div>
+
+        {/* Desktop: normal flow sprite */}
         <div className="shrink-0 hidden md:block relative z-10 self-end">
           <Image
             src="/sprites/tyun-hero.png"

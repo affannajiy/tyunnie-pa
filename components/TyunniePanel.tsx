@@ -30,6 +30,8 @@ type MoodType = "default" | "happy" | "concerned" | "celebrating" | "thinking";
 const PANEL_SPRITES: Record<string, string> = {
   desk: "/sprites/tyun-panel-desk.png",
   profile: "/sprites/tyun-panel-profile.png",
+  productivity: "/sprites/tyun-panel-productivity.png",
+  entertainment: "/sprites/tyun-panel-entertainment.png",
   todo: "/sprites/tyun-panel-todo.png",
   writing: "/sprites/tyun-panel-writing.png",
   projects: "/sprites/tyun-panel-projects.png",
@@ -446,7 +448,7 @@ Available actions:
 - add_finance → Add an income or expense entry immediately. data: { "type":"income"|"expense", "description":"...", "amount": 0.00, "category":"Food"|"Transport"|"Education"|"Entertainment"|"Salary"|"Freelance"|"Utilities"|"Shopping"|"Other", "date":"YYYY-MM-DD" }
 - reset_finance → Reset all entries for a specific month. data: { "year": 2026, "month": 3 }
 - add_snippet  → Generate and save a code snippet. data: { "name":"filename.py", "language":"py"|"js"|"ts"|"css"|"html"|"sql"|"bash"|"other", "code":"..." }
-- navigate  → data: { "panel":"desk"|"profile"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music" }
+- navigate  → data: { "panel":"desk"|"profile"|"productivity"|"entertainment"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games" }
 - music_control → Control music. data: { "action":"play"|"pause"|"next"|"prev"|"toggle"|"shuffle"|"repeat", "trackName":"..." (optional, for going to a specific song) }
 - clear_sticky → Clear a sticky note's content. data: { "id": "uuid" }
 - edit_sticky → Replace a sticky note's content with new text. data: { "id": "uuid", "content": "new text" }
@@ -791,8 +793,6 @@ STRICT RULES:
       const data = await res.json();
       const fullReply: string = data.text ?? "I'm here 🧡";
 
-      console.log("Full reply from AI:", fullReply); // DEBUG
-
       const normalized = fullReply
         .replace(/\$action>/gi, "<action>")
         .replace(/\$\/action>/gi, "</action>")
@@ -809,8 +809,6 @@ STRICT RULES:
         .replace(/<action>[\s\S]*?<\/action>/g, "")
         .trim();
 
-      console.log("Clean reply from AI:", cleanMessage); // DEBUG
-
       setThinking(false);
       setCurrentMood(null);
       addBubble("tyunnie", cleanMessage);
@@ -823,7 +821,6 @@ STRICT RULES:
 
       // Execute action if present
       if (actionMatch) {
-        console.log("Action found:", actionMatch[1]); // keep this for debugging
         setTimeout(() => executeAction(actionMatch[1]), 300);
       }
     } catch {

@@ -20,6 +20,8 @@ import Pomodoro from "@/components/Pomodoro";
 import Games from "@/components/Games";
 import Weather from "@/components/Weather";
 import Profile from "@/components/Profile";
+import ProductivityHub from "@/components/ProductivityHub";
+import EntertainmentHub from "@/components/EntertainmentHub";
 import { getProfile, type Profile as ProfileType } from "@/lib/database";
 import StickyLayer from "@/components/StickyLayer";
 import {
@@ -57,6 +59,9 @@ import {
 
 const PANEL_LABELS: Record<Panel, string> = {
   desk: "Home",
+  productivity: "Productivity",
+  entertainment: "Entertainment",
+  profile: "Profile",
   todo: "Tasks",
   writing: "Writing",
   projects: "Projects",
@@ -65,7 +70,6 @@ const PANEL_LABELS: Record<Panel, string> = {
   music: "Music",
   pomodoro: "Pomodoro",
   games: "Games",
-  profile: "Profile",
 };
 
 export default function Home() {
@@ -217,14 +221,9 @@ export default function Home() {
         e.preventDefault();
         const panels: Panel[] = [
           "desk",
-          "todo",
-          "writing",
-          "projects",
-          "snippets",
-          "finance",
-          "music",
-          "pomodoro",
-          "games",
+          "productivity",
+          "entertainment",
+          "profile",
         ];
         const target = panels[parseInt(e.key) - 1];
         if (target) setActivePanel(target);
@@ -737,6 +736,22 @@ export default function Home() {
                   onFocusMode={() => setFocusMode(true)}
                 />
               )}
+              {activePanel === "productivity" && (
+                <ProductivityHub
+                  onNavigate={(panel) => {
+                    setActivePanel(panel as Panel);
+                    setTyunnieExpanded(false);
+                  }}
+                />
+              )}
+              {activePanel === "entertainment" && (
+                <EntertainmentHub
+                  onNavigate={(panel) => {
+                    setActivePanel(panel as Panel);
+                    setTyunnieExpanded(false);
+                  }}
+                />
+              )}
               {activePanel === "todo" && (
                 <Todo
                   userId={user.id}
@@ -790,7 +805,7 @@ export default function Home() {
               {activePanel === "profile" && (
                 <Profile
                   userId={user.id}
-                  onClose={() => setActivePanel("todo")}
+                  onClose={() => setActivePanel("productivity")}
                   onSave={(p) => {
                     setProfile(p);
                     if (p.display_name) setUserName(p.display_name);

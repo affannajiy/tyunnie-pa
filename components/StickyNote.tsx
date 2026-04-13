@@ -116,6 +116,55 @@ export default function StickyNote({ note, onUpdate, onDelete }: Props) {
     window.addEventListener("mouseup", onUp);
   }
 
+  // ── TOUCH DRAG ──
+  function onTouchDragStart(e: React.TouchEvent) {
+    if (
+      (e.target as HTMLElement).closest(
+        "textarea, button, .resize-handle, .color-picker",
+      )
+    )
+      return;
+    const t = e.touches[0];
+    dragRef.current = {
+      startX: t.clientX,
+      startY: t.clientY,
+      origX: pos.x,
+      origY: pos.y,
+    };
+
+    function onMove(e: TouchEvent) {
+      if (!dragRef.current) return;
+      const t = e.touches[0];
+      const nx = Math.max(
+        0,
+        dragRef.current.origX + t.clientX - dragRef.current.startX,
+      );
+      const ny = Math.max(
+        0,
+        dragRef.current.origY + t.clientY - dragRef.current.startY,
+      );
+      setPos({ x: nx, y: ny });
+    }
+    function onEnd(e: TouchEvent) {
+      if (!dragRef.current) return;
+      const t = e.changedTouches[0];
+      const nx = Math.max(
+        0,
+        dragRef.current.origX + t.clientX - dragRef.current.startX,
+      );
+      const ny = Math.max(
+        0,
+        dragRef.current.origY + t.clientY - dragRef.current.startY,
+      );
+      onUpdate(note.id, { x: nx, y: ny });
+      dragRef.current = null;
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    }
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd);
+  }
+
   // ── RESIZE ──
   function onResizeStart(e: React.MouseEvent) {
     e.preventDefault();
@@ -166,6 +215,7 @@ export default function StickyNote({ note, onUpdate, onDelete }: Props) {
     <div
       ref={noteRef}
       onMouseDown={onDragStart}
+      onTouchStart={onTouchDragStart}
       className="absolute select-none"
       style={{
         left: pos.x,

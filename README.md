@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.6.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.7.0-f97316?style=flat-square)
 
 ---
 
@@ -101,6 +101,7 @@
 - **Minesweeper** — first-click safe, flood fill, chord support
 - **Solitaire** — Klondike with full move validation
 - **Chess** — full legal move validation, castling, en passant, pawn promotion. vs Tyunnie bot (3 difficulties) or 2-player. 8 time controls (Bullet/Blitz/Rapid/Classical). Captured pieces display, move log, mobile touch support
+- **Tetris** — all 7 tetrominoes, ghost piece, hold, next preview, wall kicks, hard/soft drop, level scaling, pause, mobile touch + swipe controls
 
 ### 🔍 Global Search
 
@@ -127,7 +128,16 @@
 
 ### 📱 Mobile Responsive
 
-- Scrollable bottom tab bar, Tyunnie chat as full-screen overlay
+- Streamlined bottom tab bar — 4 items: Home, Productivity, Entertainment, Me
+- Tyunnie chat as full-screen overlay
+
+### ⚡ Productivity Hub
+
+- Cards linking to: Tasks, Writing, Projects, Snippets, Pomodoro, Finance
+
+### 🎭 Entertainment Hub
+
+- Cards linking to: Music, Games
 
 ---
 

@@ -3,6 +3,9 @@
 
 export type Panel =
   | "desk"
+  | "productivity"
+  | "entertainment"
+  | "profile"
   | "todo"
   | "writing"
   | "projects"
@@ -10,8 +13,7 @@ export type Panel =
   | "finance"
   | "music"
   | "pomodoro"
-  | "games"
-  | "profile";
+  | "games";
 
 type Props = {
   active: Panel;
@@ -23,14 +25,8 @@ type Props = {
 
 const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
   { panel: "desk", icon: "🏠", label: "Home" },
-  { panel: "todo", icon: "✅", label: "Tasks" },
-  { panel: "writing", icon: "✍️", label: "Write" },
-  { panel: "projects", icon: "🗂️", label: "Proj" },
-  { panel: "snippets", icon: "⌨️", label: "Snips" },
-  { panel: "finance", icon: "💰", label: "Money" },
-  { panel: "music", icon: "🎵", label: "Music" },
-  { panel: "pomodoro", icon: "⏲️", label: "Focus" },
-  { panel: "games", icon: "🎮", label: "Games" },
+  { panel: "productivity", icon: "⚡", label: "Work" },
+  { panel: "entertainment", icon: "🎮", label: "Play" },
   { panel: "profile", icon: "👤", label: "Me" },
 ];
 

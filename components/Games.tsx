@@ -7,6 +7,7 @@ import Sudoku from "./games/Sudoku";
 import Minesweeper from "./games/Minesweeper";
 import Solitaire from "./games/Solitaire";
 import Chess from "./games/Chess";
+import Tetris from "./games/Tetris";
 
 type Game =
   | "tictactoe"
@@ -14,6 +15,7 @@ type Game =
   | "minesweeper"
   | "solitaire"
   | "chess"
+  | "tetris"
   | null;
 
 const GAME_CARDS = [
@@ -50,6 +52,13 @@ const GAME_CARDS = [
     title: "Chess",
     desc: "Full chess vs Tyunnie or a friend. He plays dirty on Hard.",
     icon: "♟️",
+    available: true,
+  },
+  {
+    id: "tetris" as Game,
+    title: "Tetris",
+    desc: "Clear lines. Tyunnie watches nervously as the stack grows.",
+    icon: "🟦",
     available: true,
   },
 ];
@@ -149,6 +158,20 @@ export default function Games() {
     return (
       <div>
         <Chess onBack={() => setActiveGame(null)} />
+      </div>
+    );
+  }
+
+  if (activeGame === "tetris") {
+    return (
+      <div>
+        <button
+          onClick={() => setActiveGame(null)}
+          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+        >
+          ← Back to Games
+        </button>
+        <Tetris />
       </div>
     );
   }

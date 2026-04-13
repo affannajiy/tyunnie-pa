@@ -212,13 +212,13 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
 
   // ── RENDER ──
   return (
-    <div className="flex gap-4 h-[calc(100vh-120px)]">
+    <div className="flex flex-col md:flex-row gap-4 h-auto md:h-[calc(100vh-120px)]">
       {/* ── FILE SIDEBAR ── */}
-      <div className="w-50 shrink-0 flex flex-col gap-2">
+      <div className="flex flex-row md:flex-col gap-2 md:w-50 shrink-0 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
         {/* New snip button */}
         <button
           onClick={newSnip}
-          className="w-full bg-[#f97316] text-white font-bold rounded-xl py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px"
+          className="shrink-0 bg-[#f97316] text-white font-bold rounded-xl py-2.5 px-4 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px whitespace-nowrap"
         >
           + New Snip
         </button>
@@ -229,11 +229,11 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search snips..."
-          className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-xs outline-none focus:border-[#f97316] transition-colors"
+          className="shrink-0 w-32 md:w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-xs outline-none focus:border-[#f97316] transition-colors"
         />
 
         {/* Snip file list */}
-        <div className="flex flex-col gap-1.5 overflow-y-auto flex-1">
+        <div className="flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-y-auto flex-1 md:flex-none">
           {loading && (
             <p className="text-xs text-[#c5bdb0] text-center py-4">
               Loading...
@@ -254,7 +254,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
               }}
               className={`
                 flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer
-                transition-all group border
+                transition-all group border shrink-0 min-w-32 md:min-w-0
                 ${
                   activeId === snip.id
                     ? "bg-[#fff0e6] border-[#f97316]"
@@ -289,9 +289,9 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
       </div>
 
       {/* ── CODE EDITOR ── */}
-      <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl overflow-hidden flex flex-col">
+      <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl overflow-hidden flex flex-col min-h-[60vh] md:min-h-0">
         {/* Editor top bar */}
-        <div className="bg-[#f3f0ea] border-b border-[#e8e2d8] px-4 py-3 flex items-center gap-3 shrink-0">
+        <div className="bg-[#f3f0ea] border-b border-[#e8e2d8] px-3 py-2 flex flex-wrap items-center gap-2 shrink-0">
           {/* macOS-style dots */}
           <div className="flex gap-1.5">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
@@ -304,7 +304,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
             type="text"
             value={fileName}
             onChange={(e) => handleFileNameChange(e.target.value)}
-            className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-[#111010] placeholder:text-[#c5bdb0]"
+            className="w-24 md:flex-1 bg-transparent border-none outline-none text-xs font-mono text-[#111010] placeholder:text-[#c5bdb0] min-w-0"
             placeholder="filename.js"
           />
 
@@ -391,7 +391,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
             onKeyDown={handleKeyDown}
             spellCheck={false}
             placeholder="// write your code here..."
-            className="flex-1 bg-[#faf8f5] border-none outline-none resize-none p-4 text-xs leading-[1.8] text-[#2d2416] font-mono placeholder:text-[#c5bdb0]"
+            className="flex-1 bg-[#faf8f5] border-none outline-none resize-none p-4 text-xs leading-[1.8] text-[#2d2416] font-mono placeholder:text-[#c5bdb0] min-h-[40vh] md:min-h-0"
           />
         </div>
 

@@ -5,6 +5,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.7.0] — 2026-04-13
+
+### Added
+
+- **Sidebar redesign** — collapsed from 10 items to 4: Home, Productivity (⚡), Entertainment (🎮), Me
+- **ProductivityHub** (`components/ProductivityHub.tsx`) — card grid linking to Tasks, Writing, Projects, Snippets, Pomodoro, Finance
+- **EntertainmentHub** (`components/EntertainmentHub.tsx`) — card grid linking to Music and Games
+- `productivity` and `entertainment` added to `Panel` type in `Sidebar.tsx`
+- `PANEL_LABELS` updated with hub panel names
+- Two new sprites: `tyun-panel-productivity.png`, `tyun-panel-entertainment.png`
+- Both hub panels added to `PANEL_SPRITES` map in `TyunniePanel.tsx`
+- Tyunnie `navigate` action updated to include all panels including new hubs
+- **Tetris** (`components/games/Tetris.tsx`) — full Tetris implementation with all 7 tetrominoes, ghost piece, hold piece, next piece preview, wall kicks, hard drop, soft drop, level system, scoring, pause, mobile swipe + on-screen controls
+- Tetris added to Games hub
+
+### Changed
+
+- Sidebar keyboard shortcut `Ctrl+1-4` now maps to Home, Productivity, Entertainment, Me
+- Profile `onClose` now returns to `productivity` hub instead of `todo`
+- `handleSnippetAdded` still auto-navigates to `snippets` — unchanged since it's still a valid panel
+- `handlePomodoroStart` still navigates to `pomodoro` — unchanged
+- Removed 3 debug `console.log` calls from `TyunniePanel.tsx` (`Full reply from AI`, `Clean reply from AI`, `Action found`)
+- Floating sticky note `+` button is now draggable anywhere on screen like Apple's assistive touch button — starts bottom-right above mobile nav, touch drag supported
+- Sticky notes support touch drag on mobile
+- Snippets panel mobile layout — horizontal scrollable file strip at top, editor fills screen, terminal appears below
+- Hero sprite now visible on mobile (120px, absolute positioned bottom-right of hero card)
+
+---
+
 ## [3.6.0] — 2026-04-13
 
 ### Added
