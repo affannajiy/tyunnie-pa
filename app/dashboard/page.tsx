@@ -6,24 +6,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
+import dynamic from "next/dynamic";
 import Desk from "@/components/Desk";
 import Sidebar, { type Panel } from "@/components/Sidebar";
-import TyunniePanel from "@/components/TyunniePanel";
-import Todo from "@/components/Todo";
-import Writing from "@/components/Writing";
-import Projects from "@/components/Projects";
-import Snippets from "@/components/Snippets";
-import Finance from "@/components/Finance";
-import Music from "@/components/Music";
 import { MusicProvider } from "@/lib/MusicContext";
-import Pomodoro from "@/components/Pomodoro";
-import Games from "@/components/Games";
-import Weather from "@/components/Weather";
-import Profile from "@/components/Profile";
-import ProductivityHub from "@/components/ProductivityHub";
-import EntertainmentHub from "@/components/EntertainmentHub";
 import { getProfile, type Profile as ProfileType } from "@/lib/database";
-import StickyLayer from "@/components/StickyLayer";
 import {
   getStickyNotes,
   completeTodo,
@@ -35,7 +22,24 @@ import {
 } from "@/lib/database";
 import type { Memory } from "@/lib/database";
 import type { StickyNote } from "@/lib/database";
-import FocusMode from "@/components/FocusMode";
+import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
+
+// Heavy panels — loaded only when first visited
+const TyunniePanel  = dynamic<TyunniePanelProps>(() => import("@/components/TyunniePanel"), { ssr: false });
+const Todo          = dynamic(() => import("@/components/Todo"),               { ssr: false });
+const Writing       = dynamic(() => import("@/components/Writing"),            { ssr: false });
+const Projects      = dynamic(() => import("@/components/Projects"),           { ssr: false });
+const Snippets      = dynamic(() => import("@/components/Snippets"),           { ssr: false });
+const Finance       = dynamic(() => import("@/components/Finance"),            { ssr: false });
+const Music         = dynamic(() => import("@/components/Music"),              { ssr: false });
+const Pomodoro      = dynamic(() => import("@/components/Pomodoro"),           { ssr: false });
+const Games         = dynamic(() => import("@/components/Games"),              { ssr: false });
+const Weather       = dynamic(() => import("@/components/Weather"),            { ssr: false });
+const Profile       = dynamic(() => import("@/components/Profile"),            { ssr: false });
+const ProductivityHub   = dynamic(() => import("@/components/ProductivityHub"),    { ssr: false });
+const EntertainmentHub  = dynamic(() => import("@/components/EntertainmentHub"),   { ssr: false });
+const StickyLayer   = dynamic(() => import("@/components/StickyLayer"),        { ssr: false });
+const FocusMode     = dynamic(() => import("@/components/FocusMode"),          { ssr: false });
 
 import {
   getTodos,
@@ -45,11 +49,16 @@ import {
   getFinanceEntries,
   addTodo,
   toggleTodo,
+  updateTodo,
+  deleteTodo,
   addDraft,
+  deleteDraft,
   addProject,
+  deleteProject,
   addFinanceEntry,
   deleteFinanceEntry,
   addSnip,
+  deleteSnip,
   type Todo as TodoType,
   type Draft,
   type Project,
@@ -611,9 +620,47 @@ export default function Home() {
 
   function handlePomodoroStart(task: string) {
     setPomodoroTask(task);
-    setPomodoroKey((k) => k + 1); // ← increment forces remount
+    setPomodoroKey((k) => k + 1);
     sessionStorage.setItem("pomodoro_autostart", "1");
     setActivePanel("pomodoro");
+  }
+
+  async function handleTodoDeleted(id: string) {
+    await deleteTodo(id);
+    setTodos((prev) => prev.filter((t) => t.id !== id));
+    setTodoRefreshKey((k) => k + 1);
+  }
+
+  async function handleTodoUpdated(id: string, patch: { text?: string; tag?: string; due?: string | null }) {
+    await updateTodo(id, patch);
+    setTodos((prev) => prev.map((t) =>
+      t.id === id ? { ...t, ...patch, tag: (patch.tag ?? t.tag) as TodoType["tag"] } : t,
+    ));
+    setTodoRefreshKey((k) => k + 1);
+  }
+
+  async function handleDraftDeleted(id: string) {
+    await deleteDraft(id);
+    setDrafts((prev) => prev.filter((d) => d.id !== id));
+    setDraftRefreshKey((k) => k + 1);
+  }
+
+  async function handleProjectDeleted(id: string) {
+    await deleteProject(id);
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setProjectRefreshKey((k) => k + 1);
+  }
+
+  async function handleSnippetDeleted(id: string) {
+    await deleteSnip(id);
+    setSnips((prev) => prev.filter((s) => s.id !== id));
+    setSnippetRefreshKey((k) => k + 1);
+  }
+
+  async function handleFinanceDeleted(id: string) {
+    await deleteFinanceEntry(id);
+    setFinance((prev) => prev.filter((f) => f.id !== id));
+    setFinanceRefreshKey((k) => k + 1);
   }
 
   // ── LOADING SCREEN ──
@@ -832,7 +879,7 @@ export default function Home() {
         onFinanceAdded={handleFinanceAdded}
         onSnippetAdded={handleSnippetAdded}
         onFinanceReset={handleFinanceReset}
-        onStickyCleared={async (id) => {
+        onStickyCleared={async (id: string) => {
           await import("@/lib/database").then(({ updateStickyNote }) =>
             updateStickyNote(id, { content: "" }),
           );
@@ -847,10 +894,24 @@ export default function Home() {
         prefillInput={tyunniePrefill}
         onPrefillConsumed={() => setTyunniePrefill(undefined)}
         onTodoCompleted={handleTodoCompleted}
+        onTodoDeleted={handleTodoDeleted}
+        onTodoUpdated={handleTodoUpdated}
         onProjectUpdated={handleProjectUpdated}
+        onProjectDeleted={handleProjectDeleted}
+        onDraftDeleted={handleDraftDeleted}
+        onSnippetDeleted={handleSnippetDeleted}
+        onFinanceDeleted={handleFinanceDeleted}
         onStickyUpdated={handleStickyUpdated}
+        onCreateSticky={async () => {
+          const { createStickyNote } = await import("@/lib/database");
+          const offset = (stickyNotes.length % 6) * 24;
+          const note = await createStickyNote(user.id, 120 + offset, 120 + offset);
+          if (note) setStickyNotes((prev) => [...prev, note]);
+        }}
+        onFocusMode={() => setFocusMode(true)}
+        onThemeToggle={toggleTheme}
         onPomodoroStart={handlePomodoroStart}
-        onMemoryAdded={async (content) => {
+        onMemoryAdded={async (content: string) => {
           if (!user) return;
           await addMemory(user.id, content);
           setMemories((prev) => [
@@ -863,7 +924,7 @@ export default function Home() {
             ...prev,
           ]);
         }}
-        onMemoryDeleted={async (id) => {
+        onMemoryDeleted={async (id: string) => {
           await deleteMemory(id);
           setMemories((prev) => prev.filter((m) => m.id !== id));
         }}

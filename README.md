@@ -1,4 +1,4 @@
-# 🧡 Tyunnie — Your Personal AI Assistant
+# Tyunnie — Your Personal AI Assistant
 
 > A full-stack personal assistant web app inspired by Taehyun from TXT. Built with Next.js, Supabase, and Groq AI.
 
@@ -7,177 +7,95 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.9.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.9.1-f97316?style=flat-square)
 
 ---
 
-## ✨ Features
+## Features
 
-### 🤖 Tyunnie AI Panel
+### Tyunnie AI Panel
 
-- Context-aware AI assistant powered by **Groq (Llama 3.3 70B)**
-- Knows your desk, tasks, drafts, projects, finances, and snippets
-- Can add tasks, drafts, projects, finance entries, and code snippets via natural language
-- Can **complete tasks**, **update project progress**, **edit/clear sticky notes**, and **start Pomodoro sessions** with task pre-loading via natural language
+- Context-aware assistant powered by **Groq (Llama 3.3 70B)**
+- Knows your tasks, drafts, projects, finances, snippets, sticky notes, and memories
+- Natural language actions: add/delete tasks, create drafts, log finance, run snippets, start Pomodoro, toggle theme, enter focus mode
 - **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
-- **Bottom-sheet overlay** — slides up from the dock as a centered panel; chat history persists across all tab switches without re-mounting
-- **Snap resize** — click/tap the handle bar to cycle through snap sizes (default → wide → fullscreen on desktop; default → fullscreen on mobile). Snap indicator dots show the current position
-- **Swipe-up gesture** — swipe up from the screen bottom edge to open the panel on mobile
-- **Sprite system** — separate panel sprites and mood sprites, reacts to active tab and emotional state
-- Calls you by name and adapts tone based on your profile preferences
-- **Persistent memory** — remembers facts about you across sessions, proactively saves preferences, goals, and habits
+- **Bottom-sheet overlay** — slides up from the dock; chat history persists across all tab switches
+- **Snap resize** — cycle through snap sizes (default → wide → fullscreen on desktop; fullscreen-only on mobile)
+- **Swipe-up gesture** — swipe from the bottom edge to open on mobile
+- **Persistent memory** — remembers facts about you across sessions
 
-### 👤 User Profile
+### Desk (Home)
 
-- Display name, date of birth (day + month), city, occupation, workplace, bio
-- Interest tags used by Tyunnie for personalised context
-- Greeting style (casual / formal), currency, locale preferences
-- Theme toggle (light / dark) and daily briefing toggle
-- Syncs to Supabase `profiles` table, migrates from localStorage on first load
-- Initials avatar in the sidebar nav, full avatar preview in the profile panel
+- Time-aware greeting, top 3 tasks, life progress rings, finance balance
+- Inline Pomodoro mini-timer, Now Playing card, Recent Activity timeline
+- Daily quote card (AI-generated via Groq), Quick Navigation grid
 
-### 🔐 Password Vault
+### Tasks, Writing, Projects, Snippets
 
-- PIN-protected encrypted password storage — PIN is never stored, only a verifier
-- AES-GCM encryption via Web Crypto API with PBKDF2 key derivation
-- Stores site name, username, password, website URL, and notes per entry
-- Show/Hide password toggle, one-click copy to clipboard
-- Auto-locks after 30 seconds of inactivity
-- Change PIN via email OTP verification flow
-- 3-attempt lockout per session
+- Tasks with tags (CS / Writing / Personal / Other), due dates, confetti on completion
+- Draft editor with word count
+- Project tracker with status, progress bars, Gantt chart
+- Code editor with live execution via JDoodle (Python, JS, TS, Bash)
 
-### 🏠 Tyunnie's Desk (Home)
+### Finance
 
-- Personalized landing dashboard — the first thing you see on login
-- **Hero section** — time-aware greeting, date, "Welcome home" message, and Taehyun sprite flush at the card edge
-- **Today's Focus** — top 3 tasks by due date with inline done toggles and overdue indicators
-- **Life Progress** — circular rings for task completion % and project progress, plus monthly balance
-- **Focus Timer** — inline Pomodoro mini-timer (25/5 cycle) that runs without leaving the Desk
-- **Now Playing** — music card with album art glow, track info, progress bar, and controls
-- **Recent Activity** — vertical timeline of latest completed tasks and finance entries
-- **Tyunnie's Corner** — dark card with large AI-generated daily quote in serif italic
-- **Quick Navigation** — 2×3 icon grid for fast access to Writing, Finance, Snippets, Projects, Games, Profile
-- AI one-liner generated fresh each visit by Groq, cached per tab session
+- Monthly income/expense tracking with account tags
+- Recharts analytics, 50/30/20 rule breakdown, balance carry-forward
 
-### ✅ Tasks
+### Music Player
 
-- Tags (CS, Writing, Personal, Other), due dates, mark as done
-- Confetti burst on completion 🎉
+- Upload MP3s + album art, full playback controls, Web Audio visualizer, persistent across panels
 
-### ✍️ Writing
+### Pomodoro + Focus Mode
 
-- Draft editor with word count, create/edit/delete drafts
+- 25/5/15 timer with session dots and task linking
+- Fullscreen Focus Mode: task + timer + music + sticky notes (`Ctrl+Shift+F`)
 
-### 🗂️ Projects
+### Games Hub
 
-- Status tracking, progress bars, Gantt chart for date-ranged projects
+- Tetris, Chess (3 difficulties, 8 time controls), Sudoku, Minesweeper, Solitaire, Tic Tac Toe
 
-### 💻 Snippets
+### Navigation Dock
 
-- Code editor with live execution via JDoodle API (Python, JS, TS, Bash)
+- **Desktop** — fixed bottom-center frosted glass pill with macOS-style magnification
+- **Mobile** — full-width bottom bar
+- Items: Home, Productivity, Entertainment, Profile, Tyun (chat), Sticky (new note), Sign Out
 
-### 💰 Finance Tracker
+### Profile + Vault
 
-- Monthly tracking with account tagging (Maybank, MAE, Grab, GXBank, TnG, Wallet, ASB)
-- Carried balance across months, analytics tab with charts and 50/30/20 rule
+- Display name, avatar, city, occupation, interests, locale, currency
+- Full accent color picker (spectrum canvas, hue slider, hex/RGB/HSL inputs)
+- **Password Vault** — AES-GCM 256-bit encrypted, PIN-protected, auto-locks after 30s
 
-### 🎵 Music Player
+### Other
 
-- Upload your own MP3s with album art (500×500px), full playback controls, persistent across panels
-
-### ⏲️ Pomodoro Timer
-
-- 25/5/15 cycle, session dots, task linking, timer starts on first input
-
-### 🎯 Focus Mode
-
-- Fullscreen minimal overlay — task + Pomodoro timer + music player + sticky notes
-- Trigger via `🎯 Focus Mode` button on Desk or `Ctrl+Shift+F`
-- Timer done sound, `Esc` to exit
-
-### 🎮 Games Hub
-
-- **Tic Tac Toe** — vs Tyunnie bot (Easy / Medium / Hard, minimax)
-- **Sudoku** — notes mode, 3-mistake limit, lazy timer
-- **Minesweeper** — first-click safe, flood fill, chord support
-- **Solitaire** — Klondike with full move validation
-- **Chess** — full legal move validation, castling, en passant, pawn promotion. vs Tyunnie bot (3 difficulties) or 2-player. 8 time controls (Bullet/Blitz/Rapid/Classical). Captured pieces display, move log, mobile touch support
-- **Tetris** — all 7 tetrominoes, ghost piece, hold, next preview, wall kicks, hard/soft drop, level scaling, pause, mobile touch + swipe controls
-
-### 🚀 Navigation Dock
-
-- **Desktop** — fixed bottom-center frosted glass pill dock with macOS-style magnification. Items scale up and glow on hover with spring easing
-- **Mobile** — full-width frosted glass bottom bar with the same navigation items
-- Dock includes: Home, Productivity, Entertainment, Profile, Tyun 🧡 (chat), Sticky 📌 (new note), and Sign Out
-
-### 🔍 Global Search
-
-- `Cmd+K` / `Ctrl+K` — searches panels, tasks, drafts, projects, snippets, finance
-
-### 🗒️ Sticky Notes
-
-- Floating draggable, resizable notes that persist via Supabase
-- Spawn with `Ctrl+Shift+K` or the **Sticky 📌** dock button — five color themes
-- Tyunnie can read, edit, and clear sticky notes from chat
-
-### 🌤️ Weather Widget
-
-- City-based weather in the topbar — no location permission needed
-- Type a city name once, saved permanently
-
-### 🎨 Theming
-
-- Toggle dark / light mode from the Profile panel, preference persisted across sessions
-- **User-selectable accent color** — full inline color picker (spectrum canvas, hue slider, hex + RGB + HSL inputs, live preview swatch) in the Profile panel. Choice persisted to `localStorage` and applied before first paint — no flash
-
-### 🔐 Authentication
-
-- Email/password + Google OAuth, auto session refresh
-
-### 📱 Mobile Responsive
-
-- Full-width frosted glass bottom bar with dock items: Home, Productivity, Entertainment, Me, Tyun 🧡, Sticky 📌
-- Tyunnie panel slides up as a bottom-sheet overlay; swipe up from the screen bottom edge to open
-
-### ⚡ Productivity Hub
-
-- Cards linking to: Tasks, Writing, Projects, Snippets, Pomodoro, Finance
-
-### 🎭 Entertainment Hub
-
-- Cards linking to: Music, Games
+- Global search `Cmd+K` / `Ctrl+K`
+- Draggable/resizable sticky notes, persisted to Supabase
+- City-based weather (Open-Meteo, no API key needed)
+- Dark / light mode, user-selectable accent color
 
 ---
 
-## 🚀 Tech Stack
+## Tech Stack
 
-| Layer          | Technology                             |
-| -------------- | -------------------------------------- |
-| Framework      | Next.js 16 (App Router)                |
-| Language       | TypeScript 5                           |
-| Styling        | Tailwind CSS v4                        |
-| Database       | Supabase (PostgreSQL)                  |
-| Auth           | Supabase Auth + Google OAuth           |
-| AI             | Groq API (Llama 3.3 70B)               |
-| Code Execution | JDoodle API                            |
-| Charts         | Recharts 3                             |
-| Weather        | Open-Meteo API (free, no key)          |
-| Fonts          | Instrument Serif + Nunito + Geist Mono |
-| Deployment     | Vercel                                 |
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5 |
+| Styling | Tailwind CSS v4 |
+| Database / Auth | Supabase (PostgreSQL + Auth) |
+| AI | Groq API (Llama 3.3 70B) |
+| Code Execution | JDoodle API |
+| Charts | Recharts 3 |
+| Weather | Open-Meteo API (free, no key) |
+| Fonts | Instrument Serif + Nunito + Geist Mono |
+| Deployment | Vercel |
 
 ---
 
-## 🛠️ Getting Started
+## Getting Started
 
-### Prerequisites
-
-- Node.js 18+
-- A [Supabase](https://supabase.com) account
-- A [Groq](https://groq.com) API key
-- A [JDoodle](https://jdoodle.com) account (for code execution)
-- A [Google Cloud](https://console.cloud.google.com) project (for OAuth)
-
-### 1. Clone the repository
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/affannajiy/tyunnie-pa.git
@@ -187,146 +105,29 @@ npm install
 
 ### 2. Set up environment variables
 
-Create a `.env.local` file in the root:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-GROQ_API_KEY=gsk_your-groq-key
-JDOODLE_CLIENT_ID=your-jdoodle-client-id
-JDOODLE_CLIENT_SECRET=your-jdoodle-client-secret
+```bash
+cp .env.example .env.local
 ```
 
-### 3. Set up Supabase database
+Fill in the values — see [DEPLOYMENT.md](./DEPLOYMENT.md) for the full variable list.
 
-```sql
-create table todos (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  text text not null, tag text default 'other', due date,
-  done boolean default false, created_at timestamptz default now()
-);
-create table drafts (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  title text not null, body text, created_at timestamptz default now()
-);
-create table projects (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  name text not null, status text default 'planning',
-  description text, start_date date, end_date date,
-  progress integer default 0, created_at timestamptz default now()
-);
-create table snips (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  name text not null, language text default 'other',
-  code text, created_at timestamptz default now()
-);
-create table finance (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  type text not null, description text not null,
-  amount numeric(10,2) not null, category text default 'Other',
-  account text default 'Wallet', date date not null,
-  created_at timestamptz default now()
-);
-create table profiles (
-  id uuid references auth.users primary key,
-  display_name text, birth_day integer, birth_month integer,
-  city text, city_lat numeric, city_lon numeric,
-  theme text default 'light', locale text default 'en-MY',
-  currency text default 'RM', occupation text, workplace text,
-  bio text, interests text[] default '{}',
-  greeting_style text default 'casual', show_briefing boolean default true,
-  updated_at timestamptz default now()
-);
-create table sticky_notes (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
-  content text default '',
-  x integer default 100,
-  y integer default 100,
-  width integer default 220,
-  height integer default 160,
-  color text default 'yellow',
-  created_at timestamptz default now()
-);
-create table memories (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
-  content text not null,
-  created_at timestamptz default now()
-);
--- Enable RLS on all tables
-alter table sticky_notes enable row level security;
-alter table todos enable row level security;
-alter table drafts enable row level security;
-alter table projects enable row level security;
-alter table snips enable row level security;
-alter table finance enable row level security;
-alter table profiles enable row level security;
-alter table memories enable row level security;
+### 3. Set up Supabase
 
--- RLS policies — users can only access their own data
-create policy "owner" on todos     for all using (auth.uid() = user_id);
-create policy "owner" on drafts    for all using (auth.uid() = user_id);
-create policy "owner" on projects  for all using (auth.uid() = user_id);
-create policy "owner" on snips     for all using (auth.uid() = user_id);
-create policy "owner" on finance   for all using (auth.uid() = user_id);
-create policy "owner" on profiles  for all using (auth.uid() = id);
-create policy "owner" on memories for all using (auth.uid() = user_id);
-
--- Avatar storage bucket
-insert into storage.buckets (id, name, public)
-values ('avatars', 'avatars', true);
-
-create policy "avatar_upload" on storage.objects
-  for insert with check (
-    bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]
-  );
-
-create policy "avatar_read" on storage.objects
-  for select using (bucket_id = 'avatars');
-
-create policy "avatar_delete" on storage.objects
-  for delete using (
-    bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]
-  );
-create policy "owner" on sticky_notes for all using (auth.uid() = user_id);
-```
-
-Enable RLS on all tables. Add indexes:
-
-```sql
-create index if not exists todos_user_done       on todos(user_id, done);
-create index if not exists finance_user_date     on finance(user_id, date);
-create index if not exists snips_user_created    on snips(user_id, created_at);
-create index if not exists drafts_user_created   on drafts(user_id, created_at);
-create index if not exists projects_user_created on projects(user_id, created_at);
-```
+Create tables, enable RLS, add indexes — see [DATABASE.md](./DATABASE.md) for the complete SQL.
 
 ### 4. Add sprites (optional)
 
-Create `public/sprites/` with transparent PNG sprites (360×460px recommended):
+Place transparent PNGs in `public/sprites/`. Canvas size: **360×460px** for panel/mood sprites, **560×720px** for the hero.
 
-- Panel sprites: `tyun-panel-desk.png`, `tyun-panel-profile.png`, `tyun-panel-todo.png`, `tyun-panel-writing.png`, `tyun-panel-projects.png`, `tyun-panel-snippets.png`, `tyun-panel-finance.png`, `tyun-panel-music.png`, `tyun-panel-pomodoro.png`, `tyun-panel-games.png`
-- Mood sprites: `tyun-mood-default.png`, `tyun-mood-happy.png`, `tyun-mood-concerned.png`, `tyun-mood-celebrating.png`, `tyun-mood-thinking.png`
+- Panel sprites: `tyun-panel-{desk,profile,todo,writing,projects,snippets,finance,music,pomodoro,games,productivity,entertainment}.png`
+- Mood sprites: `tyun-mood-{default,happy,concerned,celebrating,thinking}.png`
 
 ### 5. Add music (optional)
 
-Create `public/music/` with MP3 files, album art (500×500px JPEGs recommended), and a `playlist.json`:
+Place MP3s + cover art in `public/music/` with a `playlist.json`:
 
 ```json
-[
-  {
-    "title": "Song",
-    "artist": "Artist",
-    "file": "/music/song.mp3",
-    "cover": "/music/cover.jpg"
-  }
-]
+[{ "title": "Song", "artist": "Artist", "file": "/music/song.mp3", "cover": "/music/cover.jpg" }]
 ```
 
 ### 6. Run
@@ -337,79 +138,46 @@ npm run dev
 
 ---
 
-## 📁 Project Structure
+## Deployment
+
+Push to GitHub → import on [vercel.com](https://vercel.com) → add env vars → deploy.
+
+Full instructions, Google OAuth setup, and Supabase auth config: [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+---
+
+## Project Structure
 
 ```
-├── app/
-│   ├── api/
-│   │   ├── chat/route.ts
-│   │   └── run/route.ts
-│   ├── auth/page.tsx
-│   ├── dashboard/page.tsx
-│   ├── layout.tsx
-│   └── globals.css
-├── components/
-│   ├── Sidebar.tsx
-│   ├── TyunniePanel.tsx
-│   ├── Desk.tsx          # Landing dashboard
-│   ├── Weather.tsx
-│   ├── Profile.tsx
-│   ├── Todo.tsx
-│   ├── Writing.tsx
-│   ├── Projects.tsx
-│   ├── Snippets.tsx
-│   ├── Finance.tsx
-│   ├── Music.tsx
-│   ├── Pomodoro.tsx
-│   ├── StickyNote.tsx
-│   ├── StickyLayer.tsx
-│   ├── FocusMode.tsx
-│   ├── Games.tsx
-│   └── games/
-│       ├── TicTacToe.tsx
-│       ├── Sudoku.tsx
-│       ├── Minesweeper.tsx
-│       ├── Solitaire.tsx
-│       └── Chess.tsx
-├── lib/
-│   ├── supabase.ts
-│   ├── database.ts
-│   ├── MusicContext.tsx
-│   └── useSpeech.ts
-└── public/
-    ├── sprites/
-    └── music/
+app/                    Pages, API routes, layout
+components/             All UI panels and games
+lib/                    Supabase client, database queries, crypto, contexts
+public/sprites/         Tyunnie sprite PNGs
+public/music/           MP3s, cover art, playlist.json
 ```
 
----
-
-## 🌐 Demo
-
-**Live:** [tyunnie-pa.vercel.app](https://tyunnie-pa.vercel.app)
+Full file-by-file breakdown in [CLAUDE.md](./CLAUDE.md).
 
 ---
 
-## 🚢 Deployment
+## Live Demo
 
-1. Push to GitHub
-2. Import on [vercel.com](https://vercel.com)
-3. Add environment variables in Vercel → Settings → Environment Variables
-4. Deploy
+[tyunnie-pa.vercel.app](https://tyunnie-pa.vercel.app)
 
 ---
 
-## 📋 Release History
+## Release History
 
-See [CHANGELOG.md](./CHANGELOG.md) for the full version history.
-
----
-
-## 🧡 About
-
-Tyunnie is a personal productivity app built as a CS student project. The assistant is designed to feel like a warm, supportive friend — not a corporate AI — inspired by the personality of Taehyun from TXT.
+See [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
-## 📄 License
+## About
+
+Tyunnie is a personal productivity app built as a CS student project. The assistant is designed to feel like a warm, supportive friend — calm, a little dry, and genuinely helpful — inspired by the personality of Taehyun from TXT.
+
+---
+
+## License
 
 MIT — feel free to use this as inspiration for your own projects.

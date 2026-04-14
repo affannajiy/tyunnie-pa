@@ -1,6 +1,8 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.9.0.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.9.1.
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](./DATABASE.md) for schema and SQL.
 
 ---
 
@@ -12,7 +14,7 @@ app/
 ├── globals.css             Tailwind + CSS custom properties (orange/cream theme, dark mode overrides)
 ├── page.tsx                Unused — root redirect is in next.config.ts
 ├── dashboard/page.tsx      Main app shell — renders all panels, auth guard (15s timeout)
-├── auth/page.tsx           Login/signup — Supabase email + Google OAuth
+├── auth/page.tsx           Login/signup — split layout, Supabase email + Google OAuth
 ├── error.tsx               Error boundary with sprite + Try Again
 ├── not-found.tsx           404 with sprite + /dashboard link
 └── api/
@@ -50,53 +52,18 @@ components/
 
 lib/
 ├── database.ts             All Supabase queries — types + CRUD for todos, drafts, projects, snips, finance, vault, sticky notes, memories
-├── supabase.ts             Supabase client singleton
+├── supabase.ts             Supabase client singleton + authHeader() helper
+├── tyunniePanelTypes.ts    Shared TyunniePanelProps type (used by dashboard/page.tsx for dynamic() typing)
 ├── crypto.ts               AES-GCM 256-bit + PBKDF2 (100k iterations) — vault encryption, PIN verifier
+├── apiAuth.ts              verifyAuth(header) — server-side Supabase JWT validation for API routes
+├── rateLimit.ts            In-memory rate limiter — rateLimit(key, limit, windowMs)
 ├── MusicContext.tsx         React Context — player state (tracks, playback, shuffle, repeat, Web Audio analyser)
 └── useSpeech.ts            Web Speech API hook — {listening, supported, toggle}
 ```
 
 ---
 
-## Environment Variables
-
-```
-NEXT_PUBLIC_SUPABASE_URL        Supabase project URL (client-safe)
-NEXT_PUBLIC_SUPABASE_ANON_KEY   Supabase anon key (client-safe)
-GROQ_API_KEY                    Groq API key (server only)
-JDOODLE_CLIENT_ID               JDoodle code execution (server only)
-JDOODLE_CLIENT_SECRET           JDoodle code execution (server only)
-RESEND_API_KEY                  Email sending via Resend (server only)
-SUPABASE_SERVICE_ROLE_KEY       Service role for server-side Supabase ops (server only)
-CRON_SECRET                     Bearer token guard for /api/daily-quote cron
-```
-
----
-
-## Supabase Schema
-
-Tables: `todos`, `drafts`, `projects`, `snips`, `finance`, `profiles`, `vault`, `vault_meta`, `sticky_notes`, `memories`
-
-All tables have RLS enabled with `auth.uid() = user_id` policies. `profiles` uses `auth.uid() = id`.
-
-**Types (from database.ts):**
-
-```ts
-Todo:         { text, tag: 'cs'|'write'|'personal'|'other', due: 'YYYY-MM-DD'|null, done }
-Draft:        { title, body }
-Project:      { name, status: 'planning'|'active'|'paused'|'done', start_date, end_date, progress: 0-100, description }
-Snip:         { name, language: 'py'|'js'|'ts'|'bash', code }
-FinanceEntry: { type: 'income'|'expense', description, amount, category, account, date: 'YYYY-MM-DD' }
-Profile:      { display_name, birth_day, birth_month, city, city_lat, city_lon, theme, locale, currency,
-                occupation, workplace, bio, interests[], greeting_style, show_briefing, avatar_url, daily_quote_email }
-VaultEntry:   { name, encrypted_data, iv, salt }   // all base64
-StickyNote:   { content, x, y, width, height, color }
-Memory:       { content }  // latest 40 kept
-```
-
----
-
-## Non-Obvious Rules (read DEVNOTES.md for full detail)
+## Non-Obvious Rules
 
 ### Routing
 - Root `/` redirect lives in `next.config.ts` `redirects()`, not `app/page.tsx`
@@ -104,6 +71,7 @@ Memory:       { content }  // latest 40 kept
 ### TypeScript / Vercel Build
 - **Always use `any`** for Web Speech API event types in `lib/useSpeech.ts` — `SpeechRecognitionEvent` breaks Vercel even with `global.d.ts` declarations
 - CSS module declarations go in `global.d.ts`, not `next-env.d.ts` (auto-regenerated, gitignored)
+- `dynamic()` loses prop types — use `dynamic<Props>(...)` with type imported from `lib/tyunniePanelTypes.ts`, not from the component directly (Next.js plugin interferes with named exports from `"use client"` files)
 
 ### sessionStorage vs useRef
 - Use `sessionStorage` (not `useRef`) to gate one-shot AI calls — refs reset on panel unmount/remount:
@@ -121,13 +89,11 @@ Memory:       { content }  // latest 40 kept
 ### Images
 - Next.js `Image` src must NOT include `/public/` — use `/sprites/foo.png` not `/public/sprites/foo.png`
 - Sprite canvas: **360×460px** transparent PNG; Desk hero sprite: **560×720px**
+- Always set both intrinsic `width`/`height` to the real image dimensions; use CSS `width`/`height: "auto"` to control render size
 
 ### Supabase Auth
 - Corrupted session after failed Google OAuth → clear `sb-*` keys from localStorage + IndexedDB
 - Auth timeout guard in `dashboard/page.tsx` redirects to `/auth` after 15s
-
-### Demo Mode
-- All `database.ts` functions have early return for `userId === "demo-user"` — add this guard to any new function
 
 ### Groq / AI Actions
 - Strip trailing garbage before parsing action JSON: `.trim().replace(/[^}]*$/, "").trim()`
@@ -147,8 +113,9 @@ Memory:       { content }  // latest 40 kept
 ### TyunniePanel Bottom Sheet
 - Always mounted (never conditionally rendered) — chat history survives panel switches
 - `isOpen` controls visibility via CSS `transform: translateY(...)`, NOT `display:none`
-- `snapPct` = vh hidden below fold. Desktop: `[8, 4, 0]`, Mobile: `[8, 0]`. `cycleSnap()` advances through the array
-- Fullscreen (`snapPct === 0`) → `100vw` width, no border-radius, no borders — replaces the old `isExpanded` two-column mode (removed in v3.9.0)
+- `snapPct` = vh hidden below fold. Desktop: `[8, 4, 0]`, Mobile: `[0]`. `cycleSnap()` advances through the array
+- Mobile is fullscreen-only (`snapPct === 0`); handle bar hidden on mobile
+- Fullscreen (`snapPct === 0`) → `100vw` width, no border-radius, no borders
 - Backdrop only shown when `isOpen && snapPct > 0` (not when fullscreen)
 - Swipe-up-from-bottom-edge gesture fires `onOpen` when `!isOpen`; listens via `touchstart`/`touchend` on `document`
 
@@ -164,7 +131,7 @@ Memory:       { content }  // latest 40 kept
 ## Key Architectural Patterns
 
 | Concern | Approach |
-|---------|---------|
+|---|---|
 | State persistence across panel switches | `sessionStorage` for flags, Supabase for data |
 | Chat history persistence | TyunniePanel always mounted; hidden via CSS transform only |
 | Dark mode | `localStorage['tyunnie_theme']` → class on `<html>`, set in layout script |
@@ -174,6 +141,8 @@ Memory:       { content }  // latest 40 kept
 | AI personality | Taehyun from TXT — calm, caring, dry humor, poetic |
 | Daily quote emails | Vercel cron `0 1 * * *` → `/api/daily-quote` → Groq → Resend |
 | Code execution | `/api/run` proxies to JDoodle API |
+| API security | Auth via `verifyAuth()` (JWT), rate limiting via `rateLimit()`, XSS via `sanitizeHtml()` |
+| Shared prop types | Heavy components use `lib/tyunniePanelTypes.ts` — avoids Next.js plugin type inference issues |
 
 ---
 
@@ -190,7 +159,7 @@ Version tracked in `package.json` and mirrored in README badge.
 ## Dev Commands
 
 ```bash
-npm run dev      # Start dev server (Next.js)
-npm run build    # Production build
+npm run dev      # Start dev server (Next.js + Turbopack)
+npm run build    # Production build + TypeScript check
 npm run lint     # ESLint
 ```

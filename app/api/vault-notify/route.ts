@@ -1,18 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { rateLimit, clientKey } from "@/lib/rateLimit";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Simple in-memory OTP store — good enough for single-server dev/Vercel
-// Each entry expires after 10 minutes
-const otpStore = new Map<string, { otp: string; expires: number }>();
+const MAX_EMAIL_LEN = 254;
+const MAX_OTP_LEN   = 10;
+
+// OTP store — expires after 10 minutes, max 5 verify attempts before lockout
+const otpStore = new Map<string, { otp: string; expires: number; attempts: number }>();
 
 export async function POST(req: NextRequest) {
+  // ── Rate limit: 5 requests / 10 minutes per IP ──
+  const key = `vault:${clientKey(req)}`;
+  if (!rateLimit(key, 5, 10 * 60_000)) {
+    return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
+  }
+
   const { email, type, otp: submittedOtp } = await req.json();
-  if (!email) return NextResponse.json({ error: "No email" }, { status: 400 });
+
+  // ── Input validation ──
+  if (!email || typeof email !== "string" || email.length > MAX_EMAIL_LEN) {
+    return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+  }
+  const ALLOWED_TYPES = new Set(["verify", "pin_change_request", "setup", "changed"]);
+  if (!type || !ALLOWED_TYPES.has(type)) {
+    return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+  }
 
   // ── VERIFY OTP ──
   if (type === "verify") {
+    if (typeof submittedOtp !== "string" || submittedOtp.length > MAX_OTP_LEN) {
+      return NextResponse.json({ error: "Invalid code." }, { status: 400 });
+    }
     const record = otpStore.get(email);
     if (!record) {
       return NextResponse.json(
@@ -27,7 +47,16 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    // Brute-force lockout after 5 wrong attempts
+    if (record.attempts >= 5) {
+      otpStore.delete(email);
+      return NextResponse.json(
+        { error: "Too many attempts. Request a new code." },
+        { status: 429 },
+      );
+    }
     if (record.otp !== submittedOtp) {
+      record.attempts += 1;
       return NextResponse.json({ error: "Wrong code." }, { status: 400 });
     }
     otpStore.delete(email); // one-time use
@@ -37,7 +66,7 @@ export async function POST(req: NextRequest) {
   // ── SEND OTP ──
   if (type === "pin_change_request") {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000 });
+    otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000, attempts: 0 });
 
     await resend.emails.send({
       from: "Tyunnie <onboarding@resend.dev>",

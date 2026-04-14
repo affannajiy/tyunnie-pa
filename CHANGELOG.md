@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.9.1] — 2026-04-14
+
+### Added
+
+- **Auth page redesign** — split layout with branded left panel (accent bubbles, Tyunnie sprite pinned to bottom edge, taglines under subtitle) and clean form on the right. Google button promoted above the email/password form. Full dark mode support
+- `lib/tyunniePanelTypes.ts` — standalone shared props type file for `TyunniePanelProps`, extracted from `TyunniePanel.tsx` to avoid Next.js TypeScript plugin interference with named exports from `"use client"` files
+- `DEPLOYMENT.md` — env vars, Vercel setup, Google OAuth consent screen fix, Supabase auth config
+- `DATABASE.md` — full schema, TypeScript types, SQL setup, RLS policies, indexes, avatar storage, demo mode
+
+### Fixed
+
+- `dynamic<TyunniePanelProps>()` typing — `TyunniePanelProps` moved to `lib/tyunniePanelTypes.ts` so both `tsc` and the IDE language server resolve it correctly
+- Implicit `any` on inline callbacks in `dashboard/page.tsx` (`onStickyCleared`, `onMemoryAdded`, `onMemoryDeleted`)
+- Auth page sprite aspect ratio warning — intrinsic `width`/`height` now match actual sprite canvas (360×460)
+- Stale `.tsbuildinfo` incremental cache cleared
+
+### Changed
+
+- `CLAUDE.md` — leaner: environment variables and schema moved to `DEPLOYMENT.md` and `DATABASE.md`; added Image aspect ratio rule and `tyunniePanelTypes.ts` note to non-obvious rules
+
+---
+
 ## [3.9.0] — 2026-04-14
 
 ### Added

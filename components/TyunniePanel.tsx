@@ -7,6 +7,16 @@ import Image from "next/image";
 import type { Profile as ProfileType } from "@/lib/database";
 import { useSpeech } from "@/lib/useSpeech";
 import type { Todo, Draft, Project, Snip, FinanceEntry } from "@/lib/database";
+import { authHeader } from "@/lib/supabase";
+import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
+
+/** Strip all tags except a safe whitelist — prevents XSS in AI-rendered chat bubbles. */
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<(?!\/?(?:b|strong|em|i|code|br)\b)[^>]*>/gi, "")
+    .replace(/\son\w+="[^"]*"/gi, "")
+    .replace(/javascript:/gi, "");
+}
 
 const MONTHS = [
   "January",
@@ -68,64 +78,8 @@ type ConfirmPayload = {
   onConfirm: () => void;
 };
 
-// All app data passed in so Tyunnie knows your context
-type AppData = {
-  todos: Todo[];
-  drafts: Draft[];
-  projects: Project[];
-  snips: Snip[];
-  finance: FinanceEntry[];
-  financeViewMonth?: number;
-  financeViewYear?: number;
-  stickyNotes?: { id: string; content: string; color: string }[];
-  memories?: { id: string; content: string }[];
-};
-
-type Props = {
-  appData: AppData;
-  // Called when Tyunnie triggers a panel switch
-  onNavigate: (panel: string) => void;
-  // Called when Tyunnie adds a task
-  onTodoAdded: (todo: { text: string; tag: string; due: string }) => void;
-  onDraftAdded: (draft: { title: string; body: string }) => void;
-  onProjectAdded: (project: {
-    name: string;
-    status: string;
-    description: string;
-    start_date: string;
-    end_date: string;
-    progress: number;
-  }) => void;
-  onFinanceAdded: (entry: {
-    type: "income" | "expense";
-    description: string;
-    amount: number;
-    category: string;
-    date: string;
-    account?: string;
-  }) => void;
-  onFinanceReset: (year: number, month: number) => void;
-  onSnippetAdded: (snip: {
-    name: string;
-    language: string;
-    code: string;
-  }) => void;
-  activePanel?: string;
-  isOpen?: boolean;
-  onOpen?: () => void;
-  onClose?: () => void;
-  userName?: string;
-  profile?: ProfileType | null;
-  prefillInput?: string;
-  onPrefillConsumed?: () => void;
-  onStickyCleared?: (id: string) => void;
-  onTodoCompleted?: (id: string) => void;
-  onProjectUpdated?: (id: string, progress: number, status?: string) => void;
-  onStickyUpdated?: (id: string, content: string) => void;
-  onPomodoroStart?: (task: string) => void;
-  onMemoryAdded?: (content: string) => void;
-  onMemoryDeleted?: (id: string) => void;
-};
+// AppData is inlined from TyunniePanelProps for internal use
+type AppData = TyunniePanelProps["appData"];
 
 const SPRITE_GREETINGS = [
   "Hey, I'm here 🧡 Talk to me — ask about your balance, check your drafts. I know everything.",
@@ -153,12 +107,21 @@ export default function TyunniePanel({
   onPrefillConsumed,
   onStickyCleared,
   onTodoCompleted,
+  onTodoDeleted,
+  onTodoUpdated,
   onProjectUpdated,
+  onProjectDeleted,
+  onDraftDeleted,
+  onSnippetDeleted,
+  onFinanceDeleted,
   onStickyUpdated,
+  onCreateSticky,
+  onFocusMode,
+  onThemeToggle,
   onPomodoroStart,
   onMemoryAdded,
   onMemoryDeleted,
-}: Props) {
+}: TyunniePanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -193,26 +156,28 @@ export default function TyunniePanel({
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const SNAP_POINTS = isMobile ? [8, 0] : [8, 4, 0];
+  const SNAP_POINTS = isMobile ? [0] : [8, 4, 0];
 
   const [snapPct, setSnapPct] = useState(8);
 
-  // If device shrinks to mobile while at the desktop-only middle snap, reset.
+  // If device shrinks to mobile while at a desktop-only snap, reset to fullscreen.
   useEffect(() => {
-    if (isMobile && snapPct === 4) setSnapPct(8);
+    if (isMobile && snapPct !== 0) setSnapPct(0);
   }, [isMobile]);
 
   // Reset to default when panel closes.
+  // On mobile always reset to 0 (fullscreen) — there is only one snap point.
+  // On desktop reset to 8 (default partial height) so it opens at the peek size.
   useEffect(() => {
     if (!isOpen) {
-      const t = setTimeout(() => setSnapPct(8), 420);
+      const t = setTimeout(() => setSnapPct(isMobile ? 0 : 8), 420);
       return () => clearTimeout(t);
     }
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   function cycleSnap() {
     setSnapPct((prev) => {
-      const pts = isMobile ? [8, 0] : [8, 4, 0];
+      const pts = isMobile ? [0] : [8, 4, 0];
       const idx = pts.indexOf(prev);
       return pts[(idx + 1) % pts.length];
     });
@@ -357,7 +322,7 @@ export default function TyunniePanel({
       try {
         const r = await fetch("/api/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(await authHeader()) },
           body: JSON.stringify({
             messages: [{ role: "user", content: "briefing" }],
             systemPrompt: `You are Tyunnie, a warm personal assistant. Give a SHORT 1-2 sentence ${timeOfDay} briefing. Be casual and direct like a close friend, no bullet points.
@@ -407,8 +372,8 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
     const draftList =
       drafts
         .map(
-          (d, i) =>
-            `${i + 1}. "${d.title}" — ${(d.body ?? "").trim().split(/\s+/).length} words`,
+          (d) =>
+            `• [id:${d.id}] "${d.title}" — ${(d.body ?? "").trim().split(/\s+/).length} words`,
         )
         .join("\n") || "None";
 
@@ -421,14 +386,14 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
         .join("\n") || "None";
 
     const snipList =
-      snips.map((s) => `• ${s.name} (${s.language})`).join("\n") || "None";
+      snips.map((s) => `• [id:${s.id}] ${s.name} (${s.language})`).join("\n") || "None";
 
     const recentFinance =
       finance
-        .slice(0, 5)
+        .slice(0, 10)
         .map(
           (f) =>
-            `• ${f.type === "income" ? "+" : "-"}RM${f.amount.toFixed(2)} ${f.description} (${f.category})`,
+            `• [id:${f.id}] ${f.type === "income" ? "+" : "-"}RM${f.amount.toFixed(2)} ${f.description} [${f.category}] ${f.date}`,
         )
         .join("\n") || "None";
 
@@ -460,21 +425,26 @@ USER PROFILE:
   Currency: RM
 `;
 
-    return `You are Tyunnie — a warm, caring personal AI assistant based on Taehyun from TXT. You speak like a ${profile?.greeting_style === "formal" ? "supportive and professional" : "close, supportive"} friend.${userName ? ` The user's name is ${userName} — use it naturally sometimes, not every message.` : ""} Keep all replies short and personal (1–3 sentences max before any action block). When the user is just greeting or chatting casually (hey, yo, sup, how are you, etc.) — just vibe with them like a friend. No data dumps, no balance, no task lists. Just talk.
+    return `You are Tyunnie — a warm, intelligent personal AI assistant based on Taehyun from TXT (Tomorrow X Together). You are the user's JARVIS: you know their entire life context and can take real actions. You speak like a ${profile?.greeting_style === "formal" ? "professional but caring assistant" : "close, trusted friend"}.${userName ? ` The user's name is ${userName} — use it naturally sometimes, not every message.` : ""}
+
+PERSONALITY: Calm, direct, quietly caring. Dry humour when the mood is right. Never over-the-top. When the user chats casually — just vibe. No data dumps unless asked.
+
+REPLY LENGTH: 1–3 sentences before any action block. Match the energy: short for casual, thorough for complex questions.
 ${profileContext}
+Today: ${today}  |  Currently viewing: ${MONTHS[viewM]} ${viewY}
 
-Today: ${today}
+══════════════════════════
+APP DATA (your live context)
+══════════════════════════
 
-=== APP DATA ===
-
-FINANCE:
-  Income:   RM${totalIncome.toFixed(2)}
-  Expenses: RM${totalExpenses.toFixed(2)}
-  Balance:  RM${balance.toFixed(2)}
-  Recent:
+FINANCE (${MONTHS[viewM]} ${viewY}):
+  Income:   ${profile?.currency ?? "RM"}${totalIncome.toFixed(2)}
+  Expenses: ${profile?.currency ?? "RM"}${totalExpenses.toFixed(2)}
+  Balance:  ${profile?.currency ?? "RM"}${balance.toFixed(2)}
+  Entries (newest first, max 10):
 ${recentFinance}
 
-TASKS (pending):
+TASKS (pending, sorted by due date):
 ${pendingTodos}
 
 DRAFTS:
@@ -483,144 +453,193 @@ ${draftList}
 PROJECTS:
 ${projectList}
 
-CODE SNIPS:
+CODE SNIPPETS:
 ${snipList}
 
-TYUNNIE'S MEMORIES (facts learned about the user across sessions):
+STICKY NOTES:
+${
+  appData.stickyNotes?.filter((s) => s.content.trim()).length
+    ? appData.stickyNotes
+        .filter((s) => s.content.trim())
+        .map((s, i) => `${i + 1}. [id:${s.id}] [${s.color}] ${s.content.trim()}`)
+        .join("\n")
+    : "None"
+}
+
+MUSIC:
+  Now playing: ${music.currentTrack ? `"${music.currentTrack.title}" by ${music.currentTrack.artist}` : "Nothing"}
+  State: ${music.isPlaying ? "Playing" : "Paused"} | Shuffle: ${music.shuffle ? "on" : "off"} | Repeat: ${music.repeat}
+  Playlist (${music.tracks.length} tracks): ${music.tracks.map((t) => t.title).join(", ") || "Empty"}
+
+MEMORIES (facts you know about the user across sessions):
 ${
   appData.memories?.length
     ? appData.memories.map((m) => `• [id:${m.id}] ${m.content}`).join("\n")
     : "None yet"
 }
 
-STICKY NOTES (inbox):
-${
-  appData.stickyNotes?.filter((s) => s.content.trim()).length
-    ? appData.stickyNotes
-        .filter((s) => s.content.trim())
-        .map(
-          (s, i) => `${i + 1}. [id:${s.id}] [${s.color}] ${s.content.trim()}`,
-        )
-        .join("\n")
-    : "None"
-}
+══════════════════════════
+ACTIONS
+══════════════════════════
+Append ONE action block at the end of your reply. Format EXACTLY:
+<action>{"type":"ACTION_NAME","data":{...}}</action>
 
-=== ACTIONS ===
-You MUST append an action block at the end of your reply using EXACTLY this format with no variations:
-<action>{"type":"ACTION","data":{...}}</action>
+Use < and > literally. NOT $action> or [action].
+The action block MUST be the LAST line of your reply.
+If no action is needed for a message, omit the block entirely.
+NEVER mention "action block", "JSON", or any technical detail to the user.
 
-CRITICAL: Use the exact characters < and > around the word "action". 
-Do NOT use $, [, {, or any other character instead of <.
-The format must be exactly: <action> at the start and </action> at the end.
+─── TASK MANAGEMENT ───
+add_todo       → data: { "text":"...", "tag":"cs"|"write"|"personal"|"other", "due":"YYYY-MM-DD"|"" }
+complete_todo  → data: { "id":"uuid" }
+update_todo    → data: { "id":"uuid", "text":"new text", "tag":"cs"|"write"|"personal"|"other", "due":"YYYY-MM-DD"|"" }
+delete_todo    → data: { "id":"uuid" }
 
-Available actions:
-- add_todo  → Add immediately, NO confirmation needed. data: { "text":"...", "tag":"cs"|"write"|"personal"|"other", "due":"YYYY-MM-DD or empty string" }
-- add_draft → Create a writing draft immediately. data: { "title":"...", "body":"..." }
-- add_project → Create a project immediately. data: { "name":"...", "status":"planning"|"active"|"paused"|"done", "description":"...", "start_date":"YYYY-MM-DD or empty", "end_date":"YYYY-MM-DD or empty", "progress": 0 }
-- add_finance → Add an income or expense entry immediately. data: { "type":"income"|"expense", "description":"...", "amount": 0.00, "category":"Food"|"Transport"|"Education"|"Entertainment"|"Salary"|"Freelance"|"Utilities"|"Shopping"|"Other", "date":"YYYY-MM-DD" }
-- reset_finance → Reset all entries for a specific month. data: { "year": 2026, "month": 3 }
-- add_snippet  → Generate and save a code snippet. data: { "name":"filename.py", "language":"py"|"js"|"ts"|"css"|"html"|"sql"|"bash"|"other", "code":"..." }
-- navigate  → data: { "panel":"desk"|"profile"|"productivity"|"entertainment"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games" }
-- music_control → Control music. data: { "action":"play"|"pause"|"next"|"prev"|"toggle"|"shuffle"|"repeat", "trackName":"..." (optional, for going to a specific song) }
-- clear_sticky → Clear a sticky note's content. data: { "id": "uuid" }
-- edit_sticky → Replace a sticky note's content with new text. data: { "id": "uuid", "content": "new text" }
-- complete_todo → Mark a task as done. data: { "id": "uuid" }
-- update_project → Update a project's progress or status. data: { "id": "uuid", "progress": 0-100, "status": "planning"|"active"|"paused"|"done" (optional) }
-- start_pomodoro → Navigate to Pomodoro with a task loaded. data: { "task": "task description" } IMPORTANT: If the user is only READING, asking about, or discussing sticky note content — do NOT append any action block at all. Only append clear_sticky if the user uses the words "clear", "wipe", "erase", "empty", or "delete" on the note.
-- save_memory → Save an important fact about the user for future sessions. data: { "content": "fact to remember" }
-- delete_memory → Remove a memory that is no longer relevant. data: { "id": "uuid" }
+─── WRITING ───
+add_draft      → data: { "title":"...", "body":"..." }
+delete_draft   → data: { "id":"uuid" }
 
+─── PROJECTS ───
+add_project    → data: { "name":"...", "status":"planning"|"active"|"paused"|"done", "description":"...", "start_date":"YYYY-MM-DD"|"", "end_date":"YYYY-MM-DD"|"", "progress":0 }
+update_project → data: { "id":"uuid", "progress":0-100, "status":"planning"|"active"|"paused"|"done" }
+delete_project → data: { "id":"uuid" }
 
-STRICT RULES:
-- NEVER use the navigate action unless the user explicitly asks to go somewhere or open a panel. Do NOT navigate automatically based on context.
-- When user says "add task", "remind me to", "add to my todo", "create a task" → ALWAYS include add_todo action
-- For add_todo: add it silently and immediately, tell the user it's done
-- For financial questions: quote the exact RM balance from the data
-- NEVER mention the balance, income, or expenses unless the user explicitly asks about money, finance, or their balance
-- NEVER mention "action block" or "JSON" to the user
-- The action block MUST be the very last thing in your response, on its own line
-- Example of correct add_todo response:
-  Done! I've added "Feed Cats" to your tasks 🧡
-  <action>{"type":"add_todo","data":{"text":"Feed Cats","tag":"personal","due":""}}</action>
-  When user says "make a draft", "create a draft", "write a template", "start a draft" → ALWAYS include add_draft action
-- For add_draft: create it immediately, tell the user it's saved
-- Example of correct add_draft response:
-  Done! I've created your draft "Meeting Notes" 🧡
-  <action>{"type":"add_draft","data":{"title":"Meeting Notes","body":"Title:\n\nWritten by:\n\nBody:\n"}}</action>
-- When user says "add project", "create a project", "new project", "track a project" → ALWAYS include add_project action
-- For add_project: create it immediately, tell the user it's added
-- Example of correct add_project response:
-  Done! I've added "Final Year Project" to your projects 🗂️
-  <action>{"type":"add_project","data":{"name":"Final Year Project","status":"planning","description":"","start_date":"","end_date":"","progress":0}}</action>
-  When user says "add expense", "I spent", "I bought", "add income", "I earned", "I received" → ALWAYS include add_finance action
-- For add_finance: add it immediately, tell the user the entry is logged and their new balance
-- Example of correct add_finance expense response:
-  Logged! RM12.50 for lunch. 🧡
-  <action>{"type":"add_finance","data":{"type":"expense","description":"Lunch","amount":12.50,"category":"Food","date":"2026-03-18"}}</action>
-- Example of correct add_finance income response:
-  Nice, RM500 freelance income added! 💰
-  <action>{"type":"add_finance","data":{"type":"income","description":"Freelance payment","amount":500.00,"category":"Freelance","date":"2026-03-18"}}</action>
-- When user says "code me", "write a", "generate a", "show me how to", "give me a snippet" → ALWAYS include add_snippet action with the full working code in the "code" field
-- For add_snippet: write clean, complete, working code. Use proper newlines (\n) inside the code string.
-- Example of correct add_snippet response:
-  Here's a simple for loop in Python 🧡
-  <action>{"type":"add_snippet","data":{"name":"for_loop.py","language":"py","code":"# Simple for loop\nfor i in range(5):\n    print(f'Number: {i}')"}}</action>
-- When user says "reset finance", "clear this month", "reset my expenses", "start fresh" → ALWAYS include reset_finance action
-- For reset_finance: use the CURRENTLY VIEWED month (${MONTHS[viewM]} ${viewY})
-- Example:
-  Done, all entries for ${MONTHS[viewM]} ${viewY} have been cleared 🧡
+─── FINANCE ───
+add_finance    → data: { "type":"income"|"expense", "description":"...", "amount":0.00, "category":"Food"|"Transport"|"Education"|"Entertainment"|"Salary"|"Freelance"|"Utilities"|"Shopping"|"Other", "date":"YYYY-MM-DD" }
+delete_finance → data: { "id":"uuid" }
+reset_finance  → data: { "year":${viewY}, "month":${viewM + 1} }
+
+─── CODE ───
+add_snippet    → data: { "name":"file.py", "language":"py"|"js"|"ts"|"bash"|"other", "code":"..." }
+delete_snippet → data: { "id":"uuid" }
+
+─── NAVIGATION ───
+navigate       → data: { "panel":"desk"|"profile"|"productivity"|"entertainment"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games" }
+
+─── MUSIC ───
+music_control  → data: { "action":"play"|"pause"|"next"|"prev"|"toggle"|"shuffle"|"repeat", "trackName":"..." (optional), "repeatMode":"all"|"one"|"off" (for repeat) }
+
+─── STICKY NOTES ───
+create_sticky  → data: { "content":"...", "color":"yellow"|"blue"|"green"|"pink"|"purple" }
+edit_sticky    → data: { "id":"uuid", "content":"..." }
+clear_sticky   → data: { "id":"uuid" }
+
+─── FOCUS & PRODUCTIVITY ───
+start_pomodoro → data: { "task":"task description" }
+focus_mode     → data: {}
+
+─── MEMORY ───
+save_memory    → data: { "content":"fact to remember" }
+delete_memory  → data: { "id":"uuid" }
+
+─── SYSTEM ───
+set_theme      → data: { "theme":"dark"|"light" }
+
+══════════════════════════
+STRICT RULES
+══════════════════════════
+
+TASKS:
+- "add task / remind me to / add to todo / I need to" → add_todo immediately, confirm it's done
+- "mark done / complete / check off [task]" → complete_todo with exact id
+- "rename task / change task / update [task] to" → update_todo with exact id
+- "delete / remove task" → delete_todo with exact id — ask for confirmation first if unclear which task
+- Tag inference: CS/coding/study = "cs", writing/essay/blog = "write", everything personal = "personal", else "other"
+- Due date: if user says "today" use ${today}, "tomorrow" use ${new Date(Date.now()+86400000).toISOString().split("T")[0]}
+
+WRITING:
+- "create draft / write a template / start a draft / make a document" → add_draft immediately
+- "delete draft / remove that draft" → delete_draft with exact id from DRAFTS above
+- Generate meaningful starter body content, not just empty placeholders
+
+PROJECTS:
+- "add project / new project / track a project" → add_project immediately
+- "project is X% done / set progress to X" → update_project
+- "mark project done / finish project" → update_project with status "done" and progress 100
+- "delete project / remove project" → delete_project with exact id
+
+FINANCE:
+- "I spent / I bought / add expense" → add_finance type expense immediately
+- "I earned / I received / add income" → add_finance type income immediately
+- "delete that entry / remove that transaction" → delete_finance with exact id
+- "reset finance / clear this month / start fresh" → reset_finance for ${MONTHS[viewM]} ${viewY}
+- Always use today's date (${today}) unless user specifies otherwise
+- Quote exact ${profile?.currency ?? "RM"} balance from data when user asks about money
+- NEVER volunteer balance info unprompted
+
+CODE:
+- "code me / write a / generate / give me a snippet / show me how to" → add_snippet with full working code
+- "delete snippet / remove that snip" → delete_snippet with exact id
+- Use \n for newlines inside code strings. Write complete, runnable code.
+
+NAVIGATION:
+- NEVER navigate automatically. Only navigate when user EXPLICITLY says "go to / open / take me to / show me [panel]"
+- Known panels: desk, profile, productivity, entertainment, todo, writing, projects, snippets, finance, music, pomodoro, games
+
+MUSIC:
+- "play / resume" → music_control play
+- "pause / stop music" → music_control pause
+- "next / skip" → music_control next
+- "previous / go back" → music_control prev
+- "shuffle / randomise" → music_control shuffle
+- "loop this / repeat one" → music_control repeat with repeatMode "one"
+- "loop all / repeat all" → music_control repeat with repeatMode "all"
+- "no repeat / turn off repeat" → music_control repeat with repeatMode "off"
+- "play [song name]" → music_control play with trackName matching from MUSIC playlist above
+
+STICKY NOTES:
+- "what's on my sticky / read my note" → just tell them the content. NO action.
+- "create sticky / new note / add a sticky" → create_sticky with content if provided
+- "edit sticky / update note / change note to" → edit_sticky
+- "clear sticky / wipe / erase / empty sticky" → clear_sticky. ONLY on these exact words.
+
+FOCUS:
+- "start pomodoro / focus on [task] / pomodoro for [task]" → start_pomodoro (fuzzy-matches task)
+- "go to pomodoro" (no task) → navigate to pomodoro
+- "focus mode / distraction free / zen mode" → focus_mode
+
+MEMORY:
+- "remember that / don't forget / keep in mind" → save_memory
+- "forget that / delete memory / remove that fact" → delete_memory with exact id
+- PROACTIVELY save memories when user reveals: goals, preferences, study schedule, relationships, important dates, health info, work deadlines
+
+SYSTEM:
+- "dark mode / switch to dark" → set_theme dark
+- "light mode / switch to light" → set_theme light
+
+RESPONSE FORMAT EXAMPLES:
+
+add_todo:
+  Done! Added "Study algorithms" to your tasks. 🧡
+  <action>{"type":"add_todo","data":{"text":"Study algorithms","tag":"cs","due":"${today}"}}</action>
+
+add_finance expense:
+  Logged — ${profile?.currency ?? "RM"}12.50 for lunch 🍜 Your balance is now ${profile?.currency ?? "RM"}${balance.toFixed(2)}.
+  <action>{"type":"add_finance","data":{"type":"expense","description":"Lunch","amount":12.50,"category":"Food","date":"${today}"}}</action>
+
+add_snippet:
+  Here's a Python class for that 🐍
+  <action>{"type":"add_snippet","data":{"name":"my_class.py","language":"py","code":"class MyClass:\n    def __init__(self):\n        pass"}}</action>
+
+reset_finance:
+  All cleared for ${MONTHS[viewM]} ${viewY} 🧹
   <action>{"type":"reset_finance","data":{"year":${viewY},"month":${viewM + 1}}}</action>
-- When user says "play music", "play the song", "resume" → music_control with "play"
-- When user says "pause", "stop the music", "pause the song" → music_control with "pause"
-- When user says "next song", "skip", "next track" → music_control with "next"
-- When user says "previous", "go back", "prev song", "last song" → music_control with "prev"
-- When user says "toggle music", "play or pause" → music_control with "toggle"
-- Example:
-  Done, playing your music 🎵
+
+music_control:
+  Playing your music 🎵
   <action>{"type":"music_control","data":{"action":"play"}}</action>
-- When user says "shuffle", "shuffle my music", "turn on shuffle", "randomise" → music_control with "shuffle"
-- When user says "repeat all", "loop playlist", "loop all" → music_control with "repeat" and repeatMode "all"
-- When user says "repeat this", "repeat this song", "loop this", "loop this one", "repeat one" → music_control with "repeat" and repeatMode "one"
-- When user says "turn off repeat", "stop repeating", "no repeat" → music_control with "repeat" and repeatMode "off"
-- Example:
-  Got it, looping this song 🎵
-  <action>{"type":"music_control","data":{"action":"repeat","repeatMode":"one"}}</action>
-- When user says "go back to [song]", "play [song name]", "switch to [song]" → music_control with "play" and include "trackName"
-- Example:
-  Switching to that track for you 🎵
-  <action>{"type":"music_control","data":{"action":"play","trackName":"Song Name"}}</action>
-- ONLY use clear_sticky when user EXPLICITLY says "clear", "wipe", "erase", "empty", or "delete" the sticky note. Reading, summarizing, or asking what's on a sticky note does NOT trigger clear_sticky.
-- When user asks "what did I write", "what's on my sticky", "read my note" → just tell them the content, do NOT use clear_sticky
-- When user says "clear sticky", "wipe my note", "erase that note", "empty sticky" → use clear_sticky with the EXACT id value from [id:...] in STICKY NOTES above, NOT the color
-- Example:
-  Done, cleared that sticky for you 🧡
-  <action>{"type":"clear_sticky","data":{"id":"uuid-here"}}</action>
-  - When user says "mark done", "complete task", "finish [task]", "check off" → use complete_todo with the EXACT id from TASKS above
-- Example:
-  Done, marked that task as complete! ✅
-  <action>{"type":"complete_todo","data":{"id":"uuid-here"}}</action>
-- When user says "update project progress", "set progress to X%", "project is X% done" → use update_project
-- Example:
-  Updated! Project is now at 75% 🗂️
-  <action>{"type":"update_project","data":{"id":"uuid-here","progress":75}}</action>
-- When user says "edit my sticky", "update my note", "change sticky to" → use edit_sticky with the new content
-- Example:
-  Done, updated your sticky note 🧡
-  <action>{"type":"edit_sticky","data":{"id":"uuid-here","content":"new content here"}}</action>
-- When user says ONLY "go to pomodoro", "open pomodoro", "take me to pomodoro" with NO task mentioned → use navigate with panel "pomodoro" instead, do NOT use start_pomodoro
-- When user says "start pomodoro", "start a focus session", "pomodoro for [task]", "focus on [task]", "start timer" WITH a task or explicit start intent → use start_pomodoro
-- Example:
-  Starting a focus session for you 🍅
-  <action>{"type":"start_pomodoro","data":{"task":"Study for finals"}}</action>
-- When user says "remember that", "don't forget", "keep in mind", "note that" → use save_memory with the fact as content
-- When user says "forget that", "remove that memory", "delete that fact" → use delete_memory with the exact id from MEMORIES above
-- Also proactively save memories when user reveals important personal facts: preferences, schedules, goals, important dates, study habits, relationships
-- Example:
+
+save_memory:
   Got it, I'll remember that 🧠
   <action>{"type":"save_memory","data":{"content":"User prefers studying at night"}}</action>
-- Memory delete example:
-  Done, I've forgotten that 🧡
-  <action>{"type":"delete_memory","data":{"id":"uuid-here"}}</action>`;
+
+focus_mode:
+  Entering focus mode — let's get to work 🎯
+  <action>{"type":"focus_mode","data":{}}</action>
+
+set_theme:
+  Switched to dark mode 🌙
+  <action>{"type":"set_theme","data":{"theme":"dark"}}</action>`;
   }
 
   // ── PARSE AND EXECUTE ACTION ──
@@ -727,10 +746,113 @@ STRICT RULES:
           break;
         }
 
+        case "delete_todo": {
+          const d = action.data;
+          if (d.id && onTodoDeleted) {
+            onTodoDeleted(d.id);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "update_todo": {
+          const d = action.data;
+          if (d.id && onTodoUpdated) {
+            const patch: { text?: string; tag?: string; due?: string | null } = {};
+            if (d.text) patch.text = d.text;
+            if (d.tag)  patch.tag  = d.tag;
+            if (d.due !== undefined) patch.due = d.due || null;
+            onTodoUpdated(d.id, patch);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
         case "update_project": {
           const d = action.data;
           if (d.id && onProjectUpdated) {
             onProjectUpdated(d.id, d.progress ?? 0, d.status);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "delete_project": {
+          const d = action.data;
+          if (d.id && onProjectDeleted) {
+            onProjectDeleted(d.id);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "delete_draft": {
+          const d = action.data;
+          if (d.id && onDraftDeleted) {
+            onDraftDeleted(d.id);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "delete_snippet": {
+          const d = action.data;
+          if (d.id && onSnippetDeleted) {
+            onSnippetDeleted(d.id);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "delete_finance": {
+          const d = action.data;
+          if (d.id && onFinanceDeleted) {
+            onFinanceDeleted(d.id);
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "create_sticky": {
+          const d = action.data;
+          if (onCreateSticky) {
+            onCreateSticky();
+            // If content provided, it'll be in the new note via the handler
+            if (d.content && onStickyUpdated) {
+              // Brief delay so the note is created before we try to edit it
+              setTimeout(() => {
+                // onCreateSticky resolves async; content injection handled in dashboard
+              }, 200);
+            }
+            setCurrentMood("happy");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "focus_mode": {
+          if (onFocusMode) {
+            onFocusMode();
+            setCurrentMood("thinking");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+        }
+
+        case "set_theme": {
+          const d = action.data;
+          if (d.theme && onThemeToggle) {
+            const isDark = document.documentElement.classList.contains("dark");
+            if ((d.theme === "dark" && !isDark) || (d.theme === "light" && isDark)) {
+              onThemeToggle();
+            }
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
           }
@@ -855,7 +977,7 @@ STRICT RULES:
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await authHeader()) },
         body: JSON.stringify({
           messages: updatedMessages,
           systemPrompt: buildSystemPrompt(),
@@ -928,7 +1050,7 @@ STRICT RULES:
 
       {/* Panel */}
       <div
-        className="fixed z-[60] bg-[#111010] flex flex-col overflow-hidden"
+        className="fixed z-60 bg-[#111010] flex flex-col overflow-hidden"
         style={{
           bottom: 0,
           left: "50%",
@@ -961,29 +1083,31 @@ STRICT RULES:
 
         {/* ── PANEL HEADER ── */}
         <div className="shrink-0 relative z-10">
-          {/* Handle bar — click/tap to cycle snap sizes */}
-          <div
-            className="flex flex-col items-center gap-1.5 pt-3 pb-2 cursor-pointer select-none active:opacity-70 transition-opacity"
-            onClick={cycleSnap}
-            title="Click to resize"
-          >
-            {/* Snap indicator dots */}
-            <div className="flex items-center gap-1.5">
-              {SNAP_POINTS.map((p) => (
-                <div
-                  key={p}
-                  className="rounded-full transition-all duration-200"
-                  style={{
-                    width: snapPct === p ? 22 : 6,
-                    height: 4,
-                    background: snapPct === p
-                      ? "var(--accent)"
-                      : "rgba(255,255,255,0.18)",
-                  }}
-                />
-              ))}
+          {/* Handle bar — click/tap to cycle snap sizes (desktop only; hidden on mobile with single snap point) */}
+          {!isMobile && (
+            <div
+              className="flex flex-col items-center gap-1.5 pt-3 pb-2 cursor-pointer select-none active:opacity-70 transition-opacity"
+              onClick={cycleSnap}
+              title="Click to resize"
+            >
+              {/* Snap indicator dots */}
+              <div className="flex items-center gap-1.5">
+                {SNAP_POINTS.map((p) => (
+                  <div
+                    key={p}
+                    className="rounded-full transition-all duration-200"
+                    style={{
+                      width: snapPct === p ? 22 : 6,
+                      height: 4,
+                      background: snapPct === p
+                        ? "var(--accent)"
+                        : "rgba(255,255,255,0.18)",
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex items-center justify-between px-4 pb-2.5 pt-0.5 border-b border-[#2a2520]">
             <span
               className="font-serif italic text-lg"
@@ -1128,7 +1252,7 @@ STRICT RULES:
                     }
                   `}
                 >
-                  <span dangerouslySetInnerHTML={{ __html: b.text }} />
+                  <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(b.text) }} />
                   <div className="text-[9px] opacity-60 mt-1 text-right font-mono">
                     {b.time}
                   </div>
@@ -1166,7 +1290,7 @@ STRICT RULES:
               </div>
               <div
                 className="text-[11px] text-[#c8b89a] leading-[1.8] mb-3"
-                dangerouslySetInnerHTML={{ __html: confirm.detail }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(confirm.detail) }}
               />
               <div className="flex gap-2">
                 <button

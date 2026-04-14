@@ -182,6 +182,16 @@ export async function toggleTodo(id: string, done: boolean): Promise<void> {
   if (error) console.error("toggleTodo error:", error);
 }
 
+// Update a task's text, tag, or due date
+export async function updateTodo(
+  id: string,
+  updates: { text?: string; tag?: string; due?: string | null },
+): Promise<void> {
+  if (!id) return;
+  const { error } = await supabase.from("todos").update(updates).eq("id", id);
+  if (error) console.error("updateTodo error:", error);
+}
+
 // Delete a task
 export async function deleteTodo(id: string): Promise<void> {
   const { error } = await supabase.from("todos").delete().eq("id", id);

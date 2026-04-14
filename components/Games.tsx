@@ -2,12 +2,15 @@
 "use client";
 
 import { useState } from "react";
-import TicTacToe from "./games/TicTacToe";
-import Sudoku from "./games/Sudoku";
-import Minesweeper from "./games/Minesweeper";
-import Solitaire from "./games/Solitaire";
-import Chess from "./games/Chess";
-import Tetris from "./games/Tetris";
+import dynamic from "next/dynamic";
+
+// Each game is a large independent bundle — load only when selected
+const TicTacToe  = dynamic(() => import("./games/TicTacToe"),  { ssr: false });
+const Sudoku     = dynamic(() => import("./games/Sudoku"),     { ssr: false });
+const Minesweeper = dynamic(() => import("./games/Minesweeper"), { ssr: false });
+const Solitaire  = dynamic(() => import("./games/Solitaire"),  { ssr: false });
+const Chess      = dynamic(() => import("./games/Chess"),      { ssr: false });
+const Tetris     = dynamic(() => import("./games/Tetris"),     { ssr: false });
 
 type Game =
   | "tictactoe"

@@ -9,6 +9,7 @@ import {
   deleteSnip,
   type Snip,
 } from "@/lib/database";
+import { authHeader } from "@/lib/supabase";
 
 type Props = {
   userId: string;
@@ -170,7 +171,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
     try {
       const res = await fetch("/api/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await authHeader()) },
         body: JSON.stringify({ code, language }),
       });
 

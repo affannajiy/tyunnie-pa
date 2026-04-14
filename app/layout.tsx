@@ -10,12 +10,14 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
   style: ["normal", "italic"],
   variable: "--font-serif",
+  display: "swap",
 });
 
 const nunito = Nunito({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -44,6 +46,17 @@ export default function RootLayout({
       className={`${instrumentSerif.variable} ${nunito.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        {/* Preconnect to Supabase — shaves ~200-400ms off TTFB for auth + DB calls */}
+        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
+          <>
+            <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+            <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+          </>
+        )}
+        {/* Preconnect to Groq for faster first AI response */}
+        <link rel="preconnect" href="https://api.groq.com" />
+      </head>
       <body className="font-sans antialiased">
         <script
           dangerouslySetInnerHTML={{
