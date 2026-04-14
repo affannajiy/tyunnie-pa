@@ -633,7 +633,7 @@ Just one sentence, no quotes, no action blocks.`,
                   className="w-20 h-20 rounded-2xl overflow-hidden bg-[#1a1410] shadow-md"
                   style={{
                     boxShadow: music.isPlaying
-                      ? "0 4px 20px rgba(249,115,22,0.4)"
+                      ? "0 4px 20px rgba(var(--accent-rgb),0.4)"
                       : "0 2px 8px rgba(0,0,0,0.1)",
                     transition: "box-shadow 0.3s ease",
                   }}

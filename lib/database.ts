@@ -594,3 +594,55 @@ export async function addMemory(
 export async function deleteMemory(id: string): Promise<void> {
   await supabase.from("memories").delete().eq("id", id);
 }
+
+// ══════════════════════════════════════════════
+//  MUSIC TRACKS
+// ══════════════════════════════════════════════
+
+export type MusicTrack = {
+  id: string;
+  user_id: string;
+  title: string;
+  artist: string;
+  file_url: string;
+  cover_url: string | null;
+  position: number;
+  created_at: string;
+};
+
+export async function getMusicTracks(userId: string): Promise<MusicTrack[]> {
+  if (userId === "demo-user") return [];
+  const { data, error } = await supabase
+    .from("music_tracks")
+    .select("*")
+    .eq("user_id", userId)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) console.error("getMusicTracks error:", error);
+  return data ?? [];
+}
+
+export async function addMusicTrack(
+  userId: string,
+  track: {
+    title: string;
+    artist: string;
+    file_url: string;
+    cover_url: string | null;
+    position?: number;
+  },
+): Promise<MusicTrack | null> {
+  if (userId === "demo-user") return null;
+  const { data, error } = await supabase
+    .from("music_tracks")
+    .insert({ ...track, user_id: userId, position: track.position ?? 0 })
+    .select()
+    .single();
+  if (error) console.error("addMusicTrack error:", error);
+  return data ?? null;
+}
+
+export async function deleteMusicTrack(id: string): Promise<void> {
+  const { error } = await supabase.from("music_tracks").delete().eq("id", id);
+  if (error) console.error("deleteMusicTrack error:", error);
+}

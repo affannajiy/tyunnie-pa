@@ -586,6 +586,7 @@ MUSIC:
 - "loop all / repeat all" → music_control repeat with repeatMode "all"
 - "no repeat / turn off repeat" → music_control repeat with repeatMode "off"
 - "play [song name]" → music_control play with trackName matching from MUSIC playlist above
+- "volume to X / set volume X / increase to X / decrease to X / lower to X / raise to X" → set_volume with volume as a decimal 0.0–1.0 (e.g. "70 percent" → 0.7, "half" → 0.5, "max" → 1.0, "mute" → 0.0)
 
 STICKY NOTES:
 - "what's on my sticky / read my note" → just tell them the content. NO action.
@@ -628,6 +629,10 @@ reset_finance:
 music_control:
   Playing your music 🎵
   <action>{"type":"music_control","data":{"action":"play"}}</action>
+
+set_volume:
+  Volume set to 70% 🎵
+  <action>{"type":"set_volume","data":{"volume":0.7}}</action>
 
 save_memory:
   Got it, I'll remember that 🧠
@@ -898,6 +903,18 @@ set_theme:
           }
           break;
         }
+        case "set_volume": {
+          const d = action.data;
+          const vol = Math.min(1, Math.max(0, parseFloat(d.volume)));
+          if (!isNaN(vol)) {
+            music.setVolume(vol);
+            music.setIsMuted(vol === 0);
+          }
+          setCurrentMood("happy");
+          setTimeout(() => setCurrentMood(null), 4000);
+          break;
+        }
+
         case "music_control": {
           const d = action.data;
 
@@ -1079,7 +1096,14 @@ set_theme:
       />
 
       {/* ── CHAT COLUMN ── */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0 min-h-0">
+      {/* Height = visible portion only — prevents input being hidden below translateY offset */}
+      <div
+        className="flex flex-col overflow-hidden relative z-10 min-w-0"
+        style={{
+          height: `${100 - snapPct}dvh`,
+          transition: "height 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
+        }}
+      >
 
         {/* ── PANEL HEADER ── */}
         <div className="shrink-0 relative z-10">
@@ -1090,21 +1114,28 @@ set_theme:
               onClick={cycleSnap}
               title="Click to resize"
             >
-              {/* Snap indicator dots */}
-              <div className="flex items-center gap-1.5">
-                {SNAP_POINTS.map((p) => (
-                  <div
-                    key={p}
-                    className="rounded-full transition-all duration-200"
-                    style={{
-                      width: snapPct === p ? 22 : 6,
-                      height: 4,
-                      background: snapPct === p
-                        ? "var(--accent)"
-                        : "rgba(255,255,255,0.18)",
-                    }}
-                  />
-                ))}
+              {/* Snap indicator — filled segments show how open the panel is */}
+              <div className="flex items-center gap-2">
+                {SNAP_POINTS.map((p, i) => {
+                  const currentIdx = SNAP_POINTS.indexOf(snapPct);
+                  const isActive = snapPct === p;
+                  const isFilled = i <= currentIdx;
+                  return (
+                    <div
+                      key={p}
+                      className="rounded-full transition-all duration-300"
+                      style={{
+                        width: isActive ? 26 : 8,
+                        height: 5,
+                        background: isActive
+                          ? "#f97316"
+                          : isFilled
+                          ? "rgba(var(--accent-rgb),0.6)"
+                          : "rgba(255,255,255,0.2)",
+                      }}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}

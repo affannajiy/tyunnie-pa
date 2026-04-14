@@ -1,0 +1,1 @@
+- [AI Backend: Gemini + Groq](project_ai_backend.md) — Primary model is Gemini 2.0 Flash; Groq llama-3.3-70b is kept as automatic fallback

@@ -87,14 +87,6 @@ export default function Sidebar({
             "0 8px 40px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.04) inset",
         }}
       >
-        {/* TYUNNIE wordmark */}
-        <span
-          className="font-serif italic text-[9px] tracking-[2px] self-center mr-0.5 select-none"
-          style={{ color: "var(--accent)", opacity: 0.65 }}
-        >
-          T
-        </span>
-
         {/* Thin divider */}
         <div className="w-px h-5 bg-white/10 mx-1 self-center shrink-0" />
 

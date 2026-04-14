@@ -9,12 +9,16 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
+import { supabase } from "@/lib/supabase";
+import { getMusicTracks, deleteMusicTrack } from "@/lib/database";
 
-type Track = {
+export type Track = {
+  id?: string;          // present for user-uploaded tracks only
   title: string;
   artist: string;
   file: string;
   cover: string;
+  isUserTrack?: boolean;
 };
 
 type RepeatMode = "none" | "all" | "one";
@@ -42,6 +46,8 @@ type MusicContextType = {
   cycleRepeat: () => void;
   formatTime: (s: number) => string;
   forcePrevTrack: () => void;
+  refreshTracks: () => void;
+  deleteUserTrack: (id: string, fileUrl: string, coverUrl: string | null) => Promise<void>;
 };
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -53,6 +59,22 @@ export function useMusicContext() {
   return ctx;
 }
 
+function shuffleArray(arr: number[]) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function extractStoragePath(publicUrl: string, bucket: string): string | null {
+  const marker = `/object/public/${bucket}/`;
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return null;
+  return decodeURIComponent(publicUrl.substring(idx + marker.length));
+}
+
 export function MusicProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -61,11 +83,13 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
+  const [volume, setVolume] = useState(0.5);
   const [isMuted, setIsMuted] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("none");
   const [shuffledOrder, setShuffledOrder] = useState<number[]>([]);
+  // bump this to trigger a playlist reload
+  const [tracksVersion, setTracksVersion] = useState(0);
 
   // Refs to avoid stale closures in event listeners
   const repeatRef = useRef<RepeatMode>("none");
@@ -78,25 +102,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
   // Keep refs in sync with state
-  useEffect(() => {
-    repeatRef.current = repeat;
-  }, [repeat]);
-  useEffect(() => {
-    shuffleRef.current = shuffle;
-  }, [shuffle]);
-  useEffect(() => {
-    currentIndexRef.current = currentIndex;
-  }, [currentIndex]);
-  useEffect(() => {
-    shuffledOrderRef.current = shuffledOrder;
-  }, [shuffledOrder]);
-  useEffect(() => {
-    tracksRef.current = tracks;
-  }, [tracks]);
+  useEffect(() => { repeatRef.current = repeat; }, [repeat]);
+  useEffect(() => { shuffleRef.current = shuffle; }, [shuffle]);
+  useEffect(() => { currentIndexRef.current = currentIndex; }, [currentIndex]);
+  useEffect(() => { shuffledOrderRef.current = shuffledOrder; }, [shuffledOrder]);
+  useEffect(() => { tracksRef.current = tracks; }, [tracks]);
 
   // ── HELPERS ──
   function initAnalyser(audio: HTMLAudioElement) {
-    if (audioCtxRef.current) return; // already init'd
+    if (audioCtxRef.current) return;
     const ctx = new AudioContext();
     const source = ctx.createMediaElementSource(audio);
     const analyser = ctx.createAnalyser();
@@ -120,14 +134,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       playTrack((ci - 1 + tr.length) % tr.length);
     }
   }
-  function shuffleArray(arr: number[]) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
 
   function formatTime(seconds: number) {
     if (isNaN(seconds)) return "0:00";
@@ -148,7 +154,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setIsPlaying(true);
   }
 
-  // handleEnded reads from refs so it always has fresh values
   function handleEnded() {
     const r = repeatRef.current;
     const sh = shuffleRef.current;
@@ -180,7 +185,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // Create the audio element once on mount
   useEffect(() => {
     const audio = new Audio();
-    audio.volume = 0.8; // ← use hardcoded initial value instead of volume state
+    audio.volume = 0.5;
 
     audio.onplay = () => setIsPlaying(true);
     audio.onpause = () => setIsPlaying(false);
@@ -199,16 +204,42 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Load playlist on mount
+  // Load playlist — re-runs whenever tracksVersion is bumped
   useEffect(() => {
-    fetch("/music/playlist.json")
-      .then((r) => r.json())
-      .then((data: Track[]) => {
-        setTracks(data);
-        setShuffledOrder(shuffleArray(data.map((_, i) => i)));
-      })
-      .catch(() => {});
-  }, []);
+    async function load() {
+      // 1. Default built-in tracks from playlist.json
+      let defaults: Track[] = [];
+      try {
+        const r = await fetch("/music/playlist.json");
+        defaults = await r.json();
+      } catch {}
+
+      // 2. User-uploaded tracks from Supabase
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const dbTracks = await getMusicTracks(user.id);
+          const userTracks: Track[] = dbTracks.map((t) => ({
+            id: t.id,
+            title: t.title,
+            artist: t.artist,
+            file: t.file_url,
+            cover: t.cover_url ?? "",
+            isUserTrack: true,
+          }));
+          const merged = [...defaults, ...userTracks];
+          setTracks(merged);
+          setShuffledOrder(shuffleArray(merged.map((_, i) => i)));
+          return;
+        }
+      } catch {}
+
+      setTracks(defaults);
+      setShuffledOrder(shuffleArray(defaults.map((_, i) => i)));
+    }
+
+    load();
+  }, [tracksVersion]);
 
   // Sync volume and mute to audio element
   useEffect(() => {
@@ -217,10 +248,40 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
   }, [volume, isMuted]);
 
+  function refreshTracks() {
+    setTracksVersion((v) => v + 1);
+  }
+
+  async function deleteUserTrack(id: string, fileUrl: string, coverUrl: string | null) {
+    // Stop playback if this track is currently playing
+    const ci = currentIndexRef.current;
+    const tr = tracksRef.current;
+    const deletingCurrent = tr[ci]?.id === id;
+    if (deletingCurrent && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      setIsPlaying(false);
+    }
+
+    // Remove files from Supabase Storage
+    const audioPath = extractStoragePath(fileUrl, "music-audio");
+    if (audioPath) {
+      await supabase.storage.from("music-audio").remove([audioPath]);
+    }
+    if (coverUrl) {
+      const coverPath = extractStoragePath(coverUrl, "music-covers");
+      if (coverPath) await supabase.storage.from("music-covers").remove([coverPath]);
+    }
+
+    // Remove from database and reload
+    await deleteMusicTrack(id);
+    refreshTracks();
+  }
+
   // ── PLAYBACK ──
   async function togglePlay() {
     if (!audioRef.current || tracksRef.current.length === 0) return;
-    initAnalyser(audioRef.current); // null check already done above
+    initAnalyser(audioRef.current);
     if (audioCtxRef.current?.state === "suspended") {
       await audioCtxRef.current.resume();
     }
@@ -315,6 +376,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         toggleShuffle,
         cycleRepeat,
         formatTime,
+        refreshTracks,
+        deleteUserTrack,
       }}
     >
       {children}

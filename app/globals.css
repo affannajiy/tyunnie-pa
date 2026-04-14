@@ -173,3 +173,22 @@ body {
 /* Sidebar active/hover nav backgrounds (rgba-encoded accent) */
 .bg-\[rgba\(249\,115\,22\,0\.18\)\] { background-color: rgba(var(--accent-rgb), 0.18) !important; }
 .hover\:bg-\[rgba\(249\,115\,22\,0\.12\)\]:hover { background-color: rgba(var(--accent-rgb), 0.12) !important; }
+
+/* Opacity-variant backgrounds (/10 /15 /20 /25) */
+.bg-\[\#f97316\]\/10  { background-color: rgba(var(--accent-rgb), 0.10) !important; }
+.bg-\[\#f97316\]\/15  { background-color: rgba(var(--accent-rgb), 0.15) !important; }
+.bg-\[\#f97316\]\/20  { background-color: rgba(var(--accent-rgb), 0.20) !important; }
+.bg-\[\#f97316\]\/25  { background-color: rgba(var(--accent-rgb), 0.25) !important; }
+.bg-\[\#c2500f\]      { background-color: var(--accent-dim) !important; }
+.hover\:bg-\[\#f97316\]\/25:hover { background-color: rgba(var(--accent-rgb), 0.25) !important; }
+
+/* Opacity-variant borders */
+.border-\[\#f97316\]\/30         { border-color: rgba(var(--accent-rgb), 0.30) !important; }
+.border-\[\#f97316\]\/40         { border-color: rgba(var(--accent-rgb), 0.40) !important; }
+.border-\[\#f97316\]\/50         { border-color: rgba(var(--accent-rgb), 0.50) !important; }
+.border-\[\#c2500f\]\/40         { border-color: color-mix(in srgb, var(--accent-dim) 40%, transparent) !important; }
+.hover\:border-\[\#f97316\]\/30:hover { border-color: rgba(var(--accent-rgb), 0.30) !important; }
+.focus\:border-\[\#f97316\]\/50:focus { border-color: rgba(var(--accent-rgb), 0.50) !important; }
+
+/* Opacity-variant text */
+.text-\[\#f97316\]\/50 { color: rgba(var(--accent-rgb), 0.50) !important; }

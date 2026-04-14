@@ -126,7 +126,7 @@ export default function FocusMode({
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 80%, rgba(249,115,22,0.12) 0%, transparent 60%)",
+            "radial-gradient(ellipse at 50% 80%, rgba(var(--accent-rgb),0.12) 0%, transparent 60%)",
         }}
       />
 
@@ -266,7 +266,7 @@ export default function FocusMode({
               className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#2a2520]"
               style={{
                 boxShadow: music.isPlaying
-                  ? "0 0 12px rgba(249,115,22,0.4)"
+                  ? "0 0 12px rgba(var(--accent-rgb),0.4)"
                   : "none",
                 transition: "box-shadow 0.3s",
               }}

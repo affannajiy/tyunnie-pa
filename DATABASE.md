@@ -18,6 +18,7 @@ Tyunnie uses **Supabase (PostgreSQL)** with Row Level Security on every table.
 | `vault_meta` | PIN verifier + salt (PIN never stored) |
 | `sticky_notes` | Draggable sticky notes with position + color |
 | `memories` | AI memory entries (latest 40 kept) |
+| `music_tracks` | User-uploaded tracks (file + cover URLs, position) |
 
 ---
 
@@ -145,6 +146,53 @@ create index if not exists finance_user_date     on finance(user_id, date);
 create index if not exists snips_user_created    on snips(user_id, created_at);
 create index if not exists drafts_user_created   on drafts(user_id, created_at);
 create index if not exists projects_user_created on projects(user_id, created_at);
+```
+
+---
+
+## Music Tracks
+
+```sql
+create table music_tracks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  title text not null,
+  artist text not null,
+  file_url text not null,
+  cover_url text,
+  position integer default 0,
+  created_at timestamptz default now()
+);
+alter table music_tracks enable row level security;
+create policy "owner" on music_tracks for all using (auth.uid() = user_id);
+create index if not exists music_tracks_user on music_tracks(user_id, position);
+```
+
+### Music Storage Buckets
+
+```sql
+insert into storage.buckets (id, name, public) values ('music-audio', 'music-audio', true);
+insert into storage.buckets (id, name, public) values ('music-covers', 'music-covers', true);
+
+create policy "music_audio_upload" on storage.objects
+  for insert with check (
+    bucket_id = 'music-audio' and auth.uid()::text = (storage.foldername(name))[1]
+  );
+create policy "music_audio_read" on storage.objects for select using (bucket_id = 'music-audio');
+create policy "music_audio_delete" on storage.objects
+  for delete using (
+    bucket_id = 'music-audio' and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "music_covers_upload" on storage.objects
+  for insert with check (
+    bucket_id = 'music-covers' and auth.uid()::text = (storage.foldername(name))[1]
+  );
+create policy "music_covers_read" on storage.objects for select using (bucket_id = 'music-covers');
+create policy "music_covers_delete" on storage.objects
+  for delete using (
+    bucket_id = 'music-covers' and auth.uid()::text = (storage.foldername(name))[1]
+  );
 ```
 
 ---

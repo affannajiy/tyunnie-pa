@@ -23,7 +23,7 @@ export default function Error({
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 40%, rgba(249,115,22,0.06) 0%, transparent 60%)",
+            "radial-gradient(ellipse at 50% 40%, rgba(var(--accent-rgb),0.06) 0%, transparent 60%)",
         }}
       />
 
@@ -35,7 +35,7 @@ export default function Error({
           width={160}
           height={192}
           className="object-contain object-top opacity-60"
-          style={{ filter: "drop-shadow(0 -8px 30px rgba(249,115,22,0.15))" }}
+          style={{ filter: "drop-shadow(0 -8px 30px rgba(var(--accent-rgb),0.15))" }}
         />
       </div>
 
