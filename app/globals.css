@@ -109,11 +109,11 @@ body {
 }
 
 .dark .text-\[\#9a8f7e\] {
-  color: #6b6259 !important;
+  color: #b0a090 !important;
 }
 
 .dark .text-\[\#c5bdb0\] {
-  color: #4a4038 !important;
+  color: #7a6a5a !important;
 }
 
 .dark input,
@@ -169,3 +169,7 @@ body {
 
 /* accent-color property (used on range inputs) */
 .accent-\[\#f97316\] { accent-color: var(--accent) !important; }
+
+/* Sidebar active/hover nav backgrounds (rgba-encoded accent) */
+.bg-\[rgba\(249\,115\,22\,0\.18\)\] { background-color: rgba(var(--accent-rgb), 0.18) !important; }
+.hover\:bg-\[rgba\(249\,115\,22\,0\.12\)\]:hover { background-color: rgba(var(--accent-rgb), 0.12) !important; }

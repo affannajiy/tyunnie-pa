@@ -1,6 +1,6 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.8.0.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.9.0.
 
 ---
 
@@ -23,8 +23,8 @@ app/
 
 components/
 ├── Desk.tsx                Home dashboard — hero greeting, top 3 tasks, progress rings, finance, music, daily quote
-├── TyunniePanel.tsx        AI chat panel — context-aware system prompt, mood sprites, memory persistence
-├── Sidebar.tsx             Left nav — 12 panel buttons, initials avatar, theme toggle, logout
+├── TyunniePanel.tsx        AI chat panel — bottom-sheet overlay, snap resize (3 desktop / 2 mobile points), swipe-up gesture, always-mounted for chat persistence
+├── Sidebar.tsx             macOS-style bottom-center dock (desktop) + full-width bar (mobile) — magnify-on-hover, Tyun + Sticky buttons, logout
 ├── Profile.tsx             User settings, password vault (AES-GCM encrypted), preferences
 ├── Todo.tsx                Task list — tags (cs/write/personal/other), due dates, done toggle, confetti
 ├── Writing.tsx             Draft editor — title, body, word count, CRUD
@@ -144,6 +144,21 @@ Memory:       { content }  // latest 40 kept
 ### Collapsible Panels
 - Use `flex-1` / `flex-none` toggling, NOT `w-0` — `w-0` collapses flex children with `min-width`
 
+### TyunniePanel Bottom Sheet
+- Always mounted (never conditionally rendered) — chat history survives panel switches
+- `isOpen` controls visibility via CSS `transform: translateY(...)`, NOT `display:none`
+- `snapPct` = vh hidden below fold. Desktop: `[8, 4, 0]`, Mobile: `[8, 0]`. `cycleSnap()` advances through the array
+- Fullscreen (`snapPct === 0`) → `100vw` width, no border-radius, no borders — replaces the old `isExpanded` two-column mode (removed in v3.9.0)
+- Backdrop only shown when `isOpen && snapPct > 0` (not when fullscreen)
+- Swipe-up-from-bottom-edge gesture fires `onOpen` when `!isOpen`; listens via `touchstart`/`touchend` on `document`
+
+### Sidebar Dock
+- `dockScale(idx, hoveredIdx)` returns `1.55 / 1.22 / 1.08 / 1.0` based on distance — scale applied via inline style
+- `TYUN_IDX = NAV_ITEMS.length` (4), `STICKY_IDX = 5`, `LOGOUT_IDX = 6`
+- Desktop: `fixed bottom-5 left-1/2 -translate-x-1/2 z-50` frosted glass pill
+- Mobile: full-width bar, shows Tyun 🧡 and Sticky 📌 items inline with nav
+- Dock item glow uses `rgba(var(--accent-rgb), ...)` — must use CSS variable, not hardcoded orange
+
 ---
 
 ## Key Architectural Patterns
@@ -151,7 +166,9 @@ Memory:       { content }  // latest 40 kept
 | Concern | Approach |
 |---------|---------|
 | State persistence across panel switches | `sessionStorage` for flags, Supabase for data |
+| Chat history persistence | TyunniePanel always mounted; hidden via CSS transform only |
 | Dark mode | `localStorage['tyunnie_theme']` → class on `<html>`, set in layout script |
+| Accent color | `localStorage['tyunnie_accent']` → `--accent` CSS vars on `<html>`, set before paint |
 | Music state | `MusicContext` with `useRef` mirrors to avoid stale closures in event listeners |
 | Vault encryption | AES-GCM 256-bit via Web Crypto API, PBKDF2 key derivation |
 | AI personality | Taehyun from TXT — calm, caring, dry humor, poetic |

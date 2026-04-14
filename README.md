@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.8.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.9.0-f97316?style=flat-square)
 
 ---
 
@@ -20,11 +20,12 @@
 - Can add tasks, drafts, projects, finance entries, and code snippets via natural language
 - Can **complete tasks**, **update project progress**, **edit/clear sticky notes**, and **start Pomodoro sessions** with task pre-loading via natural language
 - **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
-- **Expandable panel** — desktop full-screen chat mode with larger sprite
+- **Bottom-sheet overlay** — slides up from the dock as a centered panel; chat history persists across all tab switches without re-mounting
+- **Snap resize** — click/tap the handle bar to cycle through snap sizes (default → wide → fullscreen on desktop; default → fullscreen on mobile). Snap indicator dots show the current position
+- **Swipe-up gesture** — swipe up from the screen bottom edge to open the panel on mobile
 - **Sprite system** — separate panel sprites and mood sprites, reacts to active tab and emotional state
 - Calls you by name and adapts tone based on your profile preferences
 - **Persistent memory** — remembers facts about you across sessions, proactively saves preferences, goals, and habits
-- Mobile optimised — sprite floats as background, input always accessible
 
 ### 👤 User Profile
 
@@ -103,6 +104,12 @@
 - **Chess** — full legal move validation, castling, en passant, pawn promotion. vs Tyunnie bot (3 difficulties) or 2-player. 8 time controls (Bullet/Blitz/Rapid/Classical). Captured pieces display, move log, mobile touch support
 - **Tetris** — all 7 tetrominoes, ghost piece, hold, next preview, wall kicks, hard/soft drop, level scaling, pause, mobile touch + swipe controls
 
+### 🚀 Navigation Dock
+
+- **Desktop** — fixed bottom-center frosted glass pill dock with macOS-style magnification. Items scale up and glow on hover with spring easing
+- **Mobile** — full-width frosted glass bottom bar with the same navigation items
+- Dock includes: Home, Productivity, Entertainment, Profile, Tyun 🧡 (chat), Sticky 📌 (new note), and Sign Out
+
 ### 🔍 Global Search
 
 - `Cmd+K` / `Ctrl+K` — searches panels, tasks, drafts, projects, snippets, finance
@@ -110,7 +117,7 @@
 ### 🗒️ Sticky Notes
 
 - Floating draggable, resizable notes that persist via Supabase
-- Spawn with `Ctrl+Shift+K` or the `+` button — five color themes
+- Spawn with `Ctrl+Shift+K` or the **Sticky 📌** dock button — five color themes
 - Tyunnie can read, edit, and clear sticky notes from chat
 
 ### 🌤️ Weather Widget
@@ -129,8 +136,8 @@
 
 ### 📱 Mobile Responsive
 
-- Streamlined bottom tab bar — 4 items: Home, Productivity, Entertainment, Me
-- Tyunnie chat as full-screen overlay
+- Full-width frosted glass bottom bar with dock items: Home, Productivity, Entertainment, Me, Tyun 🧡, Sticky 📌
+- Tyunnie panel slides up as a bottom-sheet overlay; swipe up from the screen bottom edge to open
 
 ### ⚡ Productivity Hub
 

@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.9.0] — 2026-04-14
+
+### Added
+
+- **macOS-style dock sidebar** — desktop sidebar replaced with a fixed bottom-center frosted glass pill dock. Items magnify and glow on hover with a spring cubic-bezier easing (1.55× nearest, 1.22× adjacent, 1.08× next) inspired by macOS Dock
+- **Tyunnie Panel as bottom-sheet overlay** — TyunniePanel removed from the main layout column and reimplemented as a fixed bottom-center slide-up sheet. Triggered by the new "Tyun 🧡" dock button; always mounted in the DOM so chat history persists across all panel switches
+- **Snap-based panel resize** — handle bar at the top of TyunniePanel cycles through snap points on click/tap. Desktop: default (92vh) → wide (96vh, 1080px) → fullscreen (100dvh, 100vw). Mobile: default → fullscreen. Snap indicator dots in the handle bar show the current position. Replaces the old two-column `isExpanded` expanded mode entirely
+- **Swipe-up-from-bottom gesture** — swiping up from the bottom 90px of the screen opens TyunniePanel without tapping the dock button (mobile UX)
+- **Sticky note button in dock** — "Sticky 📌" button added to the sidebar dock (both desktop and mobile) to spawn a new sticky note directly without entering the panel
+- **Mobile dock bar** — mobile gets a full-width frosted glass bottom bar with Tyun 🧡 and Sticky 📌 items alongside the main nav
+
+### Changed
+
+- **Sidebar props extended** — `Sidebar` now accepts `tyunnieOpen`, `onTyunnieToggle`, and `onNewSticky` to wire the dock buttons to panel state in `dashboard/page.tsx`
+- **Accent color overrides extended** — `globals.css` now covers sidebar rgba bg classes (`bg-[rgba(249,115,22,0.18)]`, `hover:bg-[rgba(249,115,22,0.12)]`) so the dock active/hover states respect the user-selected accent color
+- **Dark mode muted text** — `.dark .text-[#9a8f7e]` brightened to `#b0a090` for legible secondary text in dark mode
+- **Main layout** — panel content area is always `flex-1` regardless of chat state; TyunniePanel renders outside the flex container
+
+### Removed
+
+- **isExpanded two-column mode** — the old desktop expanded view (sprite column + chat column side by side) has been removed. The fullscreen snap point serves this purpose instead. Removed `isExpanded` and `onToggleExpand` props from `TyunniePanel`, removed `tyunnieExpanded` state from `dashboard/page.tsx`, and removed the `↗` expand button from the panel header
+
+---
+
 ## [3.8.0] — 2026-04-14
 
 ### Added

@@ -140,8 +140,7 @@ export default function Home() {
   );
   const [todoRefreshKey, setTodoRefreshKey] = useState(0);
   const [draftRefreshKey, setDraftRefreshKey] = useState(0);
-  const [showMobileChat, setShowMobileChat] = useState(false);
-  const [tyunnieExpanded, setTyunnieExpanded] = useState(false);
+  const [tyunnieOpen, setTyunnieOpen] = useState(false);
   const [projectRefreshKey, setProjectRefreshKey] = useState(0);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
   const [snippetRefreshKey, setSnippetRefreshKey] = useState(0);
@@ -205,6 +204,7 @@ export default function Home() {
       if (e.key === "Escape") {
         setSearchOpen(false);
         setShowShortcuts(false);
+        setTyunnieOpen(false);
       }
 
       // Skip everything below if user is typing in a field
@@ -235,10 +235,10 @@ export default function Home() {
         setActivePanel("profile");
       }
 
-      // Cmd/Ctrl + / to toggle Tyunnie expand
+      // Cmd/Ctrl + / to toggle Tyunnie chat
       if ((e.metaKey || e.ctrlKey) && e.key === "/") {
         e.preventDefault();
-        setTyunnieExpanded((prev) => !prev);
+        setTyunnieOpen((prev) => !prev);
       }
 
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "F") {
@@ -476,7 +476,6 @@ export default function Home() {
   function handleNavigate(panel: string) {
     if (Object.keys(PANEL_LABELS).includes(panel)) {
       setActivePanel(panel as Panel);
-      setTyunnieExpanded(false);
     }
   }
   // Called when Tyunnie adds a task
@@ -615,7 +614,6 @@ export default function Home() {
     setPomodoroKey((k) => k + 1); // ← increment forces remount
     sessionStorage.setItem("pomodoro_autostart", "1");
     setActivePanel("pomodoro");
-    setTyunnieExpanded(false);
   }
 
   // ── LOADING SCREEN ──
@@ -633,7 +631,6 @@ export default function Home() {
   }
 
   if (!user) return null;
-  const onDesk = activePanel === "desk";
 
   // ── MAIN APP ──
   return (
@@ -641,23 +638,22 @@ export default function Home() {
       <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
         <Sidebar
           active={activePanel}
-          onChange={(panel) => {
-            setActivePanel(panel);
-            setTyunnieExpanded(false);
-          }}
+          onChange={(panel) => setActivePanel(panel)}
           onSignOut={handleSignOut}
           userName={userName}
           avatarUrl={avatarUrl}
+          tyunnieOpen={tyunnieOpen}
+          onTyunnieToggle={() => setTyunnieOpen((v) => !v)}
+          onNewSticky={async () => {
+            const { createStickyNote } = await import("@/lib/database");
+            const offset = (stickyNotes.length % 6) * 24;
+            const note = await createStickyNote(user.id, 120 + offset, 120 + offset);
+            if (note) setStickyNotes((prev) => [...prev, note]);
+          }}
         />
 
         {/* Main content */}
-        <div
-          className={`flex flex-col overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${
-            tyunnieExpanded
-              ? "w-0 opacity-0 pointer-events-none flex-none"
-              : "opacity-100 flex-1"
-          }`}
-        >
+        <div className="flex flex-col overflow-hidden min-w-0 flex-1">
           {/* Topbar */}
           <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 shrink-0 relative">
             {/* Left — Tyunnie + panel badge */}
@@ -709,15 +705,16 @@ export default function Home() {
 
             {/* Mobile chat toggle */}
             <button
-              onClick={() => setShowMobileChat(true)}
-              className="md:hidden ml-auto w-9 h-9 bg-[#f97316] rounded-xl flex items-center justify-center text-white text-base"
+              onClick={() => setTyunnieOpen((v) => !v)}
+              className="md:hidden ml-auto w-9 h-9 rounded-xl flex items-center justify-center text-white text-base transition-all"
+              style={{ background: tyunnieOpen ? "var(--accent-dim)" : "var(--accent)" }}
             >
               🧡
             </button>
           </div>
 
-          {/* Panel content — add bottom padding on mobile for tab bar */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-7 pb-24 md:pb-7">
+          {/* Panel content — pb for mobile tab bar and desktop dock */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-7 pb-24 md:pb-28">
             <>
               {activePanel === "desk" && (
                 <Desk
@@ -728,28 +725,19 @@ export default function Home() {
                   finance={finance}
                   financeViewMonth={financeViewMonth}
                   financeViewYear={financeViewYear}
-                  onNavigate={(panel) => {
-                    setActivePanel(panel);
-                    setTyunnieExpanded(false);
-                  }}
+                  onNavigate={(panel) => setActivePanel(panel)}
                   onTodoToggle={handleTodoToggle}
                   onFocusMode={() => setFocusMode(true)}
                 />
               )}
               {activePanel === "productivity" && (
                 <ProductivityHub
-                  onNavigate={(panel) => {
-                    setActivePanel(panel as Panel);
-                    setTyunnieExpanded(false);
-                  }}
+                  onNavigate={(panel) => setActivePanel(panel as Panel)}
                 />
               )}
               {activePanel === "entertainment" && (
                 <EntertainmentHub
-                  onNavigate={(panel) => {
-                    setActivePanel(panel as Panel);
-                    setTyunnieExpanded(false);
-                  }}
+                  onNavigate={(panel) => setActivePanel(panel as Panel)}
                 />
               )}
               {activePanel === "todo" && (
@@ -820,93 +808,66 @@ export default function Home() {
           </div>
         </div>
 
-        {/* TyunniePanel — desktop: always visible, mobile: slide-in overlay */}
-        <div
-          className={`
-  fixed inset-0 z-40 transition-transform duration-300
-  md:relative md:inset-auto md:z-auto md:translate-x-0 md:flex md:shrink-0
-  ${tyunnieExpanded ? "md:flex-1" : ""}
-  ${showMobileChat ? "translate-x-0" : "translate-x-full md:translate-x-0"}
-`}
-        >
-          {/* Mobile backdrop */}
-          <div
-            className="md:hidden absolute inset-0 bg-black/50"
-            onClick={() => setShowMobileChat(false)}
-          />
-
-          {/* Close button on mobile */}
-          <button
-            onClick={() => setShowMobileChat(false)}
-            className="md:hidden absolute top-4 right-4 z-50 w-9 h-9 bg-[#2a2520] rounded-xl flex items-center justify-center text-[#9a8f7e] text-lg"
-          >
-            ✕
-          </button>
-
-          <TyunniePanel
-            appData={{
-              todos,
-              drafts,
-              projects,
-              snips,
-              finance,
-              financeViewMonth,
-              financeViewYear,
-              stickyNotes,
-              memories,
-            }}
-            profile={profile}
-            userName={userName}
-            onNavigate={handleNavigate}
-            onTodoAdded={handleTodoAdded}
-            onDraftAdded={handleDraftAdded}
-            onProjectAdded={handleProjectAdded}
-            onFinanceAdded={handleFinanceAdded}
-            onSnippetAdded={handleSnippetAdded}
-            onFinanceReset={handleFinanceReset}
-            onStickyCleared={async (id) => {
-              await import("@/lib/database").then(({ updateStickyNote }) =>
-                updateStickyNote(id, { content: "" }),
-              );
-              setStickyNotes((prev) =>
-                prev.map((n) => (n.id === id ? { ...n, content: "" } : n)),
-              );
-            }}
-            activePanel={activePanel}
-            isExpanded={tyunnieExpanded}
-            prefillInput={tyunniePrefill}
-            onPrefillConsumed={() => setTyunniePrefill(undefined)}
-            onToggleExpand={() => {
-              if (onDesk && tyunnieExpanded) {
-                setTyunnieExpanded(false);
-              } else {
-                setTyunnieExpanded((prev) => !prev);
-              }
-            }}
-            onTodoCompleted={handleTodoCompleted}
-            onProjectUpdated={handleProjectUpdated}
-            onStickyUpdated={handleStickyUpdated}
-            onPomodoroStart={handlePomodoroStart}
-            onMemoryAdded={async (content) => {
-              if (!user) return;
-              await addMemory(user.id, content);
-              setMemories((prev) => [
-                {
-                  id: crypto.randomUUID(),
-                  user_id: user.id,
-                  content,
-                  created_at: new Date().toISOString(),
-                },
-                ...prev,
-              ]);
-            }}
-            onMemoryDeleted={async (id) => {
-              await deleteMemory(id);
-              setMemories((prev) => prev.filter((m) => m.id !== id));
-            }}
-          />
-        </div>
       </div>
+
+      {/* TyunniePanel — fixed bottom-center overlay, always mounted for chat history persistence */}
+      <TyunniePanel
+        appData={{
+          todos,
+          drafts,
+          projects,
+          snips,
+          finance,
+          financeViewMonth,
+          financeViewYear,
+          stickyNotes,
+          memories,
+        }}
+        profile={profile}
+        userName={userName}
+        onNavigate={handleNavigate}
+        onTodoAdded={handleTodoAdded}
+        onDraftAdded={handleDraftAdded}
+        onProjectAdded={handleProjectAdded}
+        onFinanceAdded={handleFinanceAdded}
+        onSnippetAdded={handleSnippetAdded}
+        onFinanceReset={handleFinanceReset}
+        onStickyCleared={async (id) => {
+          await import("@/lib/database").then(({ updateStickyNote }) =>
+            updateStickyNote(id, { content: "" }),
+          );
+          setStickyNotes((prev) =>
+            prev.map((n) => (n.id === id ? { ...n, content: "" } : n)),
+          );
+        }}
+        activePanel={activePanel}
+        isOpen={tyunnieOpen}
+        onOpen={() => setTyunnieOpen(true)}
+        onClose={() => setTyunnieOpen(false)}
+        prefillInput={tyunniePrefill}
+        onPrefillConsumed={() => setTyunniePrefill(undefined)}
+        onTodoCompleted={handleTodoCompleted}
+        onProjectUpdated={handleProjectUpdated}
+        onStickyUpdated={handleStickyUpdated}
+        onPomodoroStart={handlePomodoroStart}
+        onMemoryAdded={async (content) => {
+          if (!user) return;
+          await addMemory(user.id, content);
+          setMemories((prev) => [
+            {
+              id: crypto.randomUUID(),
+              user_id: user.id,
+              content,
+              created_at: new Date().toISOString(),
+            },
+            ...prev,
+          ]);
+        }}
+        onMemoryDeleted={async (id) => {
+          await deleteMemory(id);
+          setMemories((prev) => prev.filter((m) => m.id !== id));
+        }}
+      />
       {/* ── SEARCH MODAL ── */}
       {searchOpen && (
         <div

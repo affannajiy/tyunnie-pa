@@ -1,7 +1,7 @@
 // components/TyunniePanel.tsx
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMusicContext } from "@/lib/MusicContext";
 import Image from "next/image";
 import type { Profile as ProfileType } from "@/lib/database";
@@ -111,10 +111,11 @@ type Props = {
     code: string;
   }) => void;
   activePanel?: string;
-  isExpanded?: boolean;
+  isOpen?: boolean;
+  onOpen?: () => void;
+  onClose?: () => void;
   userName?: string;
   profile?: ProfileType | null;
-  onToggleExpand?: () => void;
   prefillInput?: string;
   onPrefillConsumed?: () => void;
   onStickyCleared?: (id: string) => void;
@@ -143,9 +144,10 @@ export default function TyunniePanel({
   onFinanceReset,
   onSnippetAdded,
   activePanel = "desk",
-  isExpanded = false,
+  isOpen = false,
+  onOpen,
+  onClose,
   userName = "",
-  onToggleExpand,
   profile,
   prefillInput,
   onPrefillConsumed,
@@ -178,6 +180,76 @@ export default function TyunniePanel({
 
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── SNAP RESIZE ──
+  // snapPct = vh hidden below fold (translateY).
+  // Desktop: default (8vh ~92vh) → tab-size (4vh ~96vh) → fullscreen (0).
+  // Mobile:  default (8vh ~92vh) → fullscreen (0). No middle step.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const SNAP_POINTS = isMobile ? [8, 0] : [8, 4, 0];
+
+  const [snapPct, setSnapPct] = useState(8);
+
+  // If device shrinks to mobile while at the desktop-only middle snap, reset.
+  useEffect(() => {
+    if (isMobile && snapPct === 4) setSnapPct(8);
+  }, [isMobile]);
+
+  // Reset to default when panel closes.
+  useEffect(() => {
+    if (!isOpen) {
+      const t = setTimeout(() => setSnapPct(8), 420);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen]);
+
+  function cycleSnap() {
+    setSnapPct((prev) => {
+      const pts = isMobile ? [8, 0] : [8, 4, 0];
+      const idx = pts.indexOf(prev);
+      return pts[(idx + 1) % pts.length];
+    });
+  }
+
+  // Panel width per snap level.
+  function getPanelWidth() {
+    if (snapPct === 0) return "100vw";
+    if (!isMobile && snapPct === 4) return "min(1080px, 96vw)";
+    return "min(680px, 100vw)";
+  }
+
+  // ── SWIPE-UP FROM BOTTOM EDGE TO OPEN ──
+  useEffect(() => {
+    if (isOpen) return;
+    let startY = 0;
+    let startX = 0;
+    function onTouchStart(e: TouchEvent) {
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+    }
+    function onTouchEnd(e: TouchEvent) {
+      const endY = e.changedTouches[0].clientY;
+      const endX = e.changedTouches[0].clientX;
+      const swipeUp = startY - endY;
+      const horizontal = Math.abs(endX - startX);
+      if (swipeUp > 60 && horizontal < 60 && startY > window.innerHeight - 90) {
+        onOpen?.();
+      }
+    }
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchend", onTouchEnd);
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [isOpen, onOpen]);
 
   // ── BREIFING ──
   const [briefing, setBriefing] = useState<string | null>(null);
@@ -838,125 +910,101 @@ STRICT RULES:
 
   // ── RENDER ──
   return (
-    <div
-      className={`${isExpanded ? "md:flex-1 md:flex-row flex-col" : "w-full md:w-75 shrink-0 flex-col"} bg-[#111010] flex h-full overflow-hidden border-l border-[#2a2520] relative`}
-    >
+    <>
+      {/* Backdrop — dims content when panel is open (not fullscreen) */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 59,
+          background: "rgba(0,0,0,0.45)",
+          backdropFilter: isOpen && snapPct > 0 ? "blur(2px)" : "none",
+          opacity: isOpen && snapPct > 0 ? 1 : 0,
+          pointerEvents: isOpen && snapPct > 0 ? "auto" : "none",
+          transition: "opacity 0.3s ease",
+        }}
+      />
+
+      {/* Panel */}
+      <div
+        className="fixed z-[60] bg-[#111010] flex flex-col overflow-hidden"
+        style={{
+          bottom: 0,
+          left: "50%",
+          width: getPanelWidth(),
+          height: "100dvh",
+          borderRadius: snapPct === 0 ? 0 : "20px 20px 0 0",
+          borderTop: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
+          borderLeft: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
+          borderRight: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
+          borderBottom: "none",
+          transform: isOpen
+            ? `translateX(-50%) translateY(${snapPct}vh)`
+            : "translateX(-50%) translateY(100dvh)",
+          transition: "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), width 0.35s ease, border-radius 0.3s ease",
+          boxShadow:
+            "0 -8px 50px rgba(0,0,0,0.7), 0 -1px 0 rgba(255,255,255,0.05)",
+        }}
+      >
       {/* Subtle radial glow */}
       <div
         className="absolute inset-0 pointer-events-none z-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 100%, rgba(249,115,22,0.10) 0%, transparent 65%)",
+            "radial-gradient(ellipse at 50% 100%, rgba(var(--accent-rgb),0.10) 0%, transparent 65%)",
         }}
       />
 
-      {/* ── EXPANDED SPRITE COLUMN (left side when expanded) ── */}
-      <div
-        className={`shrink-0 flex flex-col overflow-hidden border-r border-[#2a2520] relative z-10 transition-all duration-300 ease-in-out ${isExpanded ? "w-72 h-full opacity-100" : "w-0 h-0 opacity-0"}`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2520] shrink-0">
-          <span className="font-serif italic text-[#f97316] text-lg">
-            Tyunnie
-          </span>
-          <button
-            onClick={onToggleExpand}
-            className="w-8 h-8 rounded-xl bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all text-sm flex items-center justify-center"
-          >
-            ✕
-          </button>
-        </div>
+      {/* ── CHAT COLUMN ── */}
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0 min-h-0">
 
-        {/* Mini player in expanded view */}
-        {music.currentTrack && (
-          <div className="shrink-0 px-3 pt-3 pb-2 border-b border-[#2a2520]">
-            <div className="bg-[#1a1410] rounded-xl px-3 py-2 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
-                {music.currentTrack.cover ? (
-                  <Image
-                    src={music.currentTrack.cover}
-                    alt=""
-                    width={32}
-                    height={32}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">
-                    🎵
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-semibold text-white truncate leading-tight">
-                  {music.currentTrack.title}
-                </div>
-                <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-tight">
-                  {music.currentTrack.artist}
-                </div>
-                <div className="h-0.5 bg-[#2a2520] rounded-full mt-1 overflow-hidden">
-                  <div
-                    className="h-full bg-[#f97316] rounded-full transition-all"
-                    style={{
-                      width: `${music.duration > 0 ? (music.progress / music.duration) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={music.prevTrack}
-                  className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
-                >
-                  ⏮
-                </button>
-                <button
-                  onClick={music.togglePlay}
-                  className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors"
-                >
-                  {music.isPlaying ? "⏸" : "▶"}
-                </button>
-                <button
-                  onClick={music.nextTrack}
-                  className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
-                >
-                  ⏭
-                </button>
-              </div>
+        {/* ── PANEL HEADER ── */}
+        <div className="shrink-0 relative z-10">
+          {/* Handle bar — click/tap to cycle snap sizes */}
+          <div
+            className="flex flex-col items-center gap-1.5 pt-3 pb-2 cursor-pointer select-none active:opacity-70 transition-opacity"
+            onClick={cycleSnap}
+            title="Click to resize"
+          >
+            {/* Snap indicator dots */}
+            <div className="flex items-center gap-1.5">
+              {SNAP_POINTS.map((p) => (
+                <div
+                  key={p}
+                  className="rounded-full transition-all duration-200"
+                  style={{
+                    width: snapPct === p ? 22 : 6,
+                    height: 4,
+                    background: snapPct === p
+                      ? "var(--accent)"
+                      : "rgba(255,255,255,0.18)",
+                  }}
+                />
+              ))}
             </div>
           </div>
-        )}
-
-        {/* Big sprite — fills remaining space */}
-        <div className="flex-1 relative flex items-end justify-start overflow-hidden">
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse at 50% 100%, rgba(249,115,22,0.15) 0%, transparent 65%)",
-            }}
-          />
-          <Image
-            src={currentSprite}
-            alt="Tyunnie"
-            width={260}
-            height={330}
-            className="object-contain object-bottom relative z-2 transition-all duration-500"
-            style={{
-              width: "260px",
-              height: "auto",
-              filter: spriteGlow
-                ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
-                : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
-            }}
-            priority
-          />
+          <div className="flex items-center justify-between px-4 pb-2.5 pt-0.5 border-b border-[#2a2520]">
+            <span
+              className="font-serif italic text-lg"
+              style={{ color: "var(--accent)" }}
+            >
+              Tyunnie
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={onClose}
+                title="Close"
+                className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* ── CHAT COLUMN (right side when expanded, full column when collapsed) ── */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0 min-h-0">
-        {/* Mini player — only in collapsed mode */}
-        {music.currentTrack && !isExpanded && (
+        {/* Mini player */}
+        {music.currentTrack && (
           <div className="shrink-0 px-3 pt-3 pb-2 border-b border-[#2a2520]">
             <div className="bg-[#1a1410] rounded-xl px-3 py-2 flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
@@ -1072,7 +1120,7 @@ STRICT RULES:
               >
                 <div
                   className={`
-                    ${isExpanded ? "max-w-lg" : "max-w-52.5"} px-3 py-2 md:px-3.5 md:py-2.5 text-[11px] md:text-[12.5px] leading-[1.6] font-medium
+                    ${snapPct <= 4 ? "max-w-xl" : "max-w-52.5"} px-3 py-2 md:px-3.5 md:py-2.5 text-[11px] md:text-[12.5px] leading-[1.6] font-medium
                     ${
                       b.who === "tyunnie"
                         ? "bg-[#f97316] text-white rounded-[4px_16px_16px_16px]"
@@ -1141,64 +1189,31 @@ STRICT RULES:
           )}
         </div>
 
-        {/* ── SPRITE (collapsed only) — absolute on mobile, normal flow on desktop ── */}
-        {!isExpanded && (
-          <>
-            {/* Mobile: sits behind bubbles, doesn't affect layout */}
-            <div className="md:hidden absolute bottom-16 left-0 w-48 h-56 pointer-events-none z-0">
-              <div
-                className="absolute top-0 left-0 right-0 h-10 pointer-events-none"
-                style={{ background: "linear-gradient(#111010, transparent)" }}
-              />
-              <Image
-                src={currentSprite}
-                alt="Tyunnie"
-                width={180}
-                height={230}
-                className="object-contain object-bottom w-full h-full transition-all duration-500"
-                style={{
-                  filter: spriteGlow
-                    ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
-                    : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
-                }}
-                priority
-              />
-            </div>
-
-            {/* Desktop: normal flow */}
-            <div className="h-67.5 shrink-0 relative hidden md:flex items-end justify-start overflow-hidden">
-              <button
-                onClick={onToggleExpand}
-                className="absolute top-3 right-3 z-20 w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all text-xs hidden md:flex items-center justify-center"
-                title="Expand chat"
-              >
-                ↗
-              </button>
-              <div
-                className="absolute top-0 left-0 right-0 h-14 pointer-events-none z-10"
-                style={{ background: "linear-gradient(#111010, transparent)" }}
-              />
-              <Image
-                src={currentSprite}
-                alt="Tyunnie"
-                width={180}
-                height={230}
-                className="object-contain object-bottom relative z-2 transition-all duration-500 -ml-2"
-                style={{
-                  width: "180px",
-                  height: "auto",
-                  filter: spriteGlow
-                    ? "drop-shadow(0 -8px 40px rgba(249,115,22,0.55)) brightness(1.06)"
-                    : "drop-shadow(0 -8px 30px rgba(249,115,22,0.20))",
-                }}
-                priority
-              />
-            </div>
-          </>
-        )}
+        {/* ── SPRITE ── */}
+        <div className="h-64 shrink-0 relative flex items-end justify-start overflow-hidden">
+          <div
+            className="absolute top-0 left-0 right-0 h-10 pointer-events-none z-10"
+            style={{ background: "linear-gradient(#111010, transparent)" }}
+          />
+          <Image
+            src={currentSprite}
+            alt="Tyunnie"
+            width={200}
+            height={256}
+            className="object-contain object-bottom relative z-2 transition-all duration-500 -ml-2"
+            style={{
+              width: "200px",
+              height: "auto",
+              filter: spriteGlow
+                ? "drop-shadow(0 -8px 40px rgba(var(--accent-rgb),0.55)) brightness(1.06)"
+                : "drop-shadow(0 -8px 30px rgba(var(--accent-rgb),0.20))",
+            }}
+            priority
+          />
+        </div>
 
         {/* ── CHAT INPUT ── */}
-        <div className="px-3 pt-3 pb-4 md:pb-3 mb-16 md:mb-0 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0 relative z-20">
+        <div className="px-3 pt-3 pb-4 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0 relative z-20">
           {/* Mic button */}
           {supported && (
             <button
@@ -1276,6 +1291,8 @@ STRICT RULES:
           40%           { transform: scale(1);   opacity: 1;   }
         }
       `}</style>
-    </div>
+      </div>
+      {/* end panel */}
+    </>
   );
 }

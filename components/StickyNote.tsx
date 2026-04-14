@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import type { StickyNote as StickyNoteType } from "@/lib/database";
 
 const COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  yellow: { bg: "#2a2410", border: "#f97316", text: "#f5e6c8" },
+  yellow: { bg: "color-mix(in srgb, var(--accent) 10%, #0d0800)", border: "var(--accent)", text: "#f5e6c8" },
   blue: { bg: "#0f1a2a", border: "#3b82f6", text: "#bfdbfe" },
   green: { bg: "#0f1f14", border: "#22c55e", text: "#bbf7d0" },
   pink: { bg: "#2a0f1a", border: "#ec4899", text: "#fce7f3" },
