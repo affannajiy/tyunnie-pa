@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.8.0] — 2026-04-14
+
+### Added
+
+- **User-selectable accent color** — replaced the hardcoded orange theme with a CSS custom property system (`--accent`, `--accent-soft`, `--accent-mid`, `--accent-dim`) driven by user choice. Color persists via `localStorage` (`tyunnie_accent`) and is applied before first paint via an inline script in `app/layout.tsx`
+- **Full inline color picker in Profile** — the color wheel button in the accent color section expands an inline picker with: 2D spectrum canvas, hue slider, hex input, RGB inputs, HSL inputs, and a live preview swatch. No external libraries — pure canvas + pointer events
+
+### Changed
+
+- **Sidebar alignment** — desktop nav items are now vertically centered using two `flex-1` spacers sandwiching the nav group; mobile bottom bar items are horizontally centered with `justify-center`
+
+### Fixed
+
+- **Hydration mismatch** — added `suppressHydrationWarning` to `<html>` in `app/layout.tsx` to silence the React hydration warning caused by the accent color inline script mutating `style` before React hydrates
+
+---
+
 ## [3.7.0] — 2026-04-13
 
 ### Added

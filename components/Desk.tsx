@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
+import { useAccentColor } from "@/lib/useAccentColor";
 import type { Profile, Todo, Project, FinanceEntry } from "@/lib/database";
 import type { Panel } from "@/components/Sidebar";
 
@@ -59,7 +60,7 @@ function CircularProgress({
         cy={size / 2}
         r={r}
         fill="none"
-        stroke="#f97316"
+        stroke="var(--accent)"
         strokeWidth={stroke}
         strokeDasharray={`${dash} ${circ}`}
         strokeLinecap="round"
@@ -162,6 +163,7 @@ export default function Desk({
   onFocusMode,
 }: Props) {
   const music = useMusicContext();
+  const accentRgb = useAccentColor();
   const [oneliner, setOneliner] = useState<string | null>(null);
 
   // Clock
@@ -378,7 +380,7 @@ Just one sentence, no quotes, no action blocks.`,
             style={{
               width: "120px",
               height: "auto",
-              filter: "drop-shadow(0 -4px 16px rgba(249,115,22,0.25))",
+              filter: `drop-shadow(0 -4px 16px rgba(${accentRgb},0.25))`,
               marginBottom: "-2px",
             }}
           />

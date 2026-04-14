@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.7.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.8.0-f97316?style=flat-square)
 
 ---
 
@@ -118,9 +118,10 @@
 - City-based weather in the topbar — no location permission needed
 - Type a city name once, saved permanently
 
-### 🌙 Dark Mode
+### 🎨 Theming
 
-- Toggle from the Profile panel, preference persisted across sessions
+- Toggle dark / light mode from the Profile panel, preference persisted across sessions
+- **User-selectable accent color** — full inline color picker (spectrum canvas, hue slider, hex + RGB + HSL inputs, live preview swatch) in the Profile panel. Choice persisted to `localStorage` and applied before first paint — no flash
 
 ### 🔐 Authentication
 

@@ -1,7 +1,7 @@
 // components/Profile.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getProfile, upsertProfile, type Profile } from "@/lib/database";
 import { useRef } from "react";
 import { supabase } from "@/lib/supabase";
@@ -68,6 +68,17 @@ const CURRENCIES = [
   { value: "GBP", label: "£ — British Pound" },
   { value: "EUR", label: "€ — Euro" },
 ];
+
+const ACCENT_PRESETS = [
+  { hex: "#f97316", label: "Orange" },
+  { hex: "#8b5cf6", label: "Violet" },
+  { hex: "#ec4899", label: "Pink" },
+  { hex: "#06b6d4", label: "Cyan" },
+  { hex: "#10b981", label: "Emerald" },
+  { hex: "#f59e0b", label: "Amber" },
+  { hex: "#ef4444", label: "Red" },
+  { hex: "#3b82f6", label: "Blue" },
+] as const;
 
 type Props = {
   userId: string;
@@ -163,6 +174,208 @@ export default function Profile({
   const [otpError, setOtpError] = useState("");
   const [otpSending, setOtpSending] = useState(false);
   const [dailyQuoteEmail, setDailyQuoteEmail] = useState(false);
+  const [accentColor, setAccentColor] = useState<string>(() => {
+    if (typeof window === "undefined") return "#f97316";
+    return localStorage.getItem("tyunnie_accent") ?? "#f97316";
+  });
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  // pickerHue tracks the hue bar position (0-360) independently so the spectrum
+  // canvas can stay fixed while the user adjusts saturation/lightness.
+  const [pickerHue, setPickerHue] = useState<number>(30); // default orange-ish
+  const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
+  const hueCanvasRef = useRef<HTMLCanvasElement>(null);
+  const spectrumDragging = useRef(false);
+  const hueDragging = useRef(false);
+  // Spectrum cursor position as fractions [0,1]
+  const spectrumPos = useRef<{ x: number; y: number }>({ x: 1, y: 0 });
+
+  // ── Color conversion helpers ──────────────────────────────────────────────
+
+  function hexToRgb(hex: string): { r: number; g: number; b: number } {
+    const h = hex.replace("#", "");
+    return {
+      r: parseInt(h.slice(0, 2), 16),
+      g: parseInt(h.slice(2, 4), 16),
+      b: parseInt(h.slice(4, 6), 16),
+    };
+  }
+
+  function rgbToHex(r: number, g: number, b: number): string {
+    return (
+      "#" +
+      [r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("")
+    );
+  }
+
+  function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case rn: h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6; break;
+        case gn: h = ((bn - rn) / d + 2) / 6; break;
+        case bn: h = ((rn - gn) / d + 4) / 6; break;
+      }
+    }
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+  }
+
+  function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+    const sn = s / 100, ln = l / 100;
+    const a = sn * Math.min(ln, 1 - ln);
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12;
+      const c = ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * c);
+    };
+    return { r: f(0), g: f(8), b: f(4) };
+  }
+
+  // HSV helpers — spectrum canvas works in HSV space (easier for 2D gradient)
+  function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
+    const f = (n: number) => {
+      const k = (n + h / 60) % 6;
+      return v - v * s * Math.max(0, Math.min(k, 4 - k, 1));
+    };
+    return { r: Math.round(f(5) * 255), g: Math.round(f(3) * 255), b: Math.round(f(1) * 255) };
+  }
+
+  function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+    const v = max;
+    const s = max === 0 ? 0 : (max - min) / max;
+    let h = 0;
+    if (max !== min) {
+      const d = max - min;
+      switch (max) {
+        case rn: h = ((gn - bn) / d + (gn < bn ? 6 : 0)) * 60; break;
+        case gn: h = ((bn - rn) / d + 2) * 60; break;
+        case bn: h = ((rn - gn) / d + 4) * 60; break;
+      }
+    }
+    return { h: Math.round(h), s, v };
+  }
+
+  // ── Picker input state (derived display values, kept in sync with accentColor) ──
+  const [pickerInputHex, setPickerInputHex] = useState(accentColor);
+  const [pickerRgb, setPickerRgb] = useState(() => hexToRgb(accentColor));
+  const [pickerHsl, setPickerHsl] = useState(() => {
+    const { r, g, b } = hexToRgb(accentColor);
+    return rgbToHsl(r, g, b);
+  });
+
+  // ── Canvas drawing ────────────────────────────────────────────────────────
+
+  const drawSpectrum = useCallback((hue: number) => {
+    const canvas = spectrumCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { width: W, height: H } = canvas;
+    // White→hue (left to right) + black overlay (top to bottom)
+    const hueColor = `hsl(${hue}, 100%, 50%)`;
+    const gradH = ctx.createLinearGradient(0, 0, W, 0);
+    gradH.addColorStop(0, "#fff");
+    gradH.addColorStop(1, hueColor);
+    ctx.fillStyle = gradH;
+    ctx.fillRect(0, 0, W, H);
+    const gradV = ctx.createLinearGradient(0, 0, 0, H);
+    gradV.addColorStop(0, "transparent");
+    gradV.addColorStop(1, "#000");
+    ctx.fillStyle = gradV;
+    ctx.fillRect(0, 0, W, H);
+  }, []);
+
+  const drawHueBar = useCallback(() => {
+    const canvas = hueCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { width: W, height: H } = canvas;
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0,      "hsl(0,100%,50%)");
+    grad.addColorStop(1 / 6,  "hsl(60,100%,50%)");
+    grad.addColorStop(2 / 6,  "hsl(120,100%,50%)");
+    grad.addColorStop(3 / 6,  "hsl(180,100%,50%)");
+    grad.addColorStop(4 / 6,  "hsl(240,100%,50%)");
+    grad.addColorStop(5 / 6,  "hsl(300,100%,50%)");
+    grad.addColorStop(1,      "hsl(360,100%,50%)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }, []);
+
+  // Redraw spectrum when hue changes
+  useEffect(() => {
+    if (showColorPicker) drawSpectrum(pickerHue);
+  }, [pickerHue, showColorPicker, drawSpectrum]);
+
+  // Draw hue bar once on open
+  useEffect(() => {
+    if (showColorPicker) {
+      // Small rAF to let the canvas element mount
+      requestAnimationFrame(() => {
+        drawHueBar();
+        drawSpectrum(pickerHue);
+      });
+    }
+  }, [showColorPicker]);
+
+  // Sync picker state when accentColor changes from outside (preset click)
+  useEffect(() => {
+    const { r, g, b } = hexToRgb(accentColor);
+    const hsv = rgbToHsv(r, g, b);
+    setPickerHue(hsv.h);
+    spectrumPos.current = { x: hsv.s, y: 1 - hsv.v };
+    setPickerInputHex(accentColor);
+    setPickerRgb({ r, g, b });
+    setPickerHsl(rgbToHsl(r, g, b));
+  }, [accentColor]);
+
+  // ── Spectrum canvas interactions ─────────────────────────────────────────
+
+  function getSpectrumColor(fx: number, fy: number, hue: number): string {
+    // fx, fy ∈ [0,1] → saturation, brightness in HSV
+    const s = Math.max(0, Math.min(1, fx));
+    const v = Math.max(0, Math.min(1, 1 - fy));
+    const { r, g, b } = hsvToRgb(hue, s, v);
+    return rgbToHex(r, g, b);
+  }
+
+  function handleSpectrumPointer(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = spectrumCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const fx = (e.clientX - rect.left) / rect.width;
+    const fy = (e.clientY - rect.top) / rect.height;
+    spectrumPos.current = { x: fx, y: fy };
+    const hex = getSpectrumColor(fx, fy, pickerHue);
+    syncPickerAll(hex, pickerHue);
+  }
+
+  function handleHuePointer(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = hueCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const fx = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const newHue = Math.round(fx * 360);
+    setPickerHue(newHue);
+    const hex = getSpectrumColor(spectrumPos.current.x, spectrumPos.current.y, newHue);
+    syncPickerAll(hex, newHue);
+  }
+
+  function syncPickerAll(hex: string, hue?: number) {
+    const { r, g, b } = hexToRgb(hex);
+    setPickerInputHex(hex);
+    setPickerRgb({ r, g, b });
+    setPickerHsl(rgbToHsl(r, g, b));
+    if (hue !== undefined) setPickerHue(hue);
+    applyAccent(hex);
+  }
 
   async function handleAddEntry() {
     if (!newEntryName.trim() || !newEntryPassword.trim()) return;
@@ -716,6 +929,67 @@ export default function Profile({
     if (updatedProfile) onSave(updatedProfile);
   }
 
+  function applyAccent(hex: string) {
+    // Derive soft/mid/dim variants from the chosen hex using HSL math
+    const ri = parseInt(hex.slice(1, 3), 16);
+    const gi = parseInt(hex.slice(3, 5), 16);
+    const bi = parseInt(hex.slice(5, 7), 16);
+    const r = ri / 255,
+      g = gi / 255,
+      b = bi / 255;
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b);
+    let h = 0,
+      s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r:
+          h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+          break;
+        case g:
+          h = ((b - r) / d + 2) / 6;
+          break;
+        case b:
+          h = ((r - g) / d + 4) / 6;
+          break;
+      }
+    }
+    const hDeg = Math.round(h * 360);
+    const sPct = Math.round(s * 100);
+    const lPct = Math.round(l * 100);
+
+    function hsl2hex(hh: number, ss: number, ll: number): string {
+      const sn = ss / 100,
+        ln = ll / 100;
+      const a = sn * Math.min(ln, 1 - ln);
+      const f = (n: number) => {
+        const k = (n + hh / 30) % 12;
+        const c = ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * c)
+          .toString(16)
+          .padStart(2, "0");
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    }
+
+    const soft = hsl2hex(hDeg, Math.min(sPct + 10, 100), Math.min(lPct + 42, 97));
+    const mid = hsl2hex(hDeg, Math.min(sPct + 5, 100), Math.min(lPct + 28, 90));
+    const dim = hsl2hex(hDeg, Math.min(sPct + 5, 100), Math.max(lPct - 18, 15));
+
+    const root = document.documentElement;
+    root.style.setProperty("--accent", hex);
+    root.style.setProperty("--accent-soft", soft);
+    root.style.setProperty("--accent-mid", mid);
+    root.style.setProperty("--accent-dim", dim);
+    root.style.setProperty("--accent-rgb", `${ri}, ${gi}, ${bi}`);
+    localStorage.setItem("tyunnie_accent", hex);
+    setAccentColor(hex);
+    window.dispatchEvent(new Event("tyunnie-accent-changed"));
+  }
+
   async function handleSave() {
     setSaving(true);
     const profile: Partial<Profile> = {
@@ -1086,6 +1360,224 @@ export default function Profile({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Accent Color */}
+          <div className="mb-3 mt-3 pt-3 border-t border-[#e8e2d8]">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-3">
+              Accent Color
+            </label>
+            {/* Preset swatches + custom picker toggle */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {ACCENT_PRESETS.map(({ hex, label }) => (
+                <button
+                  key={hex}
+                  title={label}
+                  onClick={() => {
+                    applyAccent(hex);
+                    setShowColorPicker(false);
+                  }}
+                  style={{ background: hex }}
+                  className={`w-7 h-7 rounded-full transition-all duration-150 ${
+                    accentColor.toLowerCase() === hex && !showColorPicker
+                      ? "ring-2 ring-offset-2 ring-[#9a8f7e] scale-110"
+                      : "hover:scale-110 opacity-80 hover:opacity-100"
+                  }`}
+                />
+              ))}
+              {/* Color wheel button — toggles inline picker */}
+              {(() => {
+                const isCustom = !ACCENT_PRESETS.some(
+                  (p) => p.hex === accentColor.toLowerCase()
+                );
+                return (
+                  <button
+                    title={showColorPicker ? "Close picker" : "Custom color"}
+                    onClick={() => setShowColorPicker((v) => !v)}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 overflow-hidden ${
+                      (isCustom || showColorPicker)
+                        ? "ring-2 ring-offset-2 ring-[#9a8f7e] scale-110"
+                        : "hover:scale-110 opacity-80 hover:opacity-100"
+                    }`}
+                    style={
+                      isCustom
+                        ? { background: accentColor }
+                        : {
+                            background:
+                              "conic-gradient(#f97316, #f59e0b, #10b981, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444, #f97316)",
+                          }
+                    }
+                    aria-label="Custom color"
+                  />
+                );
+              })()}
+            </div>
+
+            {/* Inline color picker — expands below swatches */}
+            {showColorPicker && (
+              <div className="mt-2 p-3 bg-[#faf8f5] border border-[#e8e2d8] rounded-2xl flex flex-col gap-3">
+                {/* Live preview swatch */}
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl border border-[#e8e2d8] shrink-0 shadow-sm"
+                    style={{ background: accentColor }}
+                  />
+                  <div className="flex-1">
+                    <p className="text-[9px] font-mono text-[#9a8f7e] uppercase tracking-widest">Preview</p>
+                    <p className="text-xs font-mono font-semibold" style={{ color: accentColor }}>
+                      {accentColor.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Spectrum canvas */}
+                <div className="relative w-full" style={{ paddingBottom: "56.25%" /* 16:9 aspect */ }}>
+                  <canvas
+                    ref={spectrumCanvasRef}
+                    width={280}
+                    height={157}
+                    className="absolute inset-0 w-full h-full rounded-xl cursor-crosshair touch-none"
+                    style={{ display: "block" }}
+                    onPointerDown={(e) => {
+                      spectrumDragging.current = true;
+                      (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+                      handleSpectrumPointer(e);
+                    }}
+                    onPointerMove={(e) => {
+                      if (!spectrumDragging.current) return;
+                      handleSpectrumPointer(e);
+                    }}
+                    onPointerUp={() => { spectrumDragging.current = false; }}
+                    onPointerCancel={() => { spectrumDragging.current = false; }}
+                  />
+                  {/* Spectrum cursor dot */}
+                  <div
+                    className="absolute w-3.5 h-3.5 rounded-full border-2 border-white shadow pointer-events-none -translate-x-1/2 -translate-y-1/2"
+                    style={{
+                      left: `${spectrumPos.current.x * 100}%`,
+                      top: `${spectrumPos.current.y * 100}%`,
+                      background: accentColor,
+                      boxShadow: "0 0 0 1px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.3)",
+                    }}
+                  />
+                </div>
+
+                {/* Hue slider canvas */}
+                <div className="relative w-full h-5">
+                  <canvas
+                    ref={hueCanvasRef}
+                    width={280}
+                    height={20}
+                    className="absolute inset-0 w-full h-full rounded-full cursor-pointer touch-none"
+                    style={{ display: "block" }}
+                    onPointerDown={(e) => {
+                      hueDragging.current = true;
+                      (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+                      handleHuePointer(e);
+                    }}
+                    onPointerMove={(e) => {
+                      if (!hueDragging.current) return;
+                      handleHuePointer(e);
+                    }}
+                    onPointerUp={() => { hueDragging.current = false; }}
+                    onPointerCancel={() => { hueDragging.current = false; }}
+                  />
+                  {/* Hue thumb */}
+                  <div
+                    className="absolute top-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none -translate-x-1/2 -translate-y-1/2"
+                    style={{
+                      left: `${(pickerHue / 360) * 100}%`,
+                      background: `hsl(${pickerHue},100%,50%)`,
+                      boxShadow: "0 0 0 1px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.3)",
+                    }}
+                  />
+                </div>
+
+                {/* Input fields */}
+                <div className="flex flex-col gap-2">
+                  {/* Hex */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#9a8f7e] w-7 shrink-0">Hex</span>
+                    <input
+                      type="text"
+                      value={pickerInputHex}
+                      onChange={(e) => setPickerInputHex(e.target.value)}
+                      onBlur={(e) => {
+                        const raw = e.target.value.trim();
+                        const full = raw.startsWith("#") ? raw : `#${raw}`;
+                        if (/^#[0-9a-fA-F]{6}$/.test(full)) syncPickerAll(full.toLowerCase());
+                        else setPickerInputHex(accentColor);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        const raw = pickerInputHex.trim();
+                        const full = raw.startsWith("#") ? raw : `#${raw}`;
+                        if (/^#[0-9a-fA-F]{6}$/.test(full)) syncPickerAll(full.toLowerCase());
+                        else setPickerInputHex(accentColor);
+                      }}
+                      placeholder="#f97316"
+                      maxLength={7}
+                      className="flex-1 bg-white border border-[#e8e2d8] rounded-lg px-2 py-1.5 text-xs font-mono outline-none focus:border-(--accent) transition-colors"
+                    />
+                  </div>
+
+                  {/* RGB */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#9a8f7e] w-7 shrink-0">RGB</span>
+                    {(["r", "g", "b"] as const).map((ch) => (
+                      <input
+                        key={ch}
+                        type="number"
+                        min={0}
+                        max={255}
+                        value={pickerRgb[ch]}
+                        onChange={(e) => {
+                          const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0));
+                          const next = { ...pickerRgb, [ch]: val };
+                          const hex = rgbToHex(next.r, next.g, next.b);
+                          const { h } = rgbToHsv(next.r, next.g, next.b);
+                          const hsv = rgbToHsv(next.r, next.g, next.b);
+                          spectrumPos.current = { x: hsv.s, y: 1 - hsv.v };
+                          syncPickerAll(hex, h);
+                        }}
+                        className="flex-1 min-w-0 bg-white border border-[#e8e2d8] rounded-lg px-2 py-1.5 text-xs font-mono text-center outline-none focus:border-(--accent) transition-colors"
+                        placeholder={ch.toUpperCase()}
+                      />
+                    ))}
+                  </div>
+
+                  {/* HSL */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#9a8f7e] w-7 shrink-0">HSL</span>
+                    {(["h", "s", "l"] as const).map((ch, idx) => (
+                      <input
+                        key={ch}
+                        type="number"
+                        min={0}
+                        max={idx === 0 ? 360 : 100}
+                        value={pickerHsl[ch]}
+                        onChange={(e) => {
+                          const max = idx === 0 ? 360 : 100;
+                          const val = Math.max(0, Math.min(max, parseInt(e.target.value) || 0));
+                          const next = { ...pickerHsl, [ch]: val };
+                          const { r, g, b } = hslToRgb(next.h, next.s, next.l);
+                          const hex = rgbToHex(r, g, b);
+                          const hsv = rgbToHsv(r, g, b);
+                          spectrumPos.current = { x: hsv.s, y: 1 - hsv.v };
+                          syncPickerAll(hex, next.h);
+                        }}
+                        className="flex-1 min-w-0 bg-white border border-[#e8e2d8] rounded-lg px-2 py-1.5 text-xs font-mono text-center outline-none focus:border-(--accent) transition-colors"
+                        placeholder={ch.toUpperCase()}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <p className="text-[9px] text-[#c5bdb0] font-mono mt-2">
+              Applied immediately — no need to save
+            </p>
           </div>
 
           {/* Show briefing */}

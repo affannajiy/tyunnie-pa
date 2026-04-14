@@ -13,6 +13,14 @@
   --text: #2d2416;
   --muted: #9a8f7e;
   --muted2: #c5bdb0;
+
+  /* ── ACCENT COLOR SYSTEM ── */
+  /* These default to orange and are overridden by the accent script in layout.tsx */
+  --accent: #f97316;
+  --accent-soft: #fff0e6;
+  --accent-mid: #fed7aa;
+  --accent-dim: #c2500f;
+  --accent-rgb: 249, 115, 22;
 }
 
 * {
@@ -120,3 +128,44 @@ body {
 .dark textarea::placeholder {
   color: #4a4038 !important;
 }
+
+/* ── ACCENT COLOR OVERRIDES ──
+   These rules replace hardcoded #f97316 / #fff0e6 / #fed7aa / #c2500f
+   Tailwind classes with CSS custom properties, enabling user-selectable
+   accent colors without rewriting every component. */
+
+/* Background fills */
+.bg-\[\#f97316\] { background-color: var(--accent) !important; }
+.hover\:bg-\[\#f97316\]:hover { background-color: var(--accent) !important; }
+.hover\:bg-\[\#c2500f\]:hover { background-color: var(--accent-dim) !important; }
+.active\:bg-\[\#c2500f\]:active { background-color: var(--accent-dim) !important; }
+.bg-\[\#fff0e6\] { background-color: var(--accent-soft) !important; }
+.hover\:bg-\[\#fff0e6\]:hover { background-color: var(--accent-soft) !important; }
+.bg-\[\#fed7aa\] { background-color: var(--accent-mid) !important; }
+
+/* Text colors */
+.text-\[\#f97316\] { color: var(--accent) !important; }
+.hover\:text-\[\#f97316\]:hover { color: var(--accent) !important; }
+.text-\[\#c2500f\] { color: var(--accent-dim) !important; }
+.hover\:text-\[\#c2500f\]:hover { color: var(--accent-dim) !important; }
+.text-\[\#fff0e6\] { color: var(--accent-soft) !important; }
+.group:hover .group-hover\:text-\[\#f97316\] { color: var(--accent) !important; }
+
+/* Border colors */
+.border-\[\#f97316\] { border-color: var(--accent) !important; }
+.hover\:border-\[\#f97316\]:hover { border-color: var(--accent) !important; }
+.focus\:border-\[\#f97316\]:focus { border-color: var(--accent) !important; }
+.border-\[\#fed7aa\] { border-color: var(--accent-mid) !important; }
+.hover\:border-\[\#fed7aa\]:hover { border-color: var(--accent-mid) !important; }
+.border-\[\#c2500f\] { border-color: var(--accent-dim) !important; }
+
+/* Ring (outline / focus ring) */
+.ring-\[\#f97316\] { --tw-ring-color: var(--accent) !important; }
+.focus\:ring-\[\#f97316\]:focus { --tw-ring-color: var(--accent) !important; }
+
+/* Dark mode overrides that reference orange tones — keep them accent-aware */
+.dark .bg-\[\#fff0e6\] { background-color: color-mix(in srgb, var(--accent) 18%, #1a0f00) !important; }
+.dark .border-\[\#fed7aa\] { border-color: color-mix(in srgb, var(--accent) 45%, #000) !important; }
+
+/* accent-color property (used on range inputs) */
+.accent-\[\#f97316\] { accent-color: var(--accent) !important; }
