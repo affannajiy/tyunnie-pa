@@ -33,7 +33,8 @@ components/
 ├── Projects.tsx            Project tracker — status, progress %, dates, Gantt chart
 ├── Snippets.tsx            Code editor — JDoodle live execution (py/js/ts/bash), save/delete
 ├── Finance.tsx             Monthly income/expense — account tags, Recharts analytics
-├── Music.tsx               Audio player — playlist.json, album art, shuffle/repeat, audio visualizer
+├── MiniPlayer.tsx          Floating draggable mini player — appears when playing music outside Music panel, auto-closes 30s after pause, mobile pill layout
+├── Music.tsx               Audio player — playlist.json + user uploads, album art, shuffle/repeat, skip ±10s, audio visualizer
 ├── Pomodoro.tsx            25/5 timer — task binding, notifications
 ├── Games.tsx               Game hub dispatcher
 ├── ProductivityHub.tsx     Hub panel — links to Todo, Writing, Projects, Snippets, Pomodoro, Finance
@@ -57,7 +58,7 @@ lib/
 ├── crypto.ts               AES-GCM 256-bit + PBKDF2 (100k iterations) — vault encryption, PIN verifier
 ├── apiAuth.ts              verifyAuth(header) — server-side Supabase JWT validation for API routes
 ├── rateLimit.ts            In-memory rate limiter — rateLimit(key, limit, windowMs)
-├── MusicContext.tsx         React Context — player state (tracks, playback, shuffle, repeat, Web Audio analyser)
+├── MusicContext.tsx         React Context — player state (tracks, playback, shuffle, repeat, skip, Web Audio analyser); persists volume/track/position to localStorage
 └── useSpeech.ts            Web Speech API hook — {listening, supported, toggle}
 ```
 
@@ -85,6 +86,17 @@ lib/
 ### Music Player
 - Audio glow in `Music.tsx` drives `boxShadow` via direct DOM ref, NOT React state — do not refactor to `useState` (breaks per-frame beat detection)
 - `togglePlay` must be `async` — `audioCtxRef.current.resume()` returns a Promise
+- `skipBack(n)` / `skipForward(n)` read `audioRef.current.currentTime` directly — never use `progress` state (stale)
+- Session persistence: volume via `useState` lazy init, track index via `useEffect`, position throttled every ~5s in `ontimeupdate`. Restore uses `pendingRestoreRef` — applied after first playlist load, does NOT auto-play
+- MiniPlayer is always a separate floating overlay (`components/MiniPlayer.tsx`) — never embed player controls inside TyunniePanel again
+
+### MiniPlayer
+- Draggable via Pointer Events (`setPointerCapture`) — works for mouse and touch
+- Exclude buttons/inputs from drag: check `.closest("button, input")` in `onPointerDown`
+- `touchAction: none` on wrapper prevents scroll-while-dragging on mobile
+- Position initialised in `useEffect` (not `useState` initialiser) — `window` unavailable on server
+- Mobile (`< 768px`): compact pill, no skip buttons. Desktop: full card with seek bar + skip controls
+- Auto-close: `setTimeout(30s)` starts on pause, cleared on play. Both `dismissed` and `autoClosed` reset when `isPlaying` becomes true
 
 ### Images
 - Next.js `Image` src must NOT include `/public/` — use `/sprites/foo.png` not `/public/sprites/foo.png`
@@ -136,7 +148,8 @@ lib/
 | Chat history persistence | TyunniePanel always mounted; hidden via CSS transform only |
 | Dark mode | `localStorage['tyunnie_theme']` → class on `<html>`, set in layout script |
 | Accent color | `localStorage['tyunnie_accent']` → `--accent` CSS vars on `<html>`, set before paint |
-| Music state | `MusicContext` with `useRef` mirrors to avoid stale closures in event listeners |
+| Music state | `MusicContext` with `useRef` mirrors to avoid stale closures; volume/track/position persisted to `localStorage` |
+| Floating mini player | `MiniPlayer.tsx` — draggable overlay, auto-closes 30s after pause, mobile pill layout |
 | Vault encryption | AES-GCM 256-bit via Web Crypto API, PBKDF2 key derivation |
 | AI personality | Taehyun from TXT — calm, caring, dry humor, poetic |
 | Daily quote emails | Vercel cron `0 1 * * *` → `/api/daily-quote` → Groq → Resend |
