@@ -788,6 +788,7 @@ export default function Profile({
         setShowBriefing(p.show_briefing ?? true);
         setAvatarUrl(p.avatar_url ?? null);
         setDailyQuoteEmail(p.daily_quote_email ?? false);
+        if (p.accent_color) applyAccent(p.accent_color);
       } else {
         // Migrate from localStorage
         const lsName = localStorage.getItem("tyunnie_username");
@@ -1010,6 +1011,7 @@ export default function Profile({
       show_briefing: showBriefing,
       avatar_url: avatarUrl,
       daily_quote_email: dailyQuoteEmail,
+      accent_color: accentColor,
     };
     const saved = await upsertProfile(userId, profile);
     // Sync localStorage keys

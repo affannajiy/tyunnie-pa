@@ -115,6 +115,18 @@ export default function Finance({
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
 
+  // Track resolved accent hex for Recharts SVG props (which don't support CSS vars)
+  const [accentHex, setAccentHex] = useState("#f97316");
+  useEffect(() => {
+    function syncAccent() {
+      const v = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+      if (v) setAccentHex(v);
+    }
+    syncAccent();
+    window.addEventListener("tyunnie-accent-changed", syncAccent);
+    return () => window.removeEventListener("tyunnie-accent-changed", syncAccent);
+  }, []);
+
   useEffect(() => {
     getFinanceEntries(userId).then((data) => {
       setAllEntries(data);
@@ -740,7 +752,7 @@ export default function Finance({
                         borderRadius: 8,
                         fontSize: 11,
                       }}
-                      labelStyle={{ color: "#f97316", fontWeight: 700 }}
+                      labelStyle={{ color: accentHex, fontWeight: 700 }}
                       itemStyle={{ color: "#e8ddd0" }}
                       formatter={(v) => [`RM ${Number(v ?? 0).toFixed(2)}`, ""]}
                     />
@@ -751,7 +763,7 @@ export default function Finance({
                     />
                     <Bar
                       dataKey="Expenses"
-                      fill="#f97316"
+                      fill={accentHex}
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>

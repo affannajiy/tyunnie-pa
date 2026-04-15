@@ -76,6 +76,7 @@ export type Profile = {
   show_briefing: boolean;
   avatar_url?: string | null;
   daily_quote_email?: boolean;
+  accent_color?: string | null;
 };
 
 export type VaultEntry = {

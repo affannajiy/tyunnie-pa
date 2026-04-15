@@ -88,8 +88,12 @@ create table profiles (
   bio text, interests text[] default '{}',
   greeting_style text default 'casual', show_briefing boolean default true,
   daily_quote_email boolean default false,
+  accent_color text default '#f97316',
   updated_at timestamptz default now()
 );
+
+-- Migration (run if table already exists):
+-- alter table public.profiles add column if not exists accent_color text default '#f97316';
 create table sticky_notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users not null,

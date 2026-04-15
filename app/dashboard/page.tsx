@@ -433,6 +433,37 @@ export default function Home() {
           return results.slice(0, 12);
         })();
 
+  // ── ACCENT COLOR — apply hex to CSS vars + localStorage ──
+  function applyAccentColor(hex: string) {
+    const ri = parseInt(hex.slice(1, 3), 16);
+    const gi = parseInt(hex.slice(3, 5), 16);
+    const bi = parseInt(hex.slice(5, 7), 16);
+    const r = ri / 255, g = gi / 255, b = bi / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    const hd = Math.round(h * 360), sp = Math.round(s * 100), lp = Math.round(l * 100);
+    function hsl2hex(hh: number, ss: number, ll: number) {
+      const sn = ss / 100, ln = ll / 100, a = sn * Math.min(ln, 1 - ln);
+      const f = (n: number) => { const k = (n + hh / 30) % 12; return Math.round(255 * (ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1))).toString(16).padStart(2, "0"); };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    }
+    const root = document.documentElement;
+    root.style.setProperty("--accent", hex);
+    root.style.setProperty("--accent-soft", hsl2hex(hd, Math.min(sp + 10, 100), Math.min(lp + 42, 97)));
+    root.style.setProperty("--accent-mid", hsl2hex(hd, Math.min(sp + 5, 100), Math.min(lp + 28, 90)));
+    root.style.setProperty("--accent-dim", hsl2hex(hd, Math.min(sp + 5, 100), Math.max(lp - 18, 15)));
+    root.style.setProperty("--accent-rgb", `${ri}, ${gi}, ${bi}`);
+    localStorage.setItem("tyunnie_accent", hex);
+  }
+
   // ── LOAD ALL DATA once we have a user ──
   useEffect(() => {
     if (!user) return;
@@ -462,6 +493,9 @@ export default function Home() {
               city: prof.city,
             }),
           );
+        }
+        if (prof.accent_color) {
+          applyAccentColor(prof.accent_color);
         }
       }
       setTodos(td);

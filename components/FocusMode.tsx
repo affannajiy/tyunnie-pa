@@ -97,7 +97,7 @@ export default function FocusMode({
   const r = 88;
   const circ = 2 * Math.PI * r;
   const dash = (pomPct / 100) * circ;
-  const color = pomMode === "focus" ? "#f97316" : "#16a34a";
+  const color = pomMode === "focus" ? "var(--accent)" : "#16a34a";
 
   async function handleStickyUpdate(
     id: string,

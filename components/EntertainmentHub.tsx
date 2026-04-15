@@ -39,7 +39,7 @@ export default function EntertainmentHub({ onNavigate }: Props) {
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
-              style={{ backgroundColor: `${card.color}18` }}
+              style={{ backgroundColor: card.color === "#f97316" ? "rgba(var(--accent-rgb),0.094)" : `${card.color}18` }}
             >
               {card.icon}
             </div>

@@ -227,8 +227,8 @@ export default function Music() {
             onChange={(e) => handleSeek(parseFloat(e.target.value))}
             className="w-full h-1 rounded-full appearance-none cursor-pointer"
             style={{
-              background: `linear-gradient(to right, #f97316 ${progressPct}%, #2a2520 ${progressPct}%)`,
-              accentColor: "#f97316",
+              background: `linear-gradient(to right, var(--accent) ${progressPct}%, #2a2520 ${progressPct}%)`,
+              accentColor: "var(--accent)",
             }}
           />
           <div className="flex justify-between mt-1">
@@ -310,8 +310,8 @@ export default function Music() {
             }}
             className="flex-1 h-1 rounded-full appearance-none cursor-pointer"
             style={{
-              background: `linear-gradient(to right, #f97316 ${(isMuted ? 0 : volume) * 100}%, #2a2520 ${(isMuted ? 0 : volume) * 100}%)`,
-              accentColor: "#f97316",
+              background: `linear-gradient(to right, var(--accent) ${(isMuted ? 0 : volume) * 100}%, #2a2520 ${(isMuted ? 0 : volume) * 100}%)`,
+              accentColor: "var(--accent)",
             }}
           />
           <span className="text-[10px] font-mono text-[#9a8f7e] w-7 text-right">
@@ -638,7 +638,7 @@ export default function Music() {
         @keyframes barBounce { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
         input[type='range']::-webkit-slider-thumb {
           -webkit-appearance: none; width: 12px; height: 12px;
-          border-radius: 50%; background: #f97316; cursor: pointer;
+          border-radius: 50%; background: var(--accent); cursor: pointer;
         }
       `}</style>
     </div>

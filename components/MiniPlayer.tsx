@@ -163,7 +163,7 @@ export default function MiniPlayer({ activePanel }: Props) {
             <button
               onClick={music.togglePlay}
               className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors shrink-0"
-              style={{ boxShadow: "0 2px 10px rgba(249,115,22,0.4)" }}
+              style={{ boxShadow: "0 2px 10px rgba(var(--accent-rgb),0.4)" }}
             >
               {music.isPlaying ? "⏸" : "▶"}
             </button>
@@ -226,8 +226,8 @@ export default function MiniPlayer({ activePanel }: Props) {
             onChange={(e) => music.handleSeek(parseFloat(e.target.value))}
             className="w-full h-0.5 rounded-full appearance-none cursor-pointer"
             style={{
-              background: `linear-gradient(to right, #f97316 ${pct}%, #2a2520 ${pct}%)`,
-              accentColor: "#f97316",
+              background: `linear-gradient(to right, var(--accent) ${pct}%, #2a2520 ${pct}%)`,
+              accentColor: "var(--accent)",
             }}
           />
           <div className="flex justify-between mt-1">
@@ -243,7 +243,7 @@ export default function MiniPlayer({ activePanel }: Props) {
           <button
             onClick={music.togglePlay}
             className="w-9 h-9 rounded-full bg-[#f97316] flex items-center justify-center text-white text-sm hover:bg-[#c2500f] transition-all hover:scale-105 active:scale-95"
-            style={{ boxShadow: "0 4px 16px rgba(249,115,22,0.35)" }}
+            style={{ boxShadow: "0 4px 16px rgba(var(--accent-rgb),0.35)" }}
           >
             {music.isPlaying ? "⏸" : "▶"}
           </button>
