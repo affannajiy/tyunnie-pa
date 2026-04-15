@@ -1158,64 +1158,6 @@ set_theme:
           </div>
         </div>
 
-        {/* Mini player */}
-        {music.currentTrack && (
-          <div className="shrink-0 px-3 pt-3 pb-2 border-b border-[#2a2520]">
-            <div className="bg-[#1a1410] rounded-xl px-3 py-2 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
-                {music.currentTrack.cover ? (
-                  <Image
-                    src={music.currentTrack.cover}
-                    alt=""
-                    width={32}
-                    height={32}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">
-                    🎵
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-semibold text-white truncate leading-tight">
-                  {music.currentTrack.title}
-                </div>
-                <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-tight">
-                  {music.currentTrack.artist}
-                </div>
-                <div className="h-0.5 bg-[#2a2520] rounded-full mt-1 overflow-hidden">
-                  <div
-                    className="h-full bg-[#f97316] rounded-full transition-all"
-                    style={{
-                      width: `${music.duration > 0 ? (music.progress / music.duration) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={music.prevTrack}
-                  className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
-                >
-                  ⏮
-                </button>
-                <button
-                  onClick={music.togglePlay}
-                  className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors"
-                >
-                  {music.isPlaying ? "⏸" : "▶"}
-                </button>
-                <button
-                  onClick={music.nextTrack}
-                  className="w-6 h-6 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-xs"
-                >
-                  ⏭
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         {/* ── DAILY BRIEFING CARD (pinned, outside scroll) ── */}
         {briefingLoading && profile?.show_briefing !== false && (
           <div className="shrink-0 px-3 pt-3 pb-1">

@@ -40,6 +40,7 @@ const ProductivityHub   = dynamic(() => import("@/components/ProductivityHub"), 
 const EntertainmentHub  = dynamic(() => import("@/components/EntertainmentHub"),   { ssr: false });
 const StickyLayer   = dynamic(() => import("@/components/StickyLayer"),        { ssr: false });
 const FocusMode     = dynamic(() => import("@/components/FocusMode"),          { ssr: false });
+const MiniPlayer    = dynamic(() => import("@/components/MiniPlayer"),         { ssr: false });
 
 import {
   getTodos,
@@ -929,6 +930,9 @@ export default function Home() {
           setMemories((prev) => prev.filter((m) => m.id !== id));
         }}
       />
+      {/* Floating mini player — appears when playing music outside the Music panel */}
+      <MiniPlayer activePanel={activePanel} />
+
       {/* ── SEARCH MODAL ── */}
       {searchOpen && (
         <div

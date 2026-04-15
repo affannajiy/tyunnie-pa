@@ -48,6 +48,8 @@ type MusicContextType = {
   forcePrevTrack: () => void;
   refreshTracks: () => void;
   deleteUserTrack: (id: string, fileUrl: string, coverUrl: string | null) => Promise<void>;
+  skipBack: (seconds: number) => void;
+  skipForward: (seconds: number) => void;
 };
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -83,7 +85,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.5);
+  const [volume, setVolume] = useState(() => {
+    if (typeof window === "undefined") return 0.5;
+    const saved = parseFloat(localStorage.getItem("tyunnie_music_volume") ?? "");
+    return isNaN(saved) ? 0.5 : Math.min(1, Math.max(0, saved));
+  });
   const [isMuted, setIsMuted] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("none");
@@ -100,6 +106,16 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  // Deferred restore — applied after first track load, then cleared
+  const pendingRestoreRef = useRef<{ track: number; position: number } | null>(
+    typeof window !== "undefined"
+      ? (() => {
+          const t = parseInt(localStorage.getItem("tyunnie_music_track") ?? "", 10);
+          const p = parseFloat(localStorage.getItem("tyunnie_music_position") ?? "");
+          return { track: isNaN(t) ? 0 : t, position: isNaN(p) ? 0 : p };
+        })()
+      : null,
+  );
 
   // Keep refs in sync with state
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
@@ -182,16 +198,32 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Persist volume whenever it changes
+  useEffect(() => {
+    localStorage.setItem("tyunnie_music_volume", String(volume));
+  }, [volume]);
+
+  // Persist track index whenever it changes
+  useEffect(() => {
+    localStorage.setItem("tyunnie_music_track", String(currentIndex));
+  }, [currentIndex]);
+
   // Create the audio element once on mount
   useEffect(() => {
     const audio = new Audio();
-    audio.volume = 0.5;
+    // Restore saved volume (state already initialised from localStorage)
+    const savedVol = parseFloat(localStorage.getItem("tyunnie_music_volume") ?? "");
+    audio.volume = isNaN(savedVol) ? 0.5 : Math.min(1, Math.max(0, savedVol));
 
     audio.onplay = () => setIsPlaying(true);
     audio.onpause = () => setIsPlaying(false);
     audio.ontimeupdate = () => {
       setProgress(audio.currentTime);
       setDuration(audio.duration);
+      // Persist position every ~5 s to avoid hammering localStorage
+      if (Math.floor(audio.currentTime) % 5 === 0 && audio.currentTime > 0) {
+        localStorage.setItem("tyunnie_music_position", String(audio.currentTime));
+      }
     };
     audio.onloadedmetadata = () => setDuration(audio.duration);
     audio.onended = () => handleEnded();
@@ -230,12 +262,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           const merged = [...defaults, ...userTracks];
           setTracks(merged);
           setShuffledOrder(shuffleArray(merged.map((_, i) => i)));
+          applyPendingRestore(merged);
           return;
         }
       } catch {}
 
       setTracks(defaults);
       setShuffledOrder(shuffleArray(defaults.map((_, i) => i)));
+      applyPendingRestore(defaults);
     }
 
     load();
@@ -276,6 +310,40 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     // Remove from database and reload
     await deleteMusicTrack(id);
     refreshTracks();
+  }
+
+  // Restore last track + position on initial load only
+  function applyPendingRestore(loadedTracks: Track[]) {
+    const restore = pendingRestoreRef.current;
+    if (!restore || !audioRef.current || loadedTracks.length === 0) return;
+    pendingRestoreRef.current = null; // consume — only runs once
+    const safeIdx = Math.min(restore.track, loadedTracks.length - 1);
+    setCurrentIndex(safeIdx);
+    currentIndexRef.current = safeIdx;
+    audioRef.current.src = loadedTracks[safeIdx].file;
+    audioRef.current.load();
+    // Restore position once metadata is available, do NOT auto-play
+    audioRef.current.onloadedmetadata = () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = restore.position;
+        setDuration(audioRef.current.duration);
+      }
+    };
+  }
+
+  function skipBack(seconds: number) {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - seconds);
+    setProgress(audioRef.current.currentTime);
+  }
+
+  function skipForward(seconds: number) {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.min(
+      audioRef.current.duration || 0,
+      audioRef.current.currentTime + seconds,
+    );
+    setProgress(audioRef.current.currentTime);
   }
 
   // ── PLAYBACK ──
@@ -378,6 +446,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         formatTime,
         refreshTracks,
         deleteUserTrack,
+        skipBack,
+        skipForward,
       }}
     >
       {children}

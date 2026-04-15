@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.10.0] — 2026-04-15
+
+### Added
+
+- **Floating MiniPlayer** (`components/MiniPlayer.tsx`) — replaces the in-panel mini player in TyunniePanel. Appears as a draggable overlay when music is playing and the user navigates away from the Music panel. Auto-closes 30 seconds after pausing; close button dismisses until next play. Slides in/out with a smooth CSS transition
+- **Draggable MiniPlayer** — full drag support via Pointer Events API (`setPointerCapture`) for both mouse and touch. Buttons and the seek range are excluded from drag detection so controls remain usable. Position is clamped to viewport on release. `cursor: grab/grabbing` feedback while dragging
+- **Mobile MiniPlayer** — compact single-row pill layout (220×58px) on viewports < 768px: album art, truncated title/artist, play/pause button, close button, and a thin accent progress bar at the bottom edge. No skip buttons or timestamps to keep it minimal
+- **Music skip controls** — `−10` / `+10` second skip buttons added to both the full Music player and MiniPlayer. `skipBack(n)` and `skipForward(n)` added to `MusicContext` and its type
+- **Music session persistence** — volume, last track index, and playback position saved to `localStorage` across sessions. Volume restored via `useState` lazy init; track/position restored after first playlist load via `pendingRestoreRef` (does not auto-play — requires user interaction). Position persisted every ~5 seconds in `ontimeupdate`
+- **Seekable MiniPlayer progress bar** — `<input type="range">` replaces the static display bar, calls `music.handleSeek()` on change
+
+### Changed
+
+- MiniPlayer removed from TyunniePanel chat panel — now lives as a standalone always-visible floating overlay
+- Music controls row layout adjusted (`gap-3`) to accommodate skip buttons without overflow
+
+---
+
 ## [3.9.1] — 2026-04-14
 
 ### Added

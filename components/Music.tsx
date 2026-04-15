@@ -34,6 +34,8 @@ export default function Music() {
     formatTime,
     refreshTracks,
     deleteUserTrack,
+    skipBack,
+    skipForward,
   } = useMusicContext();
 
   const progressPct = duration > 0 ? (progress / duration) * 100 : 0;
@@ -239,7 +241,7 @@ export default function Music() {
           </div>
         </div>
 
-        <div className="flex items-center gap-5 mb-5">
+        <div className="flex items-center gap-3 mb-5">
           <button
             onClick={toggleShuffle}
             title="Shuffle"
@@ -248,8 +250,15 @@ export default function Music() {
             ⇄
           </button>
           <button
+            onClick={() => skipBack(10)}
+            title="Back 10s"
+            className="text-[10px] font-mono text-[#4a4038] hover:text-[#9a8f7e] transition-colors w-7 text-center leading-none"
+          >
+            −10
+          </button>
+          <button
             onClick={prevTrack}
-            className="w-10 h-10 flex items-center justify-center text-white hover:text-[#f97316] transition-colors text-xl"
+            className="w-9 h-9 flex items-center justify-center text-white hover:text-[#f97316] transition-colors text-xl"
           >
             ⏮
           </button>
@@ -262,9 +271,16 @@ export default function Music() {
           </button>
           <button
             onClick={nextTrack}
-            className="w-10 h-10 flex items-center justify-center text-white hover:text-[#f97316] transition-colors text-xl"
+            className="w-9 h-9 flex items-center justify-center text-white hover:text-[#f97316] transition-colors text-xl"
           >
             ⏭
+          </button>
+          <button
+            onClick={() => skipForward(10)}
+            title="Forward 10s"
+            className="text-[10px] font-mono text-[#4a4038] hover:text-[#9a8f7e] transition-colors w-7 text-center leading-none"
+          >
+            +10
           </button>
           <button
             onClick={cycleRepeat}

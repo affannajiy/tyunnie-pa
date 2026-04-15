@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.9.1-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.10.0-f97316?style=flat-square)
 
 ---
 
@@ -78,18 +78,18 @@
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS v4 |
-| Database / Auth | Supabase (PostgreSQL + Auth) |
-| AI | Groq API (Llama 3.3 70B) |
-| Code Execution | JDoodle API |
-| Charts | Recharts 3 |
-| Weather | Open-Meteo API (free, no key) |
-| Fonts | Instrument Serif + Nunito + Geist Mono |
-| Deployment | Vercel |
+| Layer           | Technology                             |
+| --------------- | -------------------------------------- |
+| Framework       | Next.js 16 (App Router)                |
+| Language        | TypeScript 5                           |
+| Styling         | Tailwind CSS v4                        |
+| Database / Auth | Supabase (PostgreSQL + Auth)           |
+| AI              | Groq API (Llama 3.3 70B)               |
+| Code Execution  | JDoodle API                            |
+| Charts          | Recharts 3                             |
+| Weather         | Open-Meteo API (free, no key)          |
+| Fonts           | Instrument Serif + Nunito + Geist Mono |
+| Deployment      | Vercel                                 |
 
 ---
 
@@ -127,7 +127,14 @@ Place transparent PNGs in `public/sprites/`. Canvas size: **360×460px** for pan
 Place MP3s + cover art in `public/music/` with a `playlist.json`:
 
 ```json
-[{ "title": "Song", "artist": "Artist", "file": "/music/song.mp3", "cover": "/music/cover.jpg" }]
+[
+  {
+    "title": "Song",
+    "artist": "Artist",
+    "file": "/music/song.mp3",
+    "cover": "/music/cover.jpg"
+  }
+]
 ```
 
 ### 6. Run
