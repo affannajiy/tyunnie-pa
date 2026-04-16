@@ -6,12 +6,6 @@ import { getTodos, type Todo } from "@/lib/database";
 
 type Mode = "focus" | "short" | "long";
 
-const DURATIONS: Record<Mode, number> = {
-  focus: 25 * 60,
-  short: 5 * 60,
-  long: 15 * 60,
-};
-
 const MODE_LABELS: Record<Mode, string> = {
   focus: "Focus",
   short: "Short Break",
@@ -19,25 +13,93 @@ const MODE_LABELS: Record<Mode, string> = {
 };
 
 const MODE_COLORS: Record<Mode, string> = {
-  focus: "#f97316",
+  focus: "var(--accent)",
   short: "#16a34a",
   long: "#3b82f6",
 };
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+const SETTINGS_KEY = "tyunnie_pomodoro_settings";
+
+interface PomSettings {
+  focusMins: number;
+  shortMins: number;
+  longMins: number;
+  longAfter: number; // sessions before long break
+}
+
+const DEFAULT_SETTINGS: PomSettings = {
+  focusMins: 25,
+  shortMins: 5,
+  longMins: 15,
+  longAfter: 4,
+};
+
+const PRESETS: { label: string; settings: Omit<PomSettings, "longAfter"> }[] = [
+  { label: "Classic",      settings: { focusMins: 25, shortMins: 5,  longMins: 15 } },
+  { label: "Extended",     settings: { focusMins: 50, shortMins: 10, longMins: 30 } },
+  { label: "Short Sprint", settings: { focusMins: 15, shortMins: 3,  longMins: 10 } },
+  { label: "Deep Work",    settings: { focusMins: 90, shortMins: 15, longMins: 30 } },
+];
+
+function loadSettings(): PomSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    const parsed = JSON.parse(raw) as Partial<PomSettings>;
+    return { ...DEFAULT_SETTINGS, ...parsed };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+function saveSettings(s: PomSettings) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  window.dispatchEvent(new Event("tyunnie-pomodoro-settings-changed"));
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 type Props = {
   userId: string;
   initialTask?: string;
 };
 
+// ── Component ──────────────────────────────────────────────────────────────────
+
 export default function Pomodoro({ userId, initialTask }: Props) {
+  // Settings
+  const [settings, setSettings] = useState<PomSettings>(DEFAULT_SETTINGS);
+  const [showSettings, setShowSettings] = useState(false);
+  const [draftSettings, setDraftSettings] = useState<PomSettings>(DEFAULT_SETTINGS);
+
+  // Timer
   const [mode, setMode] = useState<Mode>("focus");
-  const [secondsLeft, setSecondsLeft] = useState(DURATIONS.focus);
+  const [secondsLeft, setSecondsLeft] = useState(DEFAULT_SETTINGS.focusMins * 60);
   const [running, setRunning] = useState(false);
   const [sessions, setSessions] = useState(0);
+
+  // Tasks
   const [todos, setTodos] = useState<Todo[]>([]);
   const [linkedTask, setLinkedTask] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Derive durations from settings
+  const durations: Record<Mode, number> = {
+    focus: settings.focusMins * 60,
+    short: settings.shortMins * 60,
+    long: settings.longMins * 60,
+  };
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const s = loadSettings();
+    setSettings(s);
+    setDraftSettings(s);
+    setSecondsLeft(s.focusMins * 60);
+  }, []);
 
   // Load pending todos for task linking
   useEffect(() => {
@@ -58,8 +120,9 @@ export default function Pomodoro({ userId, initialTask }: Props) {
     });
   }, [userId]);
 
+  // ── Timer done handler ────────────────────────────────────────────────────────
+
   const handleDone = useCallback(() => {
-    // ── ALERT SOUND ──
     try {
       const ctx = new AudioContext();
       const playBeep = (freq: number, start: number, duration: number) => {
@@ -77,10 +140,9 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         osc.start(ctx.currentTime + start);
         osc.stop(ctx.currentTime + start + duration);
       };
-      // Three ascending tones — classic Pomodoro done sound
-      playBeep(523, 0, 0.15); // C5
-      playBeep(659, 0.18, 0.15); // E5
-      playBeep(784, 0.36, 0.3); // G5
+      playBeep(523, 0, 0.15);
+      playBeep(659, 0.18, 0.15);
+      playBeep(784, 0.36, 0.3);
     } catch {
       /* ignore if audio context blocked */
     }
@@ -92,15 +154,20 @@ export default function Pomodoro({ userId, initialTask }: Props) {
     if (mode === "focus") {
       const next = sessions + 1;
       setSessions(next);
-      // Every 4 sessions → long break, else short break
-      const nextMode: Mode = next % 4 === 0 ? "long" : "short";
+      const nextMode: Mode = next % settings.longAfter === 0 ? "long" : "short";
       setMode(nextMode);
-      setSecondsLeft(DURATIONS[nextMode]);
+      setSecondsLeft(
+        nextMode === "long"
+          ? settings.longMins * 60
+          : settings.shortMins * 60,
+      );
     } else {
       setMode("focus");
-      setSecondsLeft(DURATIONS.focus);
+      setSecondsLeft(settings.focusMins * 60);
     }
-  }, [mode, sessions]);
+  }, [mode, sessions, settings]);
+
+  // ── Interval ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (running) {
@@ -122,31 +189,118 @@ export default function Pomodoro({ userId, initialTask }: Props) {
     };
   }, [running, handleDone]);
 
+  // ── Mode switching / reset ────────────────────────────────────────────────────
+
   function switchMode(m: Mode) {
     setRunning(false);
     setMode(m);
-    setSecondsLeft(DURATIONS[m]);
+    setSecondsLeft(durations[m]);
     setShowDone(false);
   }
 
   function reset() {
     setRunning(false);
-    setSecondsLeft(DURATIONS[mode]);
+    setSecondsLeft(durations[mode]);
     setShowDone(false);
   }
 
-  const total = DURATIONS[mode];
+  // ── Settings handlers ─────────────────────────────────────────────────────────
+
+  function openSettings() {
+    setDraftSettings(settings);
+    setShowSettings(true);
+  }
+
+  function applyPreset(preset: (typeof PRESETS)[number]) {
+    setDraftSettings((d) => ({ ...d, ...preset.settings }));
+  }
+
+  function clampMins(val: number, min = 1, max = 180): number {
+    return Math.max(min, Math.min(max, Math.round(val)));
+  }
+
+  function commitSettings() {
+    const next: PomSettings = {
+      focusMins: clampMins(draftSettings.focusMins),
+      shortMins: clampMins(draftSettings.shortMins),
+      longMins: clampMins(draftSettings.longMins),
+      longAfter: Math.max(1, Math.min(8, Math.round(draftSettings.longAfter))),
+    };
+    setSettings(next);
+    saveSettings(next);
+    setShowSettings(false);
+    // Reset timer to new focus duration
+    setRunning(false);
+    setMode("focus");
+    setSecondsLeft(next.focusMins * 60);
+    setShowDone(false);
+  }
+
+  function cancelSettings() {
+    setDraftSettings(settings);
+    setShowSettings(false);
+  }
+
+  // ── Display values ────────────────────────────────────────────────────────────
+
+  const total = durations[mode];
   const progress = (secondsLeft / total) * 100;
   const mins = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const secs = String(secondsLeft % 60).padStart(2, "0");
   const color = MODE_COLORS[mode];
 
-  // SVG circle
   const r = 88;
   const circ = 2 * Math.PI * r;
   const dash = (progress / 100) * circ;
 
   const linkedTodo = todos.find((t) => t.id === linkedTask);
+
+  // ── Stepper helper ────────────────────────────────────────────────────────────
+
+  function Stepper({
+    label,
+    value,
+    onChange,
+    min = 1,
+    max = 180,
+  }: {
+    label: string;
+    value: number;
+    onChange: (v: number) => void;
+    min?: number;
+    max?: number;
+  }) {
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-[#6b5e52] font-medium flex-1">{label}</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onChange(Math.max(min, value - 1))}
+            className="w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-sm font-bold flex items-center justify-center"
+          >
+            −
+          </button>
+          <input
+            type="number"
+            value={value}
+            min={min}
+            max={max}
+            onChange={(e) => onChange(clampMins(Number(e.target.value), min, max))}
+            className="w-12 h-7 rounded-lg border border-[#e8e2d8] text-center text-xs font-mono font-bold text-[#111010] bg-white outline-none focus:border-[#f97316] transition-colors"
+          />
+          <span className="text-[10px] text-[#9a8f7e] font-mono w-5">min</span>
+          <button
+            onClick={() => onChange(Math.min(max, value + 1))}
+            className="w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-sm font-bold flex items-center justify-center"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-lg mx-auto">
@@ -172,7 +326,6 @@ export default function Pomodoro({ userId, initialTask }: Props) {
       <div className="flex flex-col items-center mb-6">
         <div className="relative w-56 h-56">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-            {/* Track */}
             <circle
               cx="100"
               cy="100"
@@ -181,7 +334,6 @@ export default function Pomodoro({ userId, initialTask }: Props) {
               stroke="#e8e2d8"
               strokeWidth="8"
             />
-            {/* Progress */}
             <circle
               cx="100"
               cy="100"
@@ -195,7 +347,6 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             />
           </svg>
 
-          {/* Time display */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="font-mono text-5xl font-bold text-[#111010] tracking-tight">
               {mins}:{secs}
@@ -211,18 +362,19 @@ export default function Pomodoro({ userId, initialTask }: Props) {
 
         {/* Session dots */}
         <div className="flex gap-2 mt-4">
-          {[0, 1, 2, 3].map((i) => (
+          {Array.from({ length: settings.longAfter }).map((_, i) => (
             <div
               key={i}
               className="w-2.5 h-2.5 rounded-full transition-all"
               style={{
-                background: i < sessions % 4 ? color : "#e8e2d8",
+                background: i < sessions % settings.longAfter ? color : "#e8e2d8",
               }}
             />
           ))}
         </div>
         <p className="text-[10px] font-mono text-[#9a8f7e] mt-1">
           {sessions} session{sessions !== 1 ? "s" : ""} completed
+          {" · "}long break every {settings.longAfter}
         </p>
       </div>
 
@@ -241,7 +393,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         >
           {running
             ? "Pause"
-            : secondsLeft === DURATIONS[mode]
+            : secondsLeft === durations[mode]
               ? "Start"
               : "Resume"}
         </button>
@@ -254,6 +406,116 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         </button>
       </div>
 
+      {/* Settings toggle */}
+      <div className="mb-5">
+        <button
+          onClick={showSettings ? cancelSettings : openSettings}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-xs font-bold uppercase tracking-widest"
+        >
+          <span>Timer Settings</span>
+          <span
+            className="transition-transform duration-200"
+            style={{ transform: showSettings ? "rotate(180deg)" : "rotate(0deg)" }}
+          >
+            ▾
+          </span>
+        </button>
+
+        {/* Settings panel */}
+        {showSettings && (
+          <div className="mt-2 bg-white border border-[#e8e2d8] rounded-2xl p-5 space-y-5">
+            {/* Presets */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono mb-3">
+                Presets
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {PRESETS.map((p) => {
+                  const active =
+                    draftSettings.focusMins === p.settings.focusMins &&
+                    draftSettings.shortMins === p.settings.shortMins &&
+                    draftSettings.longMins === p.settings.longMins;
+                  return (
+                    <button
+                      key={p.label}
+                      onClick={() => applyPreset(p)}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all text-left ${
+                        active
+                          ? "text-white"
+                          : "border border-[#e8e2d8] text-[#6b5e52] hover:border-[#f97316] hover:text-[#f97316]"
+                      }`}
+                      style={active ? { background: "var(--accent)" } : {}}
+                    >
+                      <p className="font-bold">{p.label}</p>
+                      <p
+                        className={`text-[9px] font-mono mt-0.5 ${active ? "opacity-80" : "text-[#9a8f7e]"}`}
+                      >
+                        {p.settings.focusMins}/{p.settings.shortMins}/{p.settings.longMins}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Duration steppers */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono mb-3">
+                Durations
+              </p>
+              <div className="space-y-3">
+                <Stepper
+                  label="Focus"
+                  value={draftSettings.focusMins}
+                  onChange={(v) => setDraftSettings((d) => ({ ...d, focusMins: v }))}
+                />
+                <Stepper
+                  label="Short Break"
+                  value={draftSettings.shortMins}
+                  onChange={(v) => setDraftSettings((d) => ({ ...d, shortMins: v }))}
+                />
+                <Stepper
+                  label="Long Break"
+                  value={draftSettings.longMins}
+                  onChange={(v) => setDraftSettings((d) => ({ ...d, longMins: v }))}
+                />
+              </div>
+            </div>
+
+            {/* Long break interval */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono mb-3">
+                Long Break Interval
+              </p>
+              <Stepper
+                label="Sessions before long break"
+                value={draftSettings.longAfter}
+                onChange={(v) => setDraftSettings((d) => ({ ...d, longAfter: v }))}
+                min={1}
+                max={8}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={cancelSettings}
+                className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs font-bold text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={commitSettings}
+                className="flex-1 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
+                style={{ background: "var(--accent)" }}
+              >
+                Apply & Reset
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Done banner */}
       {showDone && (
         <div
@@ -261,8 +523,8 @@ export default function Pomodoro({ userId, initialTask }: Props) {
           style={{ background: color, animation: "fadeIn 0.3s ease" }}
         >
           {mode === "focus"
-            ? "🧡 Nice work! Take a break."
-            : "💪 Break's over — back to it!"}
+            ? "Nice work. Take a breath."
+            : "Break's over — back to it."}
         </div>
       )}
 
@@ -304,6 +566,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
           </select>
         )}
       </div>
+
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-4px); }

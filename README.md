@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.10.1-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.12.0-f97316?style=flat-square)
 
 ---
 
@@ -26,9 +26,10 @@
 
 ### Desk (Home)
 
-- Time-aware greeting, top 3 tasks, life progress rings, finance balance
-- Inline Pomodoro mini-timer, Now Playing card, Recent Activity timeline
-- Daily quote card (AI-generated via Groq), Quick Navigation grid
+- Time-aware greeting with Taehyun hero sprite and animated accent bubbles
+- **Widget grid** — 8 draggable, resizable widgets: Today's Focus, Life Progress, Focus Timer, Now Playing, Recent Activity, Tyunnie Says, Clock, Weather
+- Edit mode: grab handles, resize corners, remove/add widgets, wiggle animation, column guides. Layout persists to `localStorage`
+- Mobile: 2-column responsive grid, no drag/resize required
 
 ### Tasks, Writing, Projects, Snippets
 
@@ -48,8 +49,9 @@
 
 ### Pomodoro + Focus Mode
 
-- 25/5/15 timer with session dots and task linking
-- Fullscreen Focus Mode: task + timer + music + sticky notes (`Ctrl+Shift+F`)
+- **Adjustable timer** — configurable focus, short break, and long break durations with four presets: Classic (25/5/15), Extended (50/10/30), Short Sprint (15/3/10), Deep Work (90/15/30). Settings sync across the full panel, desk widget, and Focus Mode
+- Session dot tracker scales with the configured long-break interval
+- **Focus Mode** (`Ctrl/⌘+Shift+F` or Sidebar dock button) — fullscreen overlay with music-reactive background glow (Web Audio beat detection drives the radial gradient in real time), preset picker, task selector, full Pomodoro controls, and floating sticky notes
 
 ### Games Hub
 
@@ -59,7 +61,7 @@
 
 - **Desktop** — fixed bottom-center frosted glass pill with macOS-style magnification
 - **Mobile** — full-width bottom bar
-- Items: Home, Productivity, Entertainment, Profile, Tyun (chat), Sticky (new note), Sign Out
+- Items: Home, Productivity, Entertainment, Profile, Tyun (chat), Sticky (new note), Focus Mode 🎯, Sign Out
 
 ### Profile + Vault
 
@@ -67,12 +69,21 @@
 - Full accent color picker (spectrum canvas, hue slider, hex/RGB/HSL inputs)
 - **Password Vault** — AES-GCM 256-bit encrypted, PIN-protected, auto-locks after 30s
 
+### Keyboard Shortcuts & Command Palette
+
+- **`Ctrl/⌘+K`** — command palette: search panels, tasks, projects, drafts, snippets, and shortcuts. Results grouped with inline match highlighting and shortcut badges. `↑↓/Enter/Esc` keyboard navigation
+- **`Ctrl/⌘+1–9`** — jump to any panel instantly
+- **`Ctrl/⌘+Shift+N/D/P/S`** — new task / draft / project / snippet from anywhere; focuses the add form in the target panel
+- **`Ctrl/⌘+Shift+F`** — Focus Mode · **`Ctrl/⌘+Shift+T`** — Tyunnie chat · **`Ctrl/⌘+M`** — play/pause music
+- **`N`** — new item in current panel (when not typing) · **`?`** — shortcut reference sheet
+- All shortcuts show both Windows (`Ctrl`) and Mac (`⌘`) in the help sheet
+
 ### Other
 
-- Global search `Cmd+K` / `Ctrl+K`
 - Draggable/resizable sticky notes, persisted to Supabase
 - City-based weather (Open-Meteo, no API key needed)
-- Dark / light mode, user-selectable accent color
+- Dark / light mode, user-selectable accent color (synced to account via Supabase)
+- **MiniPlayer** — floating draggable overlay appears when music is playing outside the Music panel; click art/title to navigate to the player
 
 ---
 

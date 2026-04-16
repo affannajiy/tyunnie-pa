@@ -192,3 +192,12 @@ body {
 
 /* Opacity-variant text */
 .text-\[\#f97316\]\/50 { color: rgba(var(--accent-rgb), 0.50) !important; }
+
+/* Tailwind semantic orange-* classes — map to accent vars */
+.bg-orange-50                  { background-color: var(--accent-soft) !important; }
+.hover\:bg-orange-50:hover     { background-color: var(--accent-soft) !important; }
+.bg-orange-50\/50              { background-color: rgba(var(--accent-rgb), 0.08) !important; }
+.hover\:bg-orange-50\/50:hover { background-color: rgba(var(--accent-rgb), 0.08) !important; }
+.border-orange-200             { border-color: var(--accent-mid) !important; }
+.text-orange-500               { color: var(--accent) !important; }
+.text-orange-600               { color: var(--accent-dim) !important; }

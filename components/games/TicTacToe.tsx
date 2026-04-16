@@ -281,7 +281,7 @@ export default function TicTacToe() {
               {cell && (
                 <span
                   style={{
-                    color: cell === "X" ? "#111010" : "#f97316",
+                    color: cell === "X" ? "#111010" : "var(--accent)",
                     animation: "popIn 0.15s ease",
                   }}
                 >

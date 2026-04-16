@@ -322,11 +322,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     currentIndexRef.current = safeIdx;
     audioRef.current.src = loadedTracks[safeIdx].file;
     audioRef.current.load();
-    // Restore position once metadata is available, do NOT auto-play
+    // Restore position once metadata is available, do NOT auto-play.
+    // Reset handler immediately after firing so subsequent track loads start from 0.
     audioRef.current.onloadedmetadata = () => {
       if (audioRef.current) {
         audioRef.current.currentTime = restore.position;
         setDuration(audioRef.current.duration);
+        audioRef.current.onloadedmetadata = () => {
+          if (audioRef.current) setDuration(audioRef.current.duration);
+        };
       }
     };
   }

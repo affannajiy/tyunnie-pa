@@ -135,11 +135,12 @@ export async function upsertProfile(
   profile: Partial<Profile>,
 ): Promise<Profile | null> {
   if (userId === "demo-user") return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .upsert({ id: userId, ...profile, updated_at: new Date().toISOString() })
     .select()
     .single();
+  if (error) console.error("upsertProfile error:", error);
   return data ?? null;
 }
 

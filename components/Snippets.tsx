@@ -80,6 +80,14 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
     });
   }, [userId, refreshKey]);
 
+  // Listen for global "tyunnie-new-snippet" — open a blank new snippet
+  useEffect(() => {
+    function handler() { newSnip(); }
+    window.addEventListener("tyunnie-new-snippet", handler);
+    return () => window.removeEventListener("tyunnie-new-snippet", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── HELPERS ──
 
   function newSnip() {

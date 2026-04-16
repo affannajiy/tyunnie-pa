@@ -1,7 +1,7 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -9,7 +9,9 @@ import type { User } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 import Desk from "@/components/Desk";
 import Sidebar, { type Panel } from "@/components/Sidebar";
-import { MusicProvider } from "@/lib/MusicContext";
+import { MusicProvider, useMusicContext } from "@/lib/MusicContext";
+import CommandPalette from "@/components/CommandPalette";
+import ShortcutHelp from "@/components/ShortcutHelp";
 import { getProfile, type Profile as ProfileType } from "@/lib/database";
 import {
   getStickyNotes,
@@ -67,6 +69,20 @@ import {
   type FinanceEntry,
 } from "@/lib/database";
 
+// ── Music keyboard bridge ──
+// Lives inside MusicProvider so it can call useMusicContext().
+// Listens for the "tyunnie-music-toggle" window event dispatched by the
+// keyboard handler (which is outside the Provider).
+function MusicKeyboardBridge() {
+  const { togglePlay } = useMusicContext();
+  useEffect(() => {
+    function handler() { togglePlay(); }
+    window.addEventListener("tyunnie-music-toggle", handler);
+    return () => window.removeEventListener("tyunnie-music-toggle", handler);
+  }, [togglePlay]);
+  return null;
+}
+
 const PANEL_LABELS: Record<Panel, string> = {
   desk: "Home",
   productivity: "Productivity",
@@ -88,9 +104,14 @@ export default function Home() {
     undefined,
   );
 
+  // ── ACCENT — re-apply from localStorage before first paint on every load ──
+  useLayoutEffect(() => {
+    const accent = localStorage.getItem("tyunnie_accent");
+    if (accent) applyAccentColor(accent);
+  }, []);
+
   // ── SEARCH ──
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   // ── AUTH ──
   const [user, setUser] = useState<User | null>(null);
@@ -199,6 +220,27 @@ export default function Home() {
 
   // ── KEYBOARD SHORTCUTS ──
   useEffect(() => {
+    // Panels reachable via Ctrl/⌘ + 1–9
+    const NUMBERED_PANELS: Panel[] = [
+      "desk",        // 1
+      "todo",        // 2
+      "writing",     // 3
+      "projects",    // 4
+      "snippets",    // 5
+      "finance",     // 6
+      "music",       // 7
+      "games",       // 8
+      "profile",     // 9
+    ];
+
+    // Panels that support N-key quick-add when no input is focused
+    const PANEL_NEW_KEY: Partial<Record<Panel, string>> = {
+      todo:     "tyunnie-new-task",
+      writing:  "tyunnie-new-draft",
+      projects: "tyunnie-new-project",
+      snippets: "tyunnie-new-snippet",
+    };
+
     function handleKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
       const isTyping =
@@ -206,232 +248,119 @@ export default function Home() {
         tag === "TEXTAREA" ||
         (e.target as HTMLElement)?.isContentEditable;
 
-      // Existing
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      const mod = e.metaKey || e.ctrlKey;
+
+      // ── Always-active shortcuts (even while typing) ──
+
+      // Cmd/Ctrl + K → open command palette
+      if (mod && e.key === "k") {
         e.preventDefault();
         setSearchOpen((prev) => !prev);
+        return;
       }
+
+      // Escape → close any open overlay (priority order)
       if (e.key === "Escape") {
         setSearchOpen(false);
         setShowShortcuts(false);
         setTyunnieOpen(false);
+        return;
       }
 
-      // Skip everything below if user is typing in a field
+      // ── Shortcuts blocked while typing ──
       if (isTyping) return;
 
-      // ? to toggle shortcuts panel
+      // ? → shortcuts help
       if (e.key === "?") {
         e.preventDefault();
         setShowShortcuts((prev) => !prev);
+        return;
       }
 
-      // Cmd/Ctrl + 1-9 for panels
-      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "9") {
+      // Cmd/Ctrl + 1–9 → navigate to numbered panel
+      if (mod && e.key >= "1" && e.key <= "9") {
         e.preventDefault();
-        const panels: Panel[] = [
-          "desk",
-          "productivity",
-          "entertainment",
-          "profile",
-        ];
-        const target = panels[parseInt(e.key) - 1];
+        const target = NUMBERED_PANELS[parseInt(e.key) - 1];
         if (target) setActivePanel(target);
+        return;
       }
 
-      // Cmd/Ctrl + P for profile
-      if ((e.metaKey || e.ctrlKey) && e.key === "p") {
-        e.preventDefault();
-        setActivePanel("profile");
-      }
-
-      // Cmd/Ctrl + / to toggle Tyunnie chat
-      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
+      // Cmd/Ctrl + Shift + T → toggle Tyunnie chat
+      if (mod && e.shiftKey && e.key === "T") {
         e.preventDefault();
         setTyunnieOpen((prev) => !prev);
+        return;
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "F") {
+      // Cmd/Ctrl + Shift + F → Focus Mode
+      if (mod && e.shiftKey && e.key === "F") {
         e.preventDefault();
         setFocusMode((prev) => !prev);
+        return;
+      }
+
+      // Cmd/Ctrl + Shift + N → new task
+      if (mod && e.shiftKey && e.key === "N") {
+        e.preventDefault();
+        setActivePanel("todo");
+        setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-new-task")), 80);
+        return;
+      }
+
+      // Cmd/Ctrl + Shift + D → new draft
+      if (mod && e.shiftKey && e.key === "D") {
+        e.preventDefault();
+        setActivePanel("writing");
+        setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-new-draft")), 80);
+        return;
+      }
+
+      // Cmd/Ctrl + Shift + P → new project
+      if (mod && e.shiftKey && e.key === "P") {
+        e.preventDefault();
+        setActivePanel("projects");
+        setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-new-project")), 80);
+        return;
+      }
+
+      // Cmd/Ctrl + Shift + S → new snippet
+      if (mod && e.shiftKey && e.key === "S") {
+        e.preventDefault();
+        setActivePanel("snippets");
+        setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-new-snippet")), 80);
+        return;
+      }
+
+      // Cmd/Ctrl + M → music play/pause (dispatched into MusicKeyboardBridge)
+      if (mod && e.key === "m") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("tyunnie-music-toggle"));
+        return;
+      }
+
+      // Cmd/Ctrl + / → toggle Tyunnie (legacy shortcut preserved)
+      if (mod && e.key === "/") {
+        e.preventDefault();
+        setTyunnieOpen((prev) => !prev);
+        return;
+      }
+
+      // N key → quick-add in current panel (when not typing)
+      if (e.key === "n" && !mod) {
+        const eventName = PANEL_NEW_KEY[activePanel];
+        if (eventName) {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent(eventName));
+        }
+        return;
       }
     }
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePanel]);
 
-  const searchResults =
-    searchQuery.trim().length < 2
-      ? []
-      : (() => {
-          const q = searchQuery.toLowerCase();
-          const results: {
-            type: string;
-            label: string;
-            sub: string;
-            panel: Panel;
-            icon: string;
-          }[] = [];
-
-          // ── Panel shortcuts ──
-          const PANEL_SHORTCUTS: {
-            keywords: string[];
-            label: string;
-            sub: string;
-            panel: Panel;
-            icon: string;
-          }[] = [
-            {
-              keywords: ["todo", "tasks", "task", "remind"],
-              label: "Tasks",
-              sub: "View your to-do list",
-              panel: "todo",
-              icon: "✅",
-            },
-            {
-              keywords: ["writing", "drafts", "draft", "write"],
-              label: "Writing",
-              sub: "View your drafts",
-              panel: "writing",
-              icon: "✍️",
-            },
-            {
-              keywords: ["projects", "project"],
-              label: "Projects",
-              sub: "View your projects",
-              panel: "projects",
-              icon: "🗂️",
-            },
-            {
-              keywords: ["snippets", "snips", "code", "snippet"],
-              label: "Snippets",
-              sub: "View your code snippets",
-              panel: "snippets",
-              icon: "⌨️",
-            },
-            {
-              keywords: ["finance", "money", "budget", "expenses", "income"],
-              label: "Finance",
-              sub: "View your finance tracker",
-              panel: "finance",
-              icon: "💰",
-            },
-            {
-              keywords: ["music", "songs", "playlist"],
-              label: "Music",
-              sub: "Open music player",
-              panel: "music",
-              icon: "🎵",
-            },
-            {
-              keywords: ["pomodoro", "focus", "timer", "study"],
-              label: "Pomodoro",
-              sub: "Start a focus session",
-              panel: "pomodoro",
-              icon: "⏲️",
-            },
-            {
-              keywords: [
-                "games",
-                "game",
-                "play",
-                "tictactoe",
-                "tic tac toe",
-                "minesweeper",
-                "mines",
-                "sudoku",
-                "solitaire",
-                "cards",
-              ],
-              label: "Games",
-              sub: "Play a minigame",
-              panel: "games",
-              icon: "🎮",
-            },
-          ];
-
-          PANEL_SHORTCUTS.forEach(({ keywords, label, sub, panel, icon }) => {
-            if (keywords.some((k) => k.includes(q) || q.includes(k))) {
-              results.push({ type: "Panel", label, sub, panel, icon });
-            }
-          });
-
-          // ── Data results ──
-          todos
-            .filter((t) => t.text.toLowerCase().includes(q))
-            .forEach((t) =>
-              results.push({
-                type: "Task",
-                label: t.text,
-                sub: `[${t.tag}]${t.due ? " · due " + t.due : ""}`,
-                panel: "todo",
-                icon: "✅",
-              }),
-            );
-          drafts
-            .filter(
-              (d) =>
-                d.title.toLowerCase().includes(q) ||
-                (d.body ?? "").toLowerCase().includes(q),
-            )
-            .forEach((d) =>
-              results.push({
-                type: "Draft",
-                label: d.title,
-                sub: `${(d.body ?? "").trim().split(/\s+/).length} words`,
-                panel: "writing",
-                icon: "✍️",
-              }),
-            );
-          projects
-            .filter(
-              (p) =>
-                p.name.toLowerCase().includes(q) ||
-                (p.description ?? "").toLowerCase().includes(q),
-            )
-            .forEach((p) =>
-              results.push({
-                type: "Project",
-                label: p.name,
-                sub: `${p.status} · ${p.progress}%`,
-                panel: "projects",
-                icon: "🗂️",
-              }),
-            );
-          snips
-            .filter(
-              (s) =>
-                s.name.toLowerCase().includes(q) ||
-                (s.code ?? "").toLowerCase().includes(q),
-            )
-            .forEach((s) =>
-              results.push({
-                type: "Snippet",
-                label: s.name,
-                sub: s.language,
-                panel: "snippets",
-                icon: "⌨️",
-              }),
-            );
-          finance
-            .filter(
-              (f) =>
-                f.description.toLowerCase().includes(q) ||
-                f.category.toLowerCase().includes(q),
-            )
-            .forEach((f) =>
-              results.push({
-                type: "Finance",
-                label: f.description,
-                sub: `${f.type === "income" ? "+" : "-"}RM${f.amount.toFixed(2)} · ${f.category}`,
-                panel: "finance",
-                icon: "💰",
-              }),
-            );
-
-          return results.slice(0, 12);
-        })();
 
   // ── ACCENT COLOR — apply hex to CSS vars + localStorage ──
   function applyAccentColor(hex: string) {
@@ -732,6 +661,7 @@ export default function Home() {
             const note = await createStickyNote(user.id, 120 + offset, 120 + offset);
             if (note) setStickyNotes((prev) => [...prev, note]);
           }}
+          onFocusMode={() => setFocusMode(true)}
         />
 
         {/* Main content */}
@@ -965,298 +895,28 @@ export default function Home() {
         }}
       />
       {/* Floating mini player — appears when playing music outside the Music panel */}
-      <MiniPlayer activePanel={activePanel} />
+      <MiniPlayer activePanel={activePanel} onNavigate={(p) => setActivePanel(p as Panel)} />
 
-      {/* ── SEARCH MODAL ── */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4"
-          onClick={() => {
-            setSearchOpen(false);
-            setSearchQuery("");
-          }}
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      {/* Music keyboard bridge — listens for tyunnie-music-toggle inside MusicProvider */}
+      <MusicKeyboardBridge />
 
-          {/* Modal */}
-          <div
-            className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-[#e8e2d8] overflow-hidden z-10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Search input */}
-            <div className="flex items-center gap-3 px-4 py-4 border-b border-[#e8e2d8]">
-              <span className="text-[#9a8f7e] text-lg shrink-0">🔍</span>
-              <input
-                autoFocus
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tasks, events, drafts, projects..."
-                className="flex-1 bg-transparent outline-none text-sm text-[#111010] placeholder:text-[#c5bdb0]"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="text-[#c5bdb0] hover:text-[#9a8f7e] text-sm transition-colors shrink-0"
-                >
-                  ✕
-                </button>
-              )}
-              <kbd className="text-[9px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-1.5 py-0.5 text-[#9a8f7e] shrink-0">
-                ESC
-              </kbd>
-            </div>
+      {/* ── COMMAND PALETTE ── */}
+      <CommandPalette
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        todos={todos}
+        drafts={drafts}
+        projects={projects}
+        snips={snips}
+        onNavigate={(panel) => setActivePanel(panel)}
+        onFocusMode={() => setFocusMode(true)}
+        onTyunnieOpen={() => setTyunnieOpen(true)}
+        onMusicToggle={() => window.dispatchEvent(new CustomEvent("tyunnie-music-toggle"))}
+      />
 
-            {/* Results */}
-            <div
-              className="max-h-100 overflow-y-auto"
-              style={{ scrollbarWidth: "thin" }}
-            >
-              {searchQuery.trim().length > 0 &&
-                searchQuery.trim().length < 2 && (
-                  <div className="px-4 py-8 text-center text-sm text-[#c5bdb0]">
-                    Keep typing...
-                  </div>
-                )}
+      {/* ── SHORTCUT HELP ── */}
+      <ShortcutHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-              {searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-                <div className="px-4 py-8 text-center">
-                  <div className="text-2xl mb-2">🔍</div>
-                  <p className="text-sm text-[#9a8f7e]">
-                    No results for <strong>&ldquo;{searchQuery}&rdquo;</strong>
-                  </p>
-                </div>
-              )}
-
-              {searchResults.length > 0 && (
-                <div className="py-2">
-                  {/* Group by type */}
-                  {(
-                    [
-                      "Panel",
-                      "Task",
-                      "Draft",
-                      "Project",
-                      "Snippet",
-                      "Finance",
-                    ] as const
-                  ).map((type) => {
-                    const group = searchResults.filter((r) => r.type === type);
-                    if (group.length === 0) return null;
-                    return (
-                      <div key={type}>
-                        <div className="px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono">
-                          {type}s
-                        </div>
-                        {group.map((result, i) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              setActivePanel(result.panel);
-                              setSearchOpen(false);
-                              setSearchQuery("");
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#faf8f5] transition-colors text-left group"
-                          >
-                            <span className="text-lg shrink-0">
-                              {result.icon}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-semibold text-[#111010] truncate group-hover:text-[#f97316] transition-colors">
-                                {/* Highlight matching text */}
-                                {result.label
-                                  .toLowerCase()
-                                  .includes(searchQuery.toLowerCase()) ? (
-                                  <>
-                                    {result.label.substring(
-                                      0,
-                                      result.label
-                                        .toLowerCase()
-                                        .indexOf(searchQuery.toLowerCase()),
-                                    )}
-                                    <mark className="bg-[#fff0e6] text-[#c2500f] rounded px-0.5">
-                                      {result.label.substring(
-                                        result.label
-                                          .toLowerCase()
-                                          .indexOf(searchQuery.toLowerCase()),
-                                        result.label
-                                          .toLowerCase()
-                                          .indexOf(searchQuery.toLowerCase()) +
-                                          searchQuery.length,
-                                      )}
-                                    </mark>
-                                    {result.label.substring(
-                                      result.label
-                                        .toLowerCase()
-                                        .indexOf(searchQuery.toLowerCase()) +
-                                        searchQuery.length,
-                                    )}
-                                  </>
-                                ) : (
-                                  result.label
-                                )}
-                              </div>
-                              <div className="text-[10px] text-[#9a8f7e] font-mono truncate">
-                                {result.sub}
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-mono text-[#c5bdb0] shrink-0 group-hover:text-[#f97316] transition-colors">
-                              → {PANEL_LABELS[result.panel]}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Empty state — no query */}
-              {searchQuery.trim().length === 0 && (
-                <div className="px-4 py-6 text-center text-[#c5bdb0]">
-                  <p className="text-xs font-mono">
-                    Search across all your tasks, events, drafts, projects,
-                    snippets and finance
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-[#f3f0ea] px-4 py-2 flex items-center gap-4">
-              <span className="text-[9px] font-mono text-[#c5bdb0]">
-                ↵ to navigate
-              </span>
-              <span className="text-[9px] font-mono text-[#c5bdb0]">
-                ESC to close
-              </span>
-              {searchResults.length > 0 && (
-                <span className="text-[9px] font-mono text-[#c5bdb0] ml-auto">
-                  {searchResults.length} result
-                  {searchResults.length !== 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      {showShortcuts && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          onClick={() => setShowShortcuts(false)}
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-[#e8e2d8] overflow-hidden z-10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e2d8]">
-              <span className="font-serif italic text-[#f97316] text-sm">
-                Keyboard Shortcuts
-              </span>
-              <kbd className="text-[9px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-1.5 py-0.5 text-[#9a8f7e]">
-                ?
-              </kbd>
-            </div>
-
-            <div className="p-5 flex flex-col gap-5">
-              {/* Navigation */}
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono mb-3">
-                  Navigation
-                </p>
-                <div className="flex flex-col gap-2">
-                  {[
-                    // Navigation section
-                    { keys: ["⌘ Ctrl", "1–9"], label: "Switch panels" },
-                    { keys: ["⌘ Ctrl", "P"], label: "Profile" },
-                    { keys: ["⌘ Ctrl", "/"], label: "Toggle Tyunnie chat" },
-
-                    // Search section
-                    { keys: ["⌘ Ctrl", "K"], label: "Global search" },
-                    { keys: ["⌘ Ctrl", "⇧", "K"], label: "New sticky note" },
-                    { keys: ["⌘ Ctrl", "⇧", "F"], label: "Focus Mode" },
-                  ].map(({ keys, label }) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="text-sm text-[#111010]">{label}</span>
-                      <div className="flex items-center gap-1">
-                        {keys.map((k) => (
-                          <kbd
-                            key={k}
-                            className="text-[10px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-2 py-0.5 text-[#9a8f7e]"
-                          >
-                            {k}
-                          </kbd>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Search */}
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono mb-3">
-                  Search
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#111010]">Global search</span>
-                  <div className="flex items-center gap-1">
-                    <kbd className="text-[10px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-2 py-0.5 text-[#9a8f7e]">
-                      ⌘
-                    </kbd>
-                    <kbd className="text-[10px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-2 py-0.5 text-[#9a8f7e]">
-                      K
-                    </kbd>
-                  </div>
-                </div>
-              </div>
-
-              {/* General */}
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono mb-3">
-                  General
-                </p>
-                <div className="flex flex-col gap-2">
-                  {[
-                    { keys: ["?"], label: "Toggle this panel" },
-                    { keys: ["Esc"], label: "Close modals" },
-                  ].map(({ keys, label }) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="text-sm text-[#111010]">{label}</span>
-                      <div className="flex items-center gap-1">
-                        {keys.map((k) => (
-                          <kbd
-                            key={k}
-                            className="text-[10px] font-mono bg-[#f3f0ea] border border-[#e8e2d8] rounded px-2 py-0.5 text-[#9a8f7e]"
-                          >
-                            {k}
-                          </kbd>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-[#f3f0ea] px-5 py-2.5">
-              <p className="text-[9px] font-mono text-[#c5bdb0]">
-                Shortcuts work on both Mac and Windows
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
       {focusMode && (
         <FocusMode
           todos={todos}

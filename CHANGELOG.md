@@ -5,6 +5,69 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.12.0] — 2026-04-16
+
+### Added
+
+- **Widget dashboard** (`components/DeskWidgets.tsx`) — the Desk's fixed card grid is replaced with a fully interactive widget system. Eight content widgets (Today's Focus, Life Progress, Focus Timer, Now Playing, Recent Activity, Tyunnie Says, Clock, Weather) sit on a 4-column absolute-position grid. All widgets are **draggable** (grab the handle bar in edit mode) and **resizable** (bottom-right corner handle), with snap-to-grid behaviour. Layout persists to `localStorage('tyunnie_widgets')`
+- **Widget edit mode** — "Edit" button reveals drag handles, resize corners, an × remove button per widget, and faint column guide lines. "Done" exits edit mode. "Reset" restores the default layout. Removed widgets appear in an "Add Widget" tray below the grid
+- **Widget wiggle animation** — iOS-style rotation wiggle on all widgets while in edit mode (cancelled on the active drag/resize target)
+- **Mobile widget grid** — on viewports < 580 px, widgets fall back to a 2-column CSS grid with no drag/resize. Quote and Activity widgets span full width. Order follows row-first, then column
+- **Adjustable Pomodoro timer** — focus, short break, and long break durations are now fully configurable in `components/Pomodoro.tsx`. A collapsible settings panel exposes four **presets** (Classic 25/5/15, Extended 50/10/30, Short Sprint 15/3/10, Deep Work 90/15/30) plus individual `+/−` steppers for each duration and the long-break interval. Settings persist to `localStorage('tyunnie_pomodoro_settings')` and dispatch `tyunnie-pomodoro-settings-changed` so the desk widget and Focus Mode stay in sync
+- **Focus Mode in Sidebar** — the 🎯 Focus Mode button is now a permanent dock item in `Sidebar.tsx` (between Sticky and Sign Out), with the same magnify-on-hover scale as all other dock items. Works on both desktop pill and mobile bar. The Focus Timer widget's inline Focus Mode button has been removed accordingly
+- **Music-rhythm glow in Focus Mode** — `FocusMode.tsx` reads frequency data from `music.analyser` in a `requestAnimationFrame` loop and maps bass-bin averages to a radial-gradient glow (radius 30–90 %, opacity 0.08–0.55) written directly to the background div via DOM ref — no `setState`, matching the per-frame beat detection pattern from `Music.tsx`
+- **Focus Mode preset buttons** — the four Pomodoro presets (Classic / Extended / Short Sprint / Deep Work) appear as compact pill buttons below the timer in Focus Mode. Selecting one updates the timer, saves to localStorage, and dispatches `tyunnie-pomodoro-settings-changed`
+- **Focus Mode duration info line** — subtle monospace line inside the timer circle shows current durations (e.g. "25m focus · 5m break") and updates when presets change
+- **Command palette** (`components/CommandPalette.tsx`) — full VS Code-style `Ctrl/⌘+K` command palette. Searches across panel names, todo tasks, projects, drafts, snippets, keyboard shortcuts, and quick actions. Results are grouped (Quick Actions → Panels → Shortcuts → Tasks → Projects → Drafts → Snippets) with inline match highlighting and shortcut badges. `↑↓` to navigate, `Enter` to select, `Escape` to close. Quick-add actions dispatch `tyunnie-new-*` custom events (80 ms delay so the target panel has mounted)
+- **Shortcut help sheet** (`components/ShortcutHelp.tsx`) — press `?` anywhere (outside an input) to open a grouped keyboard shortcut reference. Auto-detects Mac vs Windows via `navigator.platform` and shows `⌘` or `Ctrl` accordingly. Groups: Navigation, Quick Add, Music, Panels & Overlays, Within a Panel
+- **Comprehensive keyboard shortcuts** — all shortcuts use `e.metaKey || e.ctrlKey` for cross-platform support:
+  - `Ctrl/⌘+1–9` navigate to all nine panels
+  - `Ctrl/⌘+Shift+N/D/P/S` create new task / draft / project / snippet from anywhere
+  - `Ctrl/⌘+Shift+F` enter Focus Mode
+  - `Ctrl/⌘+Shift+T` toggle Tyunnie chat
+  - `Ctrl/⌘+M` toggle music play/pause
+  - `N` (panel active, not typing) quick-adds in the current panel
+  - `?` opens the shortcut help sheet
+- **Panel quick-add events** — `Todo.tsx`, `Writing.tsx`, `Projects.tsx`, and `Snippets.tsx` now listen for `tyunnie-new-task / draft / project / snippet` custom events and immediately focus their respective add-item input or open their form
+
+### Fixed
+
+- **Music skip restores wrong position** — `applyPendingRestore` overwrote `audio.onloadedmetadata` with a closure that kept the saved position. Every subsequent `playTrack` call would trigger that handler and seek to the old timestamp (e.g. 1:26). Fixed by self-clearing the handler after the one-time restore fires, resetting `onloadedmetadata` to the standard `setDuration`-only behaviour
+
+### Changed
+
+- `Desk.tsx` now only renders the hero section + `<DeskWidgets />` — all card, clock, pomodoro, and weather state has moved into `DeskWidgets.tsx`
+- All hardcoded `#f97316` orange replaced with `var(--accent)` / `rgba(var(--accent-rgb), ...)` in Focus Mode, Pomodoro timer reset logic, and new widget content
+- Pomodoro session dots in `Pomodoro.tsx` now render `settings.longAfter` dots instead of a hardcoded 4; subtitle shows the configured long-break interval
+- `Sidebar.tsx` `FOCUS_IDX = 6`, `LOGOUT_IDX = 7` (bumped to make room for the new Focus Mode dock item)
+
+---
+
+## [3.11.0] — 2026-04-16
+
+### Added
+
+- **Account-synced accent color** — user's chosen accent color is now saved to the `profiles.accent_color` column in Supabase and restored on every login, so the color follows the account across devices and browsers
+- `accent_color` field added to the `Profile` type in `lib/database.ts`
+- `applyAccentColor(hex)` helper in `app/dashboard/page.tsx` — performs full HSL math to set all five CSS custom properties (`--accent`, `--accent-rgb`, `--accent-soft`, `--accent-mid`, `--accent-dim`) and writes to `localStorage`
+- Early `useLayoutEffect` in `dashboard/page.tsx` re-applies the saved accent before the first React paint, eliminating the flash-of-orange on hard refresh
+- **MiniPlayer redesign** — floating mini player no longer appears immediately on page load. It appears only after the user has played a track and then navigated away from the Music panel. Closing the MiniPlayer pauses the song and dismisses it; pressing play again makes it reappear
+- **MiniPlayer navigation** — clicking the album art or track title on both desktop and mobile navigates directly to the Music panel
+- **MiniPlayer drag fix** — replaced `setPointerCapture` + JSX `onPointerMove/Up` with document-level `pointermove`/`pointerup` listeners, eliminating the `releasePointerCapture: No active pointer` error
+- **Inline orange overrides in `globals.css`** — Tailwind semantic classes (`bg-orange-50`, `hover:bg-orange-50`, `border-orange-200`, `text-orange-500`, `text-orange-600`) now map to accent CSS variables so Tailwind utilities follow the selected accent color without needing inline styles
+
+### Fixed
+
+- `getFinanceEntries error: {}` — missing `account` column in the `finance` Supabase table. SQL migration: `alter table public.finance add column if not exists account text default 'Wallet'`
+- **Accent color reverts to orange after full page load** — `profiles.accent_color` column defaulted to `'#f97316'` in the DB, so loading the profile would overwrite a custom color. Fixed by changing the column default to `null` and migrating existing rows: `alter table public.profiles alter column accent_color set default null; update public.profiles set accent_color = null where accent_color = '#f97316'`
+- All inline `#f97316` hardcoded orange replaced with `var(--accent)` / `rgba(var(--accent-rgb), ...)` across `FocusMode.tsx`, `Finance.tsx` (Recharts `accentHex` sync via `tyunnie-accent-changed` event), `Music.tsx` range sliders, `Pomodoro.tsx` mode colors, `TicTacToe.tsx` O-piece, `Projects.tsx` Gantt bars, `EntertainmentHub.tsx` / `ProductivityHub.tsx` icon backgrounds
+
+### Changed
+
+- `DATABASE.md` updated — `accent_color` column default documented as `null`; migration SQL added for existing installs
+
+---
+
 ## [3.10.1] — 2026-04-15
 
 ### Fixed

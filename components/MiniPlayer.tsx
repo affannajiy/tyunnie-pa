@@ -5,26 +5,25 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
 
-type Props = { activePanel: string };
+type Props = { activePanel: string; onNavigate: (panel: string) => void };
 
 const DESKTOP_W = 288;
 const DESKTOP_H = 178; // approx rendered height
 const MOBILE_W  = 220;
 const MOBILE_H  = 58;
 
-export default function MiniPlayer({ activePanel }: Props) {
+export default function MiniPlayer({ activePanel, onNavigate }: Props) {
   const music = useMusicContext();
 
-  const [dismissed,  setDismissed]  = useState(false);
-  const [autoClosed, setAutoClosed] = useState(false);
-  const [visible,    setVisible]    = useState(false);
-  const [isMobile,   setIsMobile]   = useState(false);
-  const [dragging,   setDragging]   = useState(false);
+  const [hasEverPlayed, setHasEverPlayed] = useState(false);
+  const [dismissed,     setDismissed]     = useState(false);
+  const [visible,       setVisible]       = useState(false);
+  const [isMobile,      setIsMobile]      = useState(false);
+  const [dragging,      setDragging]      = useState(false);
 
   // null until mounted — avoids SSR mismatch
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
 
-  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragRef = useRef({ active: false, startX: 0, startY: 0, baseX: 0, baseY: 0 });
 
   // ── init position + detect mobile ──
@@ -45,22 +44,16 @@ export default function MiniPlayer({ activePanel }: Props) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // ── auto-close timer ──
-  useEffect(() => () => { if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current); }, []);
-
+  // ── track first play + reset dismissed when playback resumes ──
   useEffect(() => {
     if (music.isPlaying) {
+      setHasEverPlayed(true);
       setDismissed(false);
-      setAutoClosed(false);
-      if (pauseTimerRef.current) { clearTimeout(pauseTimerRef.current); pauseTimerRef.current = null; }
-    } else if (music.currentTrack) {
-      if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
-      pauseTimerRef.current = setTimeout(() => setAutoClosed(true), 30_000);
     }
-  }, [music.isPlaying, music.currentTrack]);
+  }, [music.isPlaying]);
 
-  // ── visibility ──
-  const shouldShow = !!music.currentTrack && activePanel !== "music" && !dismissed && !autoClosed;
+  // ── visibility: only after first play, only when away from music panel ──
+  const shouldShow = hasEverPlayed && !!music.currentTrack && activePanel !== "music" && !dismissed;
 
   useEffect(() => {
     if (shouldShow) {
@@ -71,11 +64,9 @@ export default function MiniPlayer({ activePanel }: Props) {
     }
   }, [shouldShow]);
 
-  // ── drag handlers (pointer events — works for mouse + touch) ──
+  // ── drag handlers — document-level listeners avoid setPointerCapture issues ──
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Don't start drag on interactive children
     if ((e.target as HTMLElement).closest("button, input")) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = {
       active: true,
       startX: e.clientX,
@@ -84,40 +75,43 @@ export default function MiniPlayer({ activePanel }: Props) {
       baseY: pos?.y ?? 0,
     };
     setDragging(true);
-  }, [pos]);
 
-  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current.active) return;
-    setPos({
-      x: dragRef.current.baseX + (e.clientX - dragRef.current.startX),
-      y: dragRef.current.baseY + (e.clientY - dragRef.current.startY),
-    });
-  }, []);
+    function onMove(ev: PointerEvent) {
+      if (!dragRef.current.active) return;
+      setPos({
+        x: dragRef.current.baseX + (ev.clientX - dragRef.current.startX),
+        y: dragRef.current.baseY + (ev.clientY - dragRef.current.startY),
+      });
+    }
 
-  const onPointerUp = useCallback(() => {
-    if (!dragRef.current.active) return;
-    dragRef.current.active = false;
-    setDragging(false);
-    // Clamp to viewport
-    const W = isMobile ? MOBILE_W : DESKTOP_W;
-    const H = isMobile ? MOBILE_H : DESKTOP_H;
-    setPos((prev) =>
-      prev
-        ? {
-            x: Math.max(0, Math.min(window.innerWidth  - W, prev.x)),
-            y: Math.max(0, Math.min(window.innerHeight - H, prev.y)),
-          }
-        : prev,
-    );
-  }, [isMobile]);
+    function onUp() {
+      dragRef.current.active = false;
+      setDragging(false);
+      const W = isMobile ? MOBILE_W : DESKTOP_W;
+      const H = isMobile ? MOBILE_H : DESKTOP_H;
+      setPos((prev) =>
+        prev
+          ? {
+              x: Math.max(0, Math.min(window.innerWidth  - W, prev.x)),
+              y: Math.max(0, Math.min(window.innerHeight - H, prev.y)),
+            }
+          : prev,
+      );
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup",   onUp);
+    }
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup",   onUp);
+  }, [pos, isMobile]);
 
   if ((!shouldShow && !visible) || pos === null) return null;
 
   const pct = music.duration > 0 ? (music.progress / music.duration) * 100 : 0;
 
   function handleClose() {
+    if (music.isPlaying) music.togglePlay();
     setDismissed(true);
-    if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
   }
 
   const wrapperStyle: React.CSSProperties = {
@@ -140,25 +134,27 @@ export default function MiniPlayer({ activePanel }: Props) {
       <div
         style={wrapperStyle}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
       >
         <div className="bg-[#1a1410] border border-[#2a2520] rounded-2xl shadow-2xl overflow-hidden">
           {/* Single row */}
           <div className="flex items-center gap-2 px-2.5 py-2">
-            {/* Art */}
-            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
-              {music.currentTrack?.cover ? (
-                <Image src={music.currentTrack.cover} alt="" width={32} height={32} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">🎵</div>
-              )}
-            </div>
-            {/* Title */}
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-semibold text-white truncate leading-tight">{music.currentTrack?.title}</div>
-              <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-none mt-0.5">{music.currentTrack?.artist}</div>
-            </div>
+            {/* Art + Title — tap to go to Music panel */}
+            <button
+              onClick={() => onNavigate("music")}
+              className="flex items-center gap-2 flex-1 min-w-0 text-left"
+            >
+              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-[#2a2520]">
+                {music.currentTrack?.cover ? (
+                  <Image src={music.currentTrack.cover} alt="" width={32} height={32} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">🎵</div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-semibold text-white truncate leading-tight">{music.currentTrack?.title}</div>
+                <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-none mt-0.5">{music.currentTrack?.artist}</div>
+              </div>
+            </button>
             {/* Play/pause */}
             <button
               onClick={music.togglePlay}
@@ -189,23 +185,27 @@ export default function MiniPlayer({ activePanel }: Props) {
     <div
       style={wrapperStyle}
       onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
     >
       <div className="bg-[#1a1410] border border-[#2a2520] rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#2a2520]">
-            {music.currentTrack?.cover ? (
-              <Image src={music.currentTrack.cover} alt="" width={40} height={40} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-sm">🎵</div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-white truncate leading-tight">{music.currentTrack?.title}</div>
-            <div className="text-[10px] text-[#9a8f7e] font-mono truncate leading-tight mt-0.5">{music.currentTrack?.artist}</div>
-          </div>
+          {/* Art + Title — click to go to Music panel */}
+          <button
+            onClick={() => onNavigate("music")}
+            className="flex items-center gap-2.5 flex-1 min-w-0 text-left group"
+          >
+            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#2a2520] group-hover:opacity-80 transition-opacity">
+              {music.currentTrack?.cover ? (
+                <Image src={music.currentTrack.cover} alt="" width={40} height={40} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-sm">🎵</div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold text-white truncate leading-tight group-hover:text-[#f97316] transition-colors">{music.currentTrack?.title}</div>
+              <div className="text-[10px] text-[#9a8f7e] font-mono truncate leading-tight mt-0.5">{music.currentTrack?.artist}</div>
+            </div>
+          </button>
           <button
             onClick={handleClose}
             className="w-6 h-6 flex items-center justify-center text-[#4a4038] hover:text-[#9a8f7e] transition-colors shrink-0 text-xs"

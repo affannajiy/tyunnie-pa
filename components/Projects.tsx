@@ -53,6 +53,18 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
     });
   }, [userId, refreshKey]);
 
+  // Listen for global "tyunnie-new-project" — open the add project form
+  useEffect(() => {
+    function handler() {
+      resetForm();
+      setShowForm(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    window.addEventListener("tyunnie-new-project", handler);
+    return () => window.removeEventListener("tyunnie-new-project", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── FORM HELPERS ──
   function resetForm() {
     setName("");
@@ -233,7 +245,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                     style={{
                       left: `${left}%`,
                       width: `${width}%`,
-                      background: "linear-gradient(90deg, #c2500f, #f97316)",
+                      background: "linear-gradient(90deg, var(--accent-dim), var(--accent))",
                     }}
                   >
                     <span className="text-white text-[9px] font-bold whitespace-nowrap">
@@ -493,7 +505,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${p.progress}%`,
-                      background: "linear-gradient(90deg, #c2500f, #f97316)",
+                      background: "linear-gradient(90deg, var(--accent-dim), var(--accent))",
                     }}
                   />
                 </div>

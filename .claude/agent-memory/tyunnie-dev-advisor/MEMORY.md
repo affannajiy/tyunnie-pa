@@ -1,1 +1,3 @@
 - [AI Backend: Gemini + Groq](project_ai_backend.md) — Primary model is Gemini 2.0 Flash; Groq llama-3.3-70b is kept as automatic fallback
+- [Pomodoro Settings Sync Pattern](project_pomodoro_settings_sync.md) — localStorage key + custom window event pattern for syncing pom settings across components
+- [Keyboard Shortcuts + Command Palette](project_keyboard_shortcuts.md) — Custom event bridge pattern for music toggle; numbered panel map; quick-add event names

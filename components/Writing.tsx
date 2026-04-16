@@ -41,6 +41,15 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
     })
   }, [userId, refreshKey])
 
+  // Listen for global "tyunnie-new-draft" — open new draft editor
+  useEffect(() => {
+    function handler() { openNew() }
+    window.addEventListener('tyunnie-new-draft', handler)
+    return () => window.removeEventListener('tyunnie-new-draft', handler)
+  // openNew is stable (no deps change it), safe to run once
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ── DERIVED ──
   const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0
   const charCount = body.length

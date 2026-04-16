@@ -1,7 +1,7 @@
 // components/panels/Todo.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import {
   getTodos,
@@ -58,6 +58,9 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
   const [due, setDue] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Ref to the new-task input for quick-add focus
+  const textInputRef = useRef<HTMLInputElement>(null);
+
   // Filter
   const [filter, setFilter] = useState<"all" | "pending" | "done">("pending");
 
@@ -67,6 +70,16 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
       setLoading(false);
     });
   }, [userId, refreshKey]);
+
+  // Listen for global "tyunnie-new-task" — focus the new-task input
+  useEffect(() => {
+    function handler() {
+      textInputRef.current?.focus();
+      textInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    window.addEventListener("tyunnie-new-task", handler);
+    return () => window.removeEventListener("tyunnie-new-task", handler);
+  }, []);
 
   // ── HANDLERS ──
   async function handleAdd(e: React.FormEvent) {
@@ -174,6 +187,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
           {/* Task text */}
           <div className="mb-3">
             <input
+              ref={textInputRef}
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
