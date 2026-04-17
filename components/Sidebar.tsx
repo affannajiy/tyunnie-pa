@@ -21,8 +21,6 @@ type Props = {
   active: Panel;
   onChange: (panel: Panel) => void;
   onSignOut: () => void;
-  userName?: string;
-  avatarUrl?: string | null;
   tyunnieOpen?: boolean;
   onTyunnieToggle?: () => void;
   onNewSticky?: () => void;
@@ -33,7 +31,6 @@ const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
   { panel: "desk", icon: "🏠", label: "Home" },
   { panel: "productivity", icon: "⚡", label: "Work" },
   { panel: "entertainment", icon: "🎮", label: "Play" },
-  { panel: "profile", icon: "👤", label: "Me" },
 ];
 
 // macOS dock magnification: returns scale based on distance from hovered index
@@ -46,34 +43,22 @@ function dockScale(idx: number, hoveredIdx: number | null): number {
   return 1;
 }
 
-// Dock item indices: 0-3 = NAV_ITEMS, 4 = Tyun, 5 = Sticky, 6 = Focus, 7 = Logout
-const TYUN_IDX   = NAV_ITEMS.length;       // 4
-const STICKY_IDX = NAV_ITEMS.length + 1;  // 5
-const FOCUS_IDX  = NAV_ITEMS.length + 2;  // 6
-const LOGOUT_IDX = NAV_ITEMS.length + 3;  // 7
+// Dock item indices: 0-2 = NAV_ITEMS, 3 = Tyun, 4 = Sticky, 5 = Focus, 6 = Logout
+const TYUN_IDX   = NAV_ITEMS.length;       // 3
+const STICKY_IDX = NAV_ITEMS.length + 1;  // 4
+const FOCUS_IDX  = NAV_ITEMS.length + 2;  // 5
+const LOGOUT_IDX = NAV_ITEMS.length + 3;  // 6
 
 export default function Sidebar({
   active,
   onChange,
   onSignOut,
-  userName,
-  avatarUrl,
   tyunnieOpen = false,
   onTyunnieToggle,
   onNewSticky,
   onFocusMode,
 }: Props) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-
-  const initials = userName
-    ? userName
-        .trim()
-        .split(" ")
-        .map((w) => w[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
-    : "ME";
 
   return (
     <>
@@ -140,43 +125,19 @@ export default function Sidebar({
                       : "none",
                 }}
               >
-                {panel === "profile" ? (
-                  avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="avatar"
-                      className="w-7 h-7 rounded-full object-cover"
-                      style={{
-                        outline: isActive
-                          ? "2px solid var(--accent)"
-                          : "2px solid transparent",
-                        outlineOffset: "1px",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
-                      style={{
-                        background: isActive ? "var(--accent)" : "#2a2520",
-                        color: isActive ? "#fff" : "#c8b89a",
-                      }}
-                    >
-                      {initials}
-                    </div>
-                  )
-                ) : (
-                  <span className="text-xl leading-none">{icon}</span>
-                )}
+                <span className="text-xl leading-none">{icon}</span>
               </button>
 
               {/* Active dot */}
               <div
-                className="w-1 h-1 rounded-full mt-1 transition-all duration-200"
+                className="rounded-full mt-1"
                 style={{
+                  width: 5,
+                  height: 5,
                   background: isActive ? "var(--accent)" : "transparent",
-                  boxShadow: isActive
-                    ? `0 0 4px rgba(var(--accent-rgb), 0.7)`
-                    : "none",
+                  transform: isActive ? "scale(1)" : "scale(0)",
+                  boxShadow: isActive ? `0 0 5px rgba(var(--accent-rgb), 0.8)` : "none",
+                  transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, box-shadow 0.2s ease",
                 }}
               />
             </div>
@@ -232,12 +193,14 @@ export default function Sidebar({
 
           {/* Active dot */}
           <div
-            className="w-1 h-1 rounded-full mt-1 transition-all duration-200"
+            className="rounded-full mt-1"
             style={{
+              width: 5,
+              height: 5,
               background: tyunnieOpen ? "var(--accent)" : "transparent",
-              boxShadow: tyunnieOpen
-                ? `0 0 4px rgba(var(--accent-rgb), 0.7)`
-                : "none",
+              transform: tyunnieOpen ? "scale(1)" : "scale(0)",
+              boxShadow: tyunnieOpen ? `0 0 5px rgba(var(--accent-rgb), 0.8)` : "none",
+              transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, box-shadow 0.2s ease",
             }}
           />
         </div>
@@ -377,12 +340,13 @@ export default function Sidebar({
 
       {/* ── MOBILE: compact bottom tab bar ── */}
       <div
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center px-2 pb-safe"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around"
         style={{
-          background: "rgba(15, 14, 13, 0.88)",
+          background: "rgba(15, 14, 13, 0.92)",
           backdropFilter: "blur(20px) saturate(160%)",
           WebkitBackdropFilter: "blur(20px) saturate(160%)",
           borderTop: "1px solid rgba(255,255,255,0.07)",
+          paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
         {NAV_ITEMS.map(({ panel, icon, label }) => {
@@ -391,43 +355,38 @@ export default function Sidebar({
             <button
               key={panel}
               onClick={() => onChange(panel)}
-              className="shrink-0 w-14 flex flex-col items-center justify-center pt-2.5 pb-1 gap-0.5 transition-all duration-200"
-              style={{ color: isActive ? "var(--accent)" : "rgba(255,255,255,0.4)" }}
+              className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
+              style={{
+                color: isActive ? "var(--accent)" : "rgba(255,255,255,0.45)",
+                transition: "color 0.2s ease",
+              }}
             >
-              {panel === "profile" ? (
-                avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="avatar"
-                    className="w-6 h-6 rounded-full object-cover"
-                    style={{
-                      outline: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-                      outlineOffset: "1px",
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold"
-                    style={{
-                      background: isActive ? "var(--accent)" : "#2a2520",
-                      color: isActive ? "#fff" : "#c8b89a",
-                    }}
-                  >
-                    {initials}
-                  </div>
-                )
-              ) : (
-                <span className="text-base leading-none">{icon}</span>
-              )}
               <span
-                className="text-[7px] font-bold uppercase tracking-wide font-mono"
-                style={{ opacity: isActive ? 1 : 0.6 }}
+                className="text-[22px] leading-none"
+                style={{
+                  display: "block",
+                  transform: isActive ? "scale(1.18) translateY(-1px)" : "scale(1) translateY(0)",
+                  transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+                }}
+              >
+                {icon}
+              </span>
+              <span
+                className="text-[9px] font-bold uppercase tracking-wide font-mono"
+                style={{ opacity: isActive ? 1 : 0.55, transition: "opacity 0.2s ease" }}
               >
                 {label}
               </span>
               <div
-                className="w-1 h-1 rounded-full transition-all duration-200"
-                style={{ background: isActive ? "var(--accent)" : "transparent" }}
+                className="rounded-full"
+                style={{
+                  width: 5,
+                  height: 5,
+                  background: isActive ? "var(--accent)" : "transparent",
+                  transform: isActive ? "scale(1)" : "scale(0)",
+                  boxShadow: isActive ? `0 0 5px rgba(var(--accent-rgb), 0.8)` : "none",
+                  transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, box-shadow 0.2s ease",
+                }}
               />
             </button>
           );
@@ -436,61 +395,74 @@ export default function Sidebar({
         {/* Tyun chat button */}
         <button
           onClick={onTyunnieToggle}
-          className="shrink-0 w-14 flex flex-col items-center justify-center pt-2.5 pb-1 gap-0.5 transition-all duration-200"
-          style={{ color: tyunnieOpen ? "var(--accent)" : "rgba(255,255,255,0.4)" }}
+          className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
+          style={{
+            color: tyunnieOpen ? "var(--accent)" : "rgba(255,255,255,0.45)",
+            transition: "color 0.2s ease",
+          }}
         >
-          <span className="text-base leading-none">🧡</span>
           <span
-            className="text-[7px] font-bold uppercase tracking-wide font-mono"
-            style={{ opacity: tyunnieOpen ? 1 : 0.6 }}
+            className="text-[22px] leading-none"
+            style={{
+              display: "block",
+              transform: tyunnieOpen ? "scale(1.18) translateY(-1px)" : "scale(1) translateY(0)",
+              transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            }}
+          >
+            🧡
+          </span>
+          <span
+            className="text-[9px] font-bold uppercase tracking-wide font-mono"
+            style={{ opacity: tyunnieOpen ? 1 : 0.55, transition: "opacity 0.2s ease" }}
           >
             Tyun
           </span>
           <div
-            className="w-1 h-1 rounded-full transition-all duration-200"
-            style={{ background: tyunnieOpen ? "var(--accent)" : "transparent" }}
+            className="rounded-full"
+            style={{
+              width: 5,
+              height: 5,
+              background: tyunnieOpen ? "var(--accent)" : "transparent",
+              transform: tyunnieOpen ? "scale(1)" : "scale(0)",
+              boxShadow: tyunnieOpen ? `0 0 5px rgba(var(--accent-rgb), 0.8)` : "none",
+              transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, box-shadow 0.2s ease",
+            }}
           />
         </button>
 
         {/* Sticky note */}
         <button
           onClick={onNewSticky}
-          className="shrink-0 w-14 flex flex-col items-center justify-center pt-2.5 pb-1 gap-0.5 transition-all duration-200"
-          style={{ color: "rgba(255,255,255,0.4)" }}
+          className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
+          style={{ color: "rgba(255,255,255,0.45)" }}
         >
-          <span className="text-base leading-none">📌</span>
-          <span className="text-[7px] font-bold uppercase tracking-wide font-mono opacity-60">
-            Sticky
-          </span>
-          <div className="w-1 h-1" />
+          <span className="text-[22px] leading-none" style={{ display: "block", transition: "transform 0.15s ease" }}>📌</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide font-mono opacity-55">Sticky</span>
+          <div className="w-1.5 h-1.5" />
         </button>
 
         {/* Focus Mode */}
         <button
           onClick={onFocusMode}
-          className="shrink-0 w-14 flex flex-col items-center justify-center pt-2.5 pb-1 gap-0.5 transition-all duration-200"
-          style={{ color: "rgba(255,255,255,0.4)" }}
+          className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
+          style={{ color: "rgba(255,255,255,0.45)" }}
         >
-          <span className="text-base leading-none">🎯</span>
-          <span className="text-[7px] font-bold uppercase tracking-wide font-mono opacity-60">
-            Focus
-          </span>
-          <div className="w-1 h-1" />
+          <span className="text-[22px] leading-none" style={{ display: "block", transition: "transform 0.15s ease" }}>🎯</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide font-mono opacity-55">Focus</span>
+          <div className="w-1.5 h-1.5" />
         </button>
 
         {/* Logout */}
         <button
           onClick={onSignOut}
-          className="shrink-0 w-12 flex flex-col items-center justify-center pt-2.5 pb-1 transition-all"
-          style={{ color: "rgba(255,255,255,0.3)" }}
+          className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
+          style={{ color: "rgba(255,255,255,0.3)", transition: "color 0.15s ease" }}
           onTouchStart={(e) => (e.currentTarget.style.color = "rgb(239,68,68)")}
           onTouchEnd={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
         >
-          <span className="text-base">↩</span>
-          <span className="text-[7px] font-bold uppercase tracking-wide font-mono opacity-60">
-            Out
-          </span>
-          <div className="w-1 h-1 mt-px" />
+          <span className="text-[22px]" style={{ display: "block" }}>↩</span>
+          <span className="text-[9px] font-bold uppercase tracking-wide font-mono opacity-55">Out</span>
+          <div className="w-1.5 h-1.5" />
         </button>
       </div>
     </>

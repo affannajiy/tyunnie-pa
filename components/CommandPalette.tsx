@@ -378,11 +378,11 @@ export default function CommandPalette({
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" />
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-lg bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10"
+        className="relative w-full max-w-lg bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10 animate-modal-in"
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: "72vh", display: "flex", flexDirection: "column" }}
       >

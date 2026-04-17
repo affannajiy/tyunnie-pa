@@ -989,6 +989,8 @@ export default function Profile({
     localStorage.setItem("tyunnie_accent", hex);
     setAccentColor(hex);
     window.dispatchEvent(new Event("tyunnie-accent-changed"));
+    // Persist to DB immediately so the choice syncs across all devices on next login
+    upsertProfile(userId, { accent_color: hex }).catch(() => {});
   }
 
   async function handleSave() {

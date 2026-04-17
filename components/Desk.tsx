@@ -11,6 +11,7 @@ import DeskWidgets from "@/components/DeskWidgets";
 type Props = {
   profile: Profile | null;
   userName: string;
+  userId: string;
   todos: Todo[];
   projects: Project[];
   finance: FinanceEntry[];
@@ -37,6 +38,7 @@ function getGreeting(name: string) {
 export default function Desk({
   profile,
   userName,
+  userId,
   todos,
   projects,
   finance,
@@ -215,6 +217,8 @@ Just one sentence, no quotes, no action blocks.`,
         onTodoToggle={onTodoToggle}
         onFocusMode={onFocusMode}
         oneliner={oneliner}
+        userId={userId}
+        savedLayout={profile?.desk_layout}
       />
     </div>
   );

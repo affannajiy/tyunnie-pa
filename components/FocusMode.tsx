@@ -315,7 +315,7 @@ export default function FocusMode({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-mono text-6xl font-bold text-white tracking-tight leading-none">
+            <span className="font-mono text-4xl font-bold text-white tracking-tight leading-none">
               {pomMin}:{pomSec}
             </span>
             <span

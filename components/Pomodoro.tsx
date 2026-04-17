@@ -348,7 +348,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
           </svg>
 
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-mono text-5xl font-bold text-[#111010] tracking-tight">
+            <span className="font-mono text-3xl font-bold text-[#111010] tracking-tight">
               {mins}:{secs}
             </span>
             <span

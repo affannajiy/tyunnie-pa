@@ -77,6 +77,7 @@ export type Profile = {
   avatar_url?: string | null;
   daily_quote_email?: boolean;
   accent_color?: string | null;
+  desk_layout?: unknown | null; // {layouts: WLayout[], hidden: WidgetId[]} stored as JSONB
 };
 
 export type VaultEntry = {

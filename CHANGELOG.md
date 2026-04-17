@@ -5,6 +5,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.13.0] — 2026-04-17
+
+### Added
+
+- **Topbar profile button** — profile avatar/initials button moved from the Sidebar into the topbar (top-right, beside the date). Clicking it opens the Profile panel. Applies on both desktop and mobile — the old inline Tyunnie button in the mobile topbar is replaced by the avatar
+- **Tyunnie topbar brand label** — "Tyunnie" in Instrument Serif italic sits at the top-left of the topbar; clicking it returns to the Desk from any panel. Uses the accent color when the Desk is active
+- **Pull-to-refresh (mobile)** — swipe down from the top of the content area while at scroll position 0 to reload all app data. A spinning ↻ indicator appears as you pull; releasing past the threshold fires the full data refresh. Uses `overscrollBehaviorY: contain` to prevent the browser's native PTR from conflicting
+- **Horizontal swipe navigation (mobile)** — swipe left/right on the content area to cycle through Home → Productivity → Entertainment (and back). Guards against accidental triggers during normal vertical scrolling (requires > 55 px horizontal, < 55 px vertical delta). Disabled while TyunniePanel is open
+- **Widget cross-device persistence** — `DeskWidgets` now saves layout and hidden-widget state to `profiles.desk_layout` (Supabase JSONB) on every change, debounced 600 ms. On login, the DB layout is preferred over `localStorage`, so the exact widget arrangement follows the user across all devices. `localStorage` is retained as an instant-read cache
+- **Widget collision avoidance** — after every drag drop or resize, `resolveCollisions()` runs a push-down pass: the moved widget is the anchor; any overlapping widget is pushed downward until there are no overlaps (up to 20 iterations). Apple-style — nothing overlaps after a move
+- **Widget layout templates** — a **Templates** button appears in the toolbar during edit mode, opening a modal with four presets:
+  - **Dashboard** — all 8 widgets in a balanced 4-column grid (default arrangement)
+  - **Focus** — Tasks + Pomodoro + Quote only (5 widgets hidden)
+  - **Minimal** — Tasks, Clock, Weather, Quote (4 widgets hidden)
+  - **Finance** — Life Progress + Activity + Music + Quote (4 widgets hidden)
+- **Fluid entrance animations** — all major transitions are now spring-animated. `@keyframes panel-in` (opacity + translateY) replays on every panel switch via `key={activePanel}`. Modals and dialogs use `@keyframes modal-in` (scale 0.96 + translateY → 1). Backdrop fades use `@keyframes fade-in`. Applied to CommandPalette, ShortcutHelp, and the new Templates modal
+- **Spring tab/dock animations** — desktop dock active-indicator dot and mobile tab active dot both use `cubic-bezier(0.34, 1.56, 0.64, 1)` spring with overshoot instead of a plain ease. Active mobile tab icon scales to 1.18× + shifts up 1 px on selection. Mobile tab buttons use `active:opacity-60` for touch feedback
+
+### Fixed
+
+- **Widget layout lost on hard refresh** — layout was localStorage-only; now persisted to Supabase so it survives hard refreshes and syncs across devices. Requires the `desk_layout` column migration (see DATABASE.md)
+- **Pomodoro timer overflows ring** — timer text in the desk widget circle reduced from `text-5xl` to `text-3xl`; in Focus Mode from `text-6xl` to `text-4xl`
+- **Mobile scroll not contained** — root layout switched from `h-screen` to `h-[100dvh]` (respects mobile browser chrome resize); content flex child gains `min-h-0` so `overflow-y-auto` engages correctly within the flex container
+
+### Changed
+
+- `Desk` component now accepts a `userId` prop and passes `userId` + `profile.desk_layout` down to `DeskWidgets`
+- `dashboard/page.tsx` passes `userId={user.id}` to `<Desk />`
+- `DeskWidgetsProps` extended with `userId?: string` and `savedLayout?: unknown | null`
+- `DATABASE.md` updated — `desk_layout jsonb` migration SQL documented under profiles migrations
+
+---
+
 ## [3.12.0] — 2026-04-16
 
 ### Added

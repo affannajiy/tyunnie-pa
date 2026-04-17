@@ -1,7 +1,7 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -180,6 +180,70 @@ export default function Home() {
   const [pomodoroKey, setPomodoroKey] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [memories, setMemories] = useState<Memory[]>([]);
+
+  // ── MOBILE: pull-to-refresh + swipe navigation ──
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [pullProgress, setPullProgress] = useState(0); // 0–1
+  const pullRef = useRef<{ y: number; x: number; fired: boolean } | null>(null);
+  const swipeRef = useRef<{ x: number; y: number } | null>(null);
+  const PULL_THRESHOLD = 72;
+  // Panels that horizontal swipe cycles through
+  const SWIPE_PANELS: Panel[] = ["desk", "productivity", "entertainment"];
+
+  function onContentTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    const t = e.touches[0];
+    swipeRef.current = { x: t.clientX, y: t.clientY };
+    if ((contentRef.current?.scrollTop ?? 1) === 0) {
+      pullRef.current = { y: t.clientY, x: t.clientX, fired: false };
+    }
+  }
+
+  function onContentTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    if (!pullRef.current) return;
+    // Cancel if user has scrolled down since touchstart
+    if ((contentRef.current?.scrollTop ?? 1) > 0) {
+      pullRef.current = null;
+      setPullProgress(0);
+      return;
+    }
+    const t = e.touches[0];
+    const dy = t.clientY - pullRef.current.y;
+    const dx = Math.abs(t.clientX - pullRef.current.x);
+    if (dy > 0 && dx < 40) {
+      const p = Math.min(1, dy / PULL_THRESHOLD);
+      setPullProgress(p);
+      if (dy >= PULL_THRESHOLD && !pullRef.current.fired) {
+        pullRef.current.fired = true;
+      }
+    } else if (dy <= 0) {
+      setPullProgress(0);
+    }
+  }
+
+  function onContentTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+    // Pull-to-refresh
+    if (pullRef.current?.fired) {
+      window.location.reload();
+      return;
+    }
+    pullRef.current = null;
+    setPullProgress(0);
+
+    // Horizontal panel swipe (only when Tyunnie panel closed)
+    if (swipeRef.current && !tyunnieOpen) {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - swipeRef.current.x;
+      const dy = Math.abs(t.clientY - swipeRef.current.y);
+      if (Math.abs(dx) > 55 && dy < 55) {
+        const idx = SWIPE_PANELS.indexOf(activePanel as Panel);
+        if (idx !== -1) {
+          if (dx < 0) setActivePanel(SWIPE_PANELS[(idx + 1) % SWIPE_PANELS.length]);
+          else setActivePanel(SWIPE_PANELS[(idx - 1 + SWIPE_PANELS.length) % SWIPE_PANELS.length]);
+        }
+      }
+    }
+    swipeRef.current = null;
+  }
 
   // ── CHECK AUTH ON MOUNT ──
   // Handle OAuth error redirect
@@ -630,7 +694,7 @@ export default function Home() {
   // ── LOADING SCREEN ──
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#faf8f5] flex items-center justify-center">
         <div className="text-center">
           <div className="font-serif italic text-4xl text-[#f97316] mb-3">
             Tyunnie
@@ -646,13 +710,11 @@ export default function Home() {
   // ── MAIN APP ──
   return (
     <MusicProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-[#faf8f5]">
+      <div className="flex h-dvh w-screen overflow-hidden bg-[#faf8f5]">
         <Sidebar
           active={activePanel}
           onChange={(panel) => setActivePanel(panel)}
           onSignOut={handleSignOut}
-          userName={userName}
-          avatarUrl={avatarUrl}
           tyunnieOpen={tyunnieOpen}
           onTyunnieToggle={() => setTyunnieOpen((v) => !v)}
           onNewSticky={async () => {
@@ -665,23 +727,29 @@ export default function Home() {
         />
 
         {/* Main content */}
-        <div className="flex flex-col overflow-hidden min-w-0 flex-1">
+        <div className="relative flex flex-col overflow-hidden min-w-0 flex-1">
           {/* Topbar */}
           <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 shrink-0 relative">
-            {/* Left — Tyunnie + panel badge */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => router.refresh()}
-                className="font-serif italic text-xl text-[#111010] hover:text-[#f97316] transition-colors"
+            {/* Left — Tyunnie brand (click → desk) */}
+            <button
+              onClick={() => setActivePanel("desk")}
+              className="flex items-center gap-1.5 shrink-0 group"
+            >
+              <span
+                className="font-serif text-xl italic tracking-tight transition-colors"
+                style={{ color: activePanel === "desk" ? "var(--accent)" : "#1c1917" }}
               >
                 Tyunnie
-              </button>
-              <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
-                {PANEL_LABELS[activePanel]}
               </span>
-            </div>
+              <span
+                className="text-xs transition-opacity"
+                style={{ opacity: activePanel === "desk" ? 1 : 0.35 }}
+              >
+                🧡
+              </span>
+            </button>
 
-            {/* Search — absolutely centered */}
+            {/* Search — absolutely centered, desktop only */}
             <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
               <button
                 onClick={() => setSearchOpen(true)}
@@ -696,16 +764,19 @@ export default function Home() {
             </div>
 
             {/* Right side group */}
-            <div className="ml-auto hidden md:flex items-center gap-3">
+            <div className="ml-auto flex items-center gap-2 md:gap-3">
+              {/* Desktop extras */}
               <button
                 onClick={() => setShowShortcuts(true)}
                 title="Keyboard shortcuts"
-                className="flex items-center justify-center w-8 h-8 rounded-xl border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono text-xs font-bold"
+                className="hidden md:flex items-center justify-center w-8 h-8 rounded-xl border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono text-xs font-bold"
               >
                 ?
               </button>
-              <Weather />
-              <span className="font-mono text-[11px] text-[#9a8f7e]">
+              <div className="hidden md:block"><Weather /></div>
+
+              {/* Date — desktop full, mobile short */}
+              <span className="hidden md:inline font-mono text-[11px] text-[#9a8f7e]">
                 {new Date().toLocaleDateString("en-MY", {
                   weekday: "long",
                   year: "numeric",
@@ -713,25 +784,99 @@ export default function Home() {
                   day: "numeric",
                 })}
               </span>
-            </div>
+              <span className="md:hidden font-mono text-[10px] text-[#9a8f7e]">
+                {new Date().toLocaleDateString("en-MY", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
 
-            {/* Mobile chat toggle */}
-            <button
-              onClick={() => setTyunnieOpen((v) => !v)}
-              className="md:hidden ml-auto w-9 h-9 rounded-xl flex items-center justify-center text-white text-base transition-all"
-              style={{ background: tyunnieOpen ? "var(--accent-dim)" : "var(--accent)" }}
+              {/* Profile avatar — desktop + mobile */}
+              <button
+                onClick={() => setActivePanel("profile")}
+                title="Profile"
+                className="flex items-center justify-center rounded-full transition-all duration-150 shrink-0"
+                style={{
+                  width: 34,
+                  height: 34,
+                  boxShadow:
+                    activePanel === "profile"
+                      ? `0 0 0 2px var(--accent), 0 0 10px rgba(var(--accent-rgb), 0.35)`
+                      : `0 0 0 2px rgba(var(--accent-rgb), 0.2)`,
+                }}
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="avatar"
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-full h-full rounded-full flex items-center justify-center text-[11px] font-bold"
+                    style={{
+                      background:
+                        activePanel === "profile"
+                          ? "var(--accent)"
+                          : "rgba(var(--accent-rgb), 0.12)",
+                      color:
+                        activePanel === "profile"
+                          ? "#fff"
+                          : "var(--accent)",
+                    }}
+                  >
+                    {userName
+                      ? userName
+                          .trim()
+                          .split(" ")
+                          .map((w) => w[0])
+                          .slice(0, 2)
+                          .join("")
+                          .toUpperCase()
+                      : "ME"}
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Pull-to-refresh indicator — mobile only */}
+          <div
+            className="md:hidden absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+            style={{
+              top: 56,
+              opacity: pullProgress,
+              transform: `translateX(-50%) translateY(${-16 + pullProgress * 32}px)`,
+              transition: pullProgress === 0 ? "opacity 0.25s, transform 0.25s" : "none",
+            }}
+          >
+            <div
+              className="w-9 h-9 rounded-full bg-white border border-[#e8e2d8] shadow-md flex items-center justify-center text-base"
+              style={{
+                color: "var(--accent)",
+                transform: `rotate(${pullProgress * 360}deg)`,
+              }}
             >
-              🧡
-            </button>
+              ↻
+            </div>
           </div>
 
           {/* Panel content — pb for mobile tab bar and desktop dock */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-7 pb-24 md:pb-28">
-            <>
+          <div
+            ref={contentRef}
+            className="flex-1 min-h-0 overflow-y-auto p-4 md:p-7 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-28"
+            style={{ overscrollBehaviorY: "contain" }}
+            onTouchStart={onContentTouchStart}
+            onTouchMove={onContentTouchMove}
+            onTouchEnd={onContentTouchEnd}
+          >
+            <div key={activePanel} className="animate-panel-in">
               {activePanel === "desk" && (
                 <Desk
                   profile={profile}
                   userName={userName}
+                  userId={user.id}
                   todos={todos}
                   projects={projects}
                   finance={finance}
@@ -816,7 +961,7 @@ export default function Home() {
                   toggleTheme={toggleTheme}
                 />
               )}
-            </>
+            </div>
           </div>
         </div>
 

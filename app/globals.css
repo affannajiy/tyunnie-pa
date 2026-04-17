@@ -65,6 +65,66 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* ── ANIMATIONS ──────────────────────────────────────── */
+
+/* Panel content entrance — opacity + gentle rise */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modal / dialog entrance — scale up from 96% */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Backdrop fade */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Badge / label slide in from above */
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-panel-in {
+  animation: panel-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-modal-in {
+  animation: modal-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.18s ease both;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @theme {
   --font-family-sans: var(--font-sans), sans-serif;
   --font-family-serif: var(--font-serif), serif;

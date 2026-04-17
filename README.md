@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.12.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.13.0-f97316?style=flat-square)
 
 ---
 
@@ -28,7 +28,10 @@
 
 - Time-aware greeting with Taehyun hero sprite and animated accent bubbles
 - **Widget grid** — 8 draggable, resizable widgets: Today's Focus, Life Progress, Focus Timer, Now Playing, Recent Activity, Tyunnie Says, Clock, Weather
-- Edit mode: grab handles, resize corners, remove/add widgets, wiggle animation, column guides. Layout persists to `localStorage`
+- Edit mode: grab handles, resize corners, remove/add widgets, wiggle animation, column guides
+- **Layout persisted to Supabase** — widget positions/sizes sync across all devices on login; `localStorage` used as instant-read cache
+- **Collision avoidance** — widgets push down automatically on drag/resize; nothing overlaps (Apple-style repositioning)
+- **Layout templates** — Dashboard, Focus, Minimal, Finance presets accessible via the Templates button in edit mode
 - Mobile: 2-column responsive grid, no drag/resize required
 
 ### Tasks, Writing, Projects, Snippets
@@ -84,6 +87,8 @@
 - City-based weather (Open-Meteo, no API key needed)
 - Dark / light mode, user-selectable accent color (synced to account via Supabase)
 - **MiniPlayer** — floating draggable overlay appears when music is playing outside the Music panel; click art/title to navigate to the player
+- **Fluid animations** — spring-based panel entrance, modal scale-in, backdrop fade, and dock/tab active-dot pop throughout the app
+- **Mobile pull-to-refresh** — swipe down at scroll top to reload all data; horizontal swipe to navigate between Home, Productivity, and Entertainment
 
 ---
 

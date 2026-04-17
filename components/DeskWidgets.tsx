@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
 import type { Profile, Todo, Project, FinanceEntry } from "@/lib/database";
+import { upsertProfile } from "@/lib/database";
 import type { Panel } from "@/components/Sidebar";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -37,6 +38,8 @@ export interface DeskWidgetsProps {
   onTodoToggle: (id: string, done: boolean) => void;
   onFocusMode: () => void;
   oneliner: string | null;
+  userId?: string;
+  savedLayout?: unknown | null;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -66,6 +69,90 @@ const DEFAULT_LAYOUT: WLayout[] = [
   { id: "quote",    x: 2, y: 3, w: 2, h: 3 },
   { id: "clock",    x: 0, y: 6, w: 1, h: 1 },
   { id: "weather",  x: 1, y: 6, w: 1, h: 1 },
+];
+
+// ── Collision resolution ───────────────────────────────────────────────────
+
+function resolveCollisions(layouts: WLayout[], movedId: WidgetId): WLayout[] {
+  function overlaps(a: WLayout, b: WLayout): boolean {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+  let result = [...layouts];
+  let changed = true;
+  let iter = 0;
+  while (changed && iter < 20) {
+    changed = false;
+    iter++;
+    const sorted = [...result].sort((a, b) =>
+      a.id === movedId ? -1 : b.id === movedId ? 1 : a.y - b.y
+    );
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        if (overlaps(sorted[i], sorted[j])) {
+          const newY = sorted[i].y + sorted[i].h;
+          if (sorted[j].y < newY) {
+            const idx = result.findIndex((w) => w.id === sorted[j].id);
+            result[idx] = { ...sorted[j], y: newY };
+            sorted[j] = result[idx];
+            changed = true;
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+// ── Templates ──────────────────────────────────────────────────────────────
+
+const TEMPLATES: { name: string; icon: string; layouts: WLayout[]; hidden: WidgetId[] }[] = [
+  {
+    name: "Dashboard",
+    icon: "🏠",
+    layouts: [
+      { id: "tasks",    x: 0, y: 0, w: 1, h: 3 },
+      { id: "progress", x: 1, y: 0, w: 1, h: 3 },
+      { id: "pomodoro", x: 2, y: 0, w: 1, h: 3 },
+      { id: "music",    x: 3, y: 0, w: 1, h: 3 },
+      { id: "activity", x: 0, y: 3, w: 2, h: 3 },
+      { id: "quote",    x: 2, y: 3, w: 2, h: 3 },
+      { id: "clock",    x: 0, y: 6, w: 1, h: 1 },
+      { id: "weather",  x: 1, y: 6, w: 1, h: 1 },
+    ],
+    hidden: [],
+  },
+  {
+    name: "Focus",
+    icon: "🎯",
+    layouts: [
+      { id: "tasks",    x: 0, y: 0, w: 2, h: 4 },
+      { id: "pomodoro", x: 2, y: 0, w: 2, h: 4 },
+      { id: "quote",    x: 0, y: 4, w: 4, h: 2 },
+    ],
+    hidden: ["progress", "music", "activity", "clock", "weather"],
+  },
+  {
+    name: "Minimal",
+    icon: "✨",
+    layouts: [
+      { id: "tasks",    x: 0, y: 0, w: 2, h: 3 },
+      { id: "clock",    x: 2, y: 0, w: 1, h: 2 },
+      { id: "weather",  x: 3, y: 0, w: 1, h: 2 },
+      { id: "quote",    x: 2, y: 2, w: 2, h: 2 },
+    ],
+    hidden: ["progress", "pomodoro", "music", "activity"],
+  },
+  {
+    name: "Finance",
+    icon: "💰",
+    layouts: [
+      { id: "progress", x: 0, y: 0, w: 2, h: 4 },
+      { id: "activity", x: 2, y: 0, w: 2, h: 4 },
+      { id: "music",    x: 0, y: 4, w: 2, h: 3 },
+      { id: "quote",    x: 2, y: 4, w: 2, h: 3 },
+    ],
+    hidden: ["tasks", "pomodoro", "clock", "weather"],
+  },
 ];
 
 // ── Persistence ────────────────────────────────────────────────────────────
@@ -127,6 +214,8 @@ export default function DeskWidgets({
   onTodoToggle,
   onFocusMode,
   oneliner,
+  userId,
+  savedLayout,
 }: DeskWidgetsProps) {
   const music = useMusicContext();
   const currency = profile?.currency ?? "RM";
@@ -136,10 +225,12 @@ export default function DeskWidgets({
   const [layouts, setLayouts] = useState<WLayout[]>(DEFAULT_LAYOUT);
   const [hidden, setHidden] = useState<WidgetId[]>([]);
   const [editMode, setEditMode] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [cellW, setCellW] = useState(220);
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const persistMounted = useRef(false);
+  const dbSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Drag state ────────────────────────────────────────────────────────────
   const dragRef = useRef<{ id: WidgetId; offsetX: number; offsetY: number; w: number } | null>(null);
@@ -167,11 +258,20 @@ export default function DeskWidgets({
     icon: string;
   } | null>(null);
 
-  // Load from localStorage
+  // Load from DB (preferred) or localStorage
   useEffect(() => {
+    if (savedLayout) {
+      try {
+        const p = savedLayout as { layouts?: WLayout[]; hidden?: WidgetId[] };
+        setLayouts(Array.isArray(p.layouts) ? p.layouts : DEFAULT_LAYOUT);
+        setHidden(Array.isArray(p.hidden) ? p.hidden : []);
+        return;
+      } catch { /* fall through to localStorage */ }
+    }
     const saved = loadSaved();
     setLayouts(saved.layouts);
     setHidden(saved.hidden);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load pomodoro settings + listen for changes from the full Pomodoro panel
@@ -194,14 +294,20 @@ export default function DeskWidgets({
     };
   }, []);
 
-  // Persist on change
+  // Persist on change — localStorage immediately, DB debounced
   useEffect(() => {
     if (!persistMounted.current) {
       persistMounted.current = true;
       return;
     }
     localStorage.setItem(LS_KEY, JSON.stringify({ layouts, hidden }));
-  }, [layouts, hidden]);
+    if (userId) {
+      if (dbSaveTimerRef.current) clearTimeout(dbSaveTimerRef.current);
+      dbSaveTimerRef.current = setTimeout(() => {
+        upsertProfile(userId, { desk_layout: { layouts, hidden } }).catch(() => {});
+      }, 600);
+    }
+  }, [layouts, hidden, userId]);
 
   // ResizeObserver
   useEffect(() => {
@@ -319,9 +425,10 @@ export default function DeskWidgets({
         setDragging(null);
         setDragPos(null);
         if (finalPos) {
-          setLayouts((prev) =>
-            prev.map((l) => (l.id === id ? { ...l, x: finalPos.x, y: finalPos.y } : l))
-          );
+          setLayouts((prev) => {
+            const moved = prev.map((l) => (l.id === id ? { ...l, x: finalPos.x, y: finalPos.y } : l));
+            return resolveCollisions(moved, id);
+          });
         }
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
@@ -362,6 +469,7 @@ export default function DeskWidgets({
 
       function onUp() {
         setResizing(null);
+        setLayouts((prev) => resolveCollisions(prev, id));
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
       }
@@ -906,15 +1014,23 @@ export default function DeskWidgets({
         </p>
         <div className="flex gap-2">
           {editMode && (
-            <button
-              onClick={() => {
-                setLayouts(DEFAULT_LAYOUT);
-                setHidden([]);
-              }}
-              className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
-            >
-              Reset
-            </button>
+            <>
+              <button
+                onClick={() => setShowTemplates(true)}
+                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+              >
+                Templates
+              </button>
+              <button
+                onClick={() => {
+                  setLayouts(DEFAULT_LAYOUT);
+                  setHidden([]);
+                }}
+                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+              >
+                Reset
+              </button>
+            </>
           )}
           <button
             onClick={() => setEditMode((e) => !e)}
@@ -929,6 +1045,54 @@ export default function DeskWidgets({
           </button>
         </div>
       </div>
+
+      {/* Templates modal */}
+      {showTemplates && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          onClick={() => setShowTemplates(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" />
+          <div
+            className="relative w-full max-w-sm bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10 animate-modal-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e2d8] dark:border-[#2a2520]">
+              <span className="font-serif italic text-[var(--accent)] text-sm">Layout Templates</span>
+              <button
+                onClick={() => setShowTemplates(false)}
+                className="text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 flex flex-col gap-2">
+              {TEMPLATES.map((t) => (
+                <button
+                  key={t.name}
+                  onClick={() => {
+                    setLayouts(t.layouts);
+                    setHidden(t.hidden);
+                    setShowTemplates(false);
+                  }}
+                  className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl border border-[#f0ece8] hover:border-[#f97316] hover:bg-orange-50 transition-all group"
+                >
+                  <span className="text-xl">{t.icon}</span>
+                  <div>
+                    <p className="text-sm font-bold text-[#2d2416] group-hover:text-[#f97316] transition-colors">
+                      {t.name}
+                    </p>
+                    <p className="text-[10px] text-[#b09880] font-mono">
+                      {t.layouts.length} widget{t.layouts.length !== 1 ? "s" : ""}
+                      {t.hidden.length > 0 ? ` · ${t.hidden.length} hidden` : ""}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Widget grid */}
       {isMobile ? (

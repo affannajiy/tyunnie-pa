@@ -96,6 +96,7 @@ create table profiles (
 -- alter table public.profiles add column if not exists accent_color text default null;
 -- alter table public.profiles alter column accent_color set default null;
 -- update public.profiles set accent_color = null where accent_color = '#f97316';
+-- alter table public.profiles add column if not exists desk_layout jsonb default null;
 create table sticky_notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users not null,
