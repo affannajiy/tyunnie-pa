@@ -15,7 +15,8 @@ export type Panel =
   | "finance"
   | "music"
   | "pomodoro"
-  | "games";
+  | "games"
+  | "calculator";
 
 type Props = {
   active: Panel;

@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.13.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.14.0-f97316?style=flat-square)
 
 ---
 
@@ -55,6 +55,13 @@
 - **Adjustable timer** — configurable focus, short break, and long break durations with four presets: Classic (25/5/15), Extended (50/10/30), Short Sprint (15/3/10), Deep Work (90/15/30). Settings sync across the full panel, desk widget, and Focus Mode
 - Session dot tracker scales with the configured long-break interval
 - **Focus Mode** (`Ctrl/⌘+Shift+F` or Sidebar dock button) — fullscreen overlay with music-reactive background glow (Web Audio beat detection drives the radial gradient in real time), preset picker, task selector, full Pomodoro controls, and floating sticky notes
+
+### Scientific Calculator
+
+- Casio fx-570EX–style scientific calculator in the Productivity hub
+- Full trig (sin/cos/tan + inverses), hyperbolic, log/ln, powers, roots, combinatorics (nCr, nPr, n!), absolute value, constants (π, ℯ), memory (MC/MR/M+/M−)
+- SHIFT key unlocks secondary functions (sin⁻¹, ∛, 10ˣ, etc.) — secondary labels shown in yellow
+- DEG/RAD toggle, live expression preview, ANS and Mem references, keyboard input support
 
 ### Games Hub
 

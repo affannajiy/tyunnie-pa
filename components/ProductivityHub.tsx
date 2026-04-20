@@ -47,6 +47,13 @@ const CARDS = [
     desc: "Income, expenses and analytics",
     color: "#eab308",
   },
+  {
+    panel: "calculator",
+    icon: "🔢",
+    title: "Calculator",
+    desc: "Scientific calculator · fx-570 style",
+    color: "#6366f1",
+  },
 ];
 
 export default function ProductivityHub({ onNavigate }: Props) {

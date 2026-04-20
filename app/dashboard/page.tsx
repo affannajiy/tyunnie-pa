@@ -36,6 +36,7 @@ const Finance       = dynamic(() => import("@/components/Finance"),            {
 const Music         = dynamic(() => import("@/components/Music"),              { ssr: false });
 const Pomodoro      = dynamic(() => import("@/components/Pomodoro"),           { ssr: false });
 const Games         = dynamic(() => import("@/components/Games"),              { ssr: false });
+const Calculator    = dynamic(() => import("@/components/Calculator"),         { ssr: false });
 const Weather       = dynamic(() => import("@/components/Weather"),            { ssr: false });
 const Profile       = dynamic(() => import("@/components/Profile"),            { ssr: false });
 const ProductivityHub   = dynamic(() => import("@/components/ProductivityHub"),    { ssr: false });
@@ -96,6 +97,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   music: "Music",
   pomodoro: "Pomodoro",
   games: "Games",
+  calculator: "Calculator",
 };
 
 export default function Home() {
@@ -947,6 +949,7 @@ export default function Home() {
                 />
               )}
               {activePanel === "games" && <Games />}
+              {activePanel === "calculator" && <Calculator />}
               {activePanel === "profile" && (
                 <Profile
                   userId={user.id}

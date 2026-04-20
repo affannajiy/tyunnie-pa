@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.14.0] — 2026-04-20
+
+### Added
+
+- **Scientific Calculator** (`components/Calculator.tsx`) — full Casio fx-570EX–style calculator accessible from the Productivity hub
+- **Two-line display** — expression line (top, shows what you're typing) and result line (bottom, shows a live greyed preview while typing, solid result after `=`). Mode and SHIFT indicators shown as colour-coded badges
+- **10 × 5 button grid** covering:
+  - Trigonometry: `sin`, `cos`, `tan` — SHIFT gives `sin⁻¹`, `cos⁻¹`, `tan⁻¹`
+  - Hyperbolic: `sinh`, `cosh`, `tanh` — SHIFT gives `sinh⁻¹`, `cosh⁻¹`, `tanh⁻¹`
+  - Logarithms: `log` (base 10), `ln` — SHIFT gives `10ˣ`, `eˣ`
+  - Powers / roots: `x²`, `√`, `xʸ` — SHIFT gives `x³`, `∛`, `ⁿ√`
+  - Constants: `π`, `ℯ` (Euler's number)
+  - Combinatorics: `nCr(`, `nPr(`, `n!`
+  - Other functions: `|x|` (absolute value), `%` (divides by 100), `EXP` (×10^)
+  - Memory: `MC`, `MR`, `M+`, `M−`
+  - Full number pad with `(−)` sign toggle, parentheses, comma
+- **SHIFT key** — toggles secondary functions; secondary labels shown in yellow above each button; auto-resets after any keypress
+- **DEG / RAD toggle** — click the MODE button to switch angle units; indicator shown on display
+- **Expression evaluator** — handles implicit multiplication (`2(` → `2*(`, `2π` → `2*π`), postfix factorial (`5!`), degree-to-radian conversion for trig, `Ans` (last result) and `Mem` (memory) references in expressions, arbitrary nesting via parentheses
+- **Keyboard support** — digits, `.`, `+`, `-`, `*`, `/`, `^`, `(`, `)`, `,`, `Enter`/`=`, `Backspace`, `Escape` all trigger the matching button
+- **Dark warm aesthetic** — dark `#0f0d0a` body matching Tyunnie's night palette; accent-orange `=` button; colour-coded button groups (blue for trig/scientific, purple for combinatorics, green for memory, amber for DEL, red for AC)
+
+### Changed
+
+- `Panel` type in `Sidebar.tsx` — `"calculator"` added
+- `ProductivityHub.tsx` — Calculator card (🔢, indigo) added to the hub grid
+- `dashboard/page.tsx` — dynamic import, panel render, and `PANEL_LABELS` entry added for `"calculator"`
+
+---
+
 ## [3.13.0] — 2026-04-17
 
 ### Added
