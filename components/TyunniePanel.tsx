@@ -393,7 +393,7 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
         .slice(0, 10)
         .map(
           (f) =>
-            `• [id:${f.id}] ${f.type === "income" ? "+" : "-"}RM${f.amount.toFixed(2)} ${f.description} [${f.category}] ${f.date}`,
+            `• [id:${f.id}] ${f.type === "income" ? "+" : "-"}RM${f.amount.toFixed(2)} ${f.description} [${f.category}] [${f.account}] ${f.date}`,
         )
         .join("\n") || "None";
 
@@ -471,6 +471,12 @@ MUSIC:
   State: ${music.isPlaying ? "Playing" : "Paused"} | Shuffle: ${music.shuffle ? "on" : "off"} | Repeat: ${music.repeat}
   Playlist (${music.tracks.length} tracks): ${music.tracks.map((t) => t.title).join(", ") || "Empty"}
 
+GAMES (in the Games panel):
+  Available: Tetris, Chess, Sudoku, Minesweeper, TicTacToe, Solitaire
+
+CALCULATOR (in the Calculator panel):
+  Modes: Scientific (full function calc + memory), Graphing (plot up to 5 functions), Converter (Length/Weight/Temperature/Area/Volume/Speed/Currency), Date (duration & add/subtract)
+
 MEMORIES (facts you know about the user across sessions):
 ${
   appData.memories?.length
@@ -505,7 +511,7 @@ update_project → data: { "id":"uuid", "progress":0-100, "status":"planning"|"a
 delete_project → data: { "id":"uuid" }
 
 ─── FINANCE ───
-add_finance    → data: { "type":"income"|"expense", "description":"...", "amount":0.00, "category":"Food"|"Transport"|"Education"|"Entertainment"|"Salary"|"Freelance"|"Utilities"|"Shopping"|"Other", "date":"YYYY-MM-DD" }
+add_finance    → data: { "type":"income"|"expense", "description":"...", "amount":0.00, "category":"Food"|"Transport"|"Education"|"Entertainment"|"Salary"|"Freelance"|"Utilities"|"Shopping"|"Other", "date":"YYYY-MM-DD", "account":"Wallet"|"MAE"|"Maybank"|"Grab"|"GXBank"|"TnG"|"ASB" }
 delete_finance → data: { "id":"uuid" }
 reset_finance  → data: { "year":${viewY}, "month":${viewM + 1} }
 
@@ -514,7 +520,7 @@ add_snippet    → data: { "name":"file.py", "language":"py"|"js"|"ts"|"bash"|"o
 delete_snippet → data: { "id":"uuid" }
 
 ─── NAVIGATION ───
-navigate       → data: { "panel":"desk"|"profile"|"productivity"|"entertainment"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games" }
+navigate       → data: { "panel":"desk"|"profile"|"productivity"|"entertainment"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games"|"calculator" }
 
 ─── MUSIC ───
 music_control  → data: { "action":"play"|"pause"|"next"|"prev"|"toggle"|"shuffle"|"repeat", "trackName":"..." (optional), "repeatMode":"all"|"one"|"off" (for repeat) }
@@ -531,6 +537,9 @@ focus_mode     → data: {}
 ─── MEMORY ───
 save_memory    → data: { "content":"fact to remember" }
 delete_memory  → data: { "id":"uuid" }
+
+─── CALCULATOR ───
+calculate      → data: { "expr":"calculator-compatible expression string" }
 
 ─── SYSTEM ───
 set_theme      → data: { "theme":"dark"|"light" }
@@ -566,6 +575,7 @@ FINANCE:
 - Always use today's date (${today}) unless user specifies otherwise
 - Quote exact ${profile?.currency ?? "RM"} balance from data when user asks about money
 - NEVER volunteer balance info unprompted
+- Account inference: cash/wallet/pocket money → "Wallet", Maybank/bank → "Maybank", MAE → "MAE", Grab/GrabPay → "Grab", GXBank/GX → "GXBank", TnG/Touch n Go → "TnG", ASB → "ASB"; default to "Wallet" if unclear
 
 CODE:
 - "code me / write a / generate / give me a snippet / show me how to" → add_snippet with full working code
@@ -574,7 +584,9 @@ CODE:
 
 NAVIGATION:
 - NEVER navigate automatically. Only navigate when user EXPLICITLY says "go to / open / take me to / show me [panel]"
-- Known panels: desk, profile, productivity, entertainment, todo, writing, projects, snippets, finance, music, pomodoro, games
+- Known panels: desk, profile, productivity, entertainment, todo, writing, projects, snippets, finance, music, pomodoro, games, calculator
+- "open calculator / go to calculator" → navigate calculator
+- "play a game / open games / what games are there" → navigate games (then tell them: Tetris, Chess, Sudoku, Minesweeper, TicTacToe, Solitaire)
 
 MUSIC:
 - "play / resume" → music_control play
@@ -604,6 +616,12 @@ MEMORY:
 - "forget that / delete memory / remove that fact" → delete_memory with exact id
 - PROACTIVELY save memories when user reveals: goals, preferences, study schedule, relationships, important dates, health info, work deadlines
 
+CALCULATOR:
+- Any math/calculation question → calculate. Answer in chat text AND send expression to calculator.
+- expr format: use × for multiply, ÷ for divide, ^ for power, √( for sqrt, sin( cos( tan( for trig (DEG mode), π for pi, log( for log₁₀, ln( for natural log, ! for factorial, nCr( nPr( for combinatorics
+- Examples: "12×3.5", "sin(30)", "√(144)", "2^10", "5!", "nCr(10,3)"
+- For multi-step problems: send the final expression and state all steps in chat
+
 SYSTEM:
 - "dark mode / switch to dark" → set_theme dark
 - "light mode / switch to light" → set_theme light
@@ -616,7 +634,7 @@ add_todo:
 
 add_finance expense:
   Logged — ${profile?.currency ?? "RM"}12.50 for lunch 🍜 Your balance is now ${profile?.currency ?? "RM"}${balance.toFixed(2)}.
-  <action>{"type":"add_finance","data":{"type":"expense","description":"Lunch","amount":12.50,"category":"Food","date":"${today}"}}</action>
+  <action>{"type":"add_finance","data":{"type":"expense","description":"Lunch","amount":12.50,"category":"Food","date":"${today}","account":"Wallet"}}</action>
 
 add_snippet:
   Here's a Python class for that 🐍
@@ -644,7 +662,11 @@ focus_mode:
 
 set_theme:
   Switched to dark mode 🌙
-  <action>{"type":"set_theme","data":{"theme":"dark"}}</action>`;
+  <action>{"type":"set_theme","data":{"theme":"dark"}}</action>
+
+calculate:
+  12 × 3.5 = 42. Sending it to your calculator 🧮
+  <action>{"type":"calculate","data":{"expr":"12×3.5"}}</action>`;
   }
 
   // ── PARSE AND EXECUTE ACTION ──
@@ -705,6 +727,7 @@ set_theme:
             amount: parseFloat(d.amount) || 0,
             category: d.category ?? "Other",
             date: d.date ?? new Date().toISOString().split("T")[0],
+            account: d.account ?? "Wallet",
           });
           // Happy for income, concerned for big expenses
           const mood: MoodType =
@@ -891,6 +914,22 @@ set_theme:
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
           }
+          break;
+        }
+
+        case "calculate": {
+          const d = action.data;
+          if (d.expr) {
+            sessionStorage.setItem("tyunnie_calc_pending", String(d.expr));
+            onNavigate("calculator");
+            setTimeout(() => {
+              window.dispatchEvent(
+                new CustomEvent("tyunnie-calculate", { detail: { expr: String(d.expr) } }),
+              );
+            }, 350);
+          }
+          setCurrentMood("happy");
+          setTimeout(() => setCurrentMood(null), 4000);
           break;
         }
 

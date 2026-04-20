@@ -789,6 +789,10 @@ export default function Profile({
         setAvatarUrl(p.avatar_url ?? null);
         setDailyQuoteEmail(p.daily_quote_email ?? false);
         if (p.accent_color) applyAccent(p.accent_color);
+        if (p.theme) {
+          const wantDark = p.theme === "dark";
+          if (wantDark !== isDark) toggleTheme();
+        }
       } else {
         // Migrate from localStorage
         const lsName = localStorage.getItem("tyunnie_username");

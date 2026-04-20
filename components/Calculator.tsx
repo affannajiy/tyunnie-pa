@@ -387,6 +387,25 @@ function ScientificCalc() {
 
   const liveResult = !error && expr ? tryEval(expr, mode, memory, ans) : null;
 
+  // Listen for Tyunnie-originated calculations
+  useEffect(() => {
+    function apply(e: string) {
+      setExpr(e);
+      setJustCalced(false);
+      setError(null);
+      sessionStorage.removeItem("tyunnie_calc_pending");
+    }
+
+    const pending = sessionStorage.getItem("tyunnie_calc_pending");
+    if (pending) apply(pending);
+
+    function onCalc(ev: Event) {
+      apply((ev as CustomEvent<{ expr: string }>).detail.expr);
+    }
+    window.addEventListener("tyunnie-calculate", onCalc);
+    return () => window.removeEventListener("tyunnie-calculate", onCalc);
+  }, []);
+
   function append(token: string) {
     setError(null);
     if (justCalced) {

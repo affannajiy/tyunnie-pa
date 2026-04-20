@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.16.0] — 2026-04-21
+
+### Added
+
+- **Tyunnie calculate action** — ask Tyunnie any math question ("what is sin(30)?", "calculate 2^10") and it answers in chat AND sends the expression to the Calculator panel. `ScientificCalc` listens for a `tyunnie-calculate` window event (dispatched 350 ms after navigation) and falls back to `sessionStorage` when the panel isn't mounted yet. The expression appears in the top line; the live preview evaluates it in the bottom line
+- **Calculator panel navigation** — Tyunnie can now navigate to the `calculator` panel ("open calculator", "go to calculator")
+- **Games awareness in Tyunnie** — Tyunnie knows the Games panel contains Tetris, Chess, Sudoku, Minesweeper, TicTacToe, and Solitaire; lists them when asked what games are available and navigates there
+- **Calculator context in Tyunnie** — system prompt now describes all four Calculator modes (Scientific, Graphing, Converter, Date) so Tyunnie can answer questions about them
+
+### Changed
+
+- **Tyunnie `add_finance` action** — `account` field added (`"Wallet"|"MAE"|"Maybank"|"Grab"|"GXBank"|"TnG"|"ASB"`); `executeAction` passes it through to `onFinanceAdded` (defaults to `"Wallet"` if omitted). Finance entries in the system prompt now display the account tag alongside category
+- **Tyunnie strict rules** — account inference rule added for finance ("paid with Grab" → `"Grab"`, "from bank" → `"Maybank"`, etc.); NAVIGATION rule updated with `calculator` in known panels list and game-navigation guidance
+
+### Fixed
+
+- **Theme follows profile** — `Profile.tsx` now applies `p.theme` from Supabase when a profile record exists. Previously only the legacy migration branch (no profile) read `tyunnie_theme` from localStorage, causing deployed users to always get the browser default while local users retained a stale localStorage value
+
+---
+
 ## [3.15.1] — 2026-04-20
 
 ### Fixed

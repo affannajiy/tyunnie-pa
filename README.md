@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.15.1-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.16.0-f97316?style=flat-square)
 
 ---
 
@@ -17,7 +17,7 @@
 
 - Context-aware assistant powered by **Groq (Llama 3.3 70B)**
 - Knows your tasks, drafts, projects, finances, snippets, sticky notes, and memories
-- Natural language actions: add/delete tasks, create drafts, log finance, run snippets, start Pomodoro, toggle theme, enter focus mode
+- Natural language actions: add/delete tasks, create drafts, log finance (with account tagging), run snippets, start Pomodoro, toggle theme, enter focus mode, **calculate** (evaluates math and sends the expression to the Calculator panel)
 - **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
 - **Bottom-sheet overlay** — slides up from the dock; chat history persists across all tab switches
 - **Snap resize** — cycle through snap sizes (default → wide → fullscreen on desktop; fullscreen-only on mobile)
