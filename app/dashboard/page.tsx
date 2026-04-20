@@ -27,23 +27,39 @@ import type { StickyNote } from "@/lib/database";
 import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
 
 // Heavy panels — loaded only when first visited
-const TyunniePanel  = dynamic<TyunniePanelProps>(() => import("@/components/TyunniePanel"), { ssr: false });
-const Todo          = dynamic(() => import("@/components/Todo"),               { ssr: false });
-const Writing       = dynamic(() => import("@/components/Writing"),            { ssr: false });
-const Projects      = dynamic(() => import("@/components/Projects"),           { ssr: false });
-const Snippets      = dynamic(() => import("@/components/Snippets"),           { ssr: false });
-const Finance       = dynamic(() => import("@/components/Finance"),            { ssr: false });
-const Music         = dynamic(() => import("@/components/Music"),              { ssr: false });
-const Pomodoro      = dynamic(() => import("@/components/Pomodoro"),           { ssr: false });
-const Games         = dynamic(() => import("@/components/Games"),              { ssr: false });
-const Calculator    = dynamic(() => import("@/components/Calculator"),         { ssr: false });
-const Weather       = dynamic(() => import("@/components/Weather"),            { ssr: false });
-const Profile       = dynamic(() => import("@/components/Profile"),            { ssr: false });
-const ProductivityHub   = dynamic(() => import("@/components/ProductivityHub"),    { ssr: false });
-const EntertainmentHub  = dynamic(() => import("@/components/EntertainmentHub"),   { ssr: false });
-const StickyLayer   = dynamic(() => import("@/components/StickyLayer"),        { ssr: false });
-const FocusMode     = dynamic(() => import("@/components/FocusMode"),          { ssr: false });
-const MiniPlayer    = dynamic(() => import("@/components/MiniPlayer"),         { ssr: false });
+const TyunniePanel = dynamic<TyunniePanelProps>(
+  () => import("@/components/TyunniePanel"),
+  { ssr: false },
+);
+const Todo = dynamic(() => import("@/components/Todo"), { ssr: false });
+const Writing = dynamic(() => import("@/components/Writing"), { ssr: false });
+const Projects = dynamic(() => import("@/components/Projects"), { ssr: false });
+const Snippets = dynamic(() => import("@/components/Snippets"), { ssr: false });
+const Finance = dynamic(() => import("@/components/Finance"), { ssr: false });
+const Music = dynamic(() => import("@/components/Music"), { ssr: false });
+const Pomodoro = dynamic(() => import("@/components/Pomodoro"), { ssr: false });
+const Games = dynamic(() => import("@/components/Games"), { ssr: false });
+const Calculator = dynamic(() => import("@/components/Calculator"), {
+  ssr: false,
+});
+const Weather = dynamic(() => import("@/components/Weather"), { ssr: false });
+const Profile = dynamic(() => import("@/components/Profile"), { ssr: false });
+const ProductivityHub = dynamic(() => import("@/components/ProductivityHub"), {
+  ssr: false,
+});
+const EntertainmentHub = dynamic(
+  () => import("@/components/EntertainmentHub"),
+  { ssr: false },
+);
+const StickyLayer = dynamic(() => import("@/components/StickyLayer"), {
+  ssr: false,
+});
+const FocusMode = dynamic(() => import("@/components/FocusMode"), {
+  ssr: false,
+});
+const MiniPlayer = dynamic(() => import("@/components/MiniPlayer"), {
+  ssr: false,
+});
 
 import {
   getTodos,
@@ -77,7 +93,9 @@ import {
 function MusicKeyboardBridge() {
   const { togglePlay } = useMusicContext();
   useEffect(() => {
-    function handler() { togglePlay(); }
+    function handler() {
+      togglePlay();
+    }
     window.addEventListener("tyunnie-music-toggle", handler);
     return () => window.removeEventListener("tyunnie-music-toggle", handler);
   }, [togglePlay]);
@@ -239,8 +257,14 @@ export default function Home() {
       if (Math.abs(dx) > 55 && dy < 55) {
         const idx = SWIPE_PANELS.indexOf(activePanel as Panel);
         if (idx !== -1) {
-          if (dx < 0) setActivePanel(SWIPE_PANELS[(idx + 1) % SWIPE_PANELS.length]);
-          else setActivePanel(SWIPE_PANELS[(idx - 1 + SWIPE_PANELS.length) % SWIPE_PANELS.length]);
+          if (dx < 0)
+            setActivePanel(SWIPE_PANELS[(idx + 1) % SWIPE_PANELS.length]);
+          else
+            setActivePanel(
+              SWIPE_PANELS[
+                (idx - 1 + SWIPE_PANELS.length) % SWIPE_PANELS.length
+              ],
+            );
         }
       }
     }
@@ -288,21 +312,21 @@ export default function Home() {
   useEffect(() => {
     // Panels reachable via Ctrl/⌘ + 1–9
     const NUMBERED_PANELS: Panel[] = [
-      "desk",        // 1
-      "todo",        // 2
-      "writing",     // 3
-      "projects",    // 4
-      "snippets",    // 5
-      "finance",     // 6
-      "music",       // 7
-      "games",       // 8
-      "profile",     // 9
+      "desk", // 1
+      "todo", // 2
+      "writing", // 3
+      "projects", // 4
+      "snippets", // 5
+      "finance", // 6
+      "music", // 7
+      "games", // 8
+      "profile", // 9
     ];
 
     // Panels that support N-key quick-add when no input is focused
     const PANEL_NEW_KEY: Partial<Record<Panel, string>> = {
-      todo:     "tyunnie-new-task",
-      writing:  "tyunnie-new-draft",
+      todo: "tyunnie-new-task",
+      writing: "tyunnie-new-draft",
       projects: "tyunnie-new-project",
       snippets: "tyunnie-new-snippet",
     };
@@ -369,7 +393,10 @@ export default function Home() {
       if (mod && e.shiftKey && e.key === "N") {
         e.preventDefault();
         setActivePanel("todo");
-        setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-new-task")), 80);
+        setTimeout(
+          () => window.dispatchEvent(new CustomEvent("tyunnie-new-task")),
+          80,
+        );
         return;
       }
 
@@ -377,7 +404,10 @@ export default function Home() {
       if (mod && e.shiftKey && e.key === "D") {
         e.preventDefault();
         setActivePanel("writing");
-        setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-new-draft")), 80);
+        setTimeout(
+          () => window.dispatchEvent(new CustomEvent("tyunnie-new-draft")),
+          80,
+        );
         return;
       }
 
@@ -385,7 +415,10 @@ export default function Home() {
       if (mod && e.shiftKey && e.key === "P") {
         e.preventDefault();
         setActivePanel("projects");
-        setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-new-project")), 80);
+        setTimeout(
+          () => window.dispatchEvent(new CustomEvent("tyunnie-new-project")),
+          80,
+        );
         return;
       }
 
@@ -393,7 +426,10 @@ export default function Home() {
       if (mod && e.shiftKey && e.key === "S") {
         e.preventDefault();
         setActivePanel("snippets");
-        setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-new-snippet")), 80);
+        setTimeout(
+          () => window.dispatchEvent(new CustomEvent("tyunnie-new-snippet")),
+          80,
+        );
         return;
       }
 
@@ -424,18 +460,21 @@ export default function Home() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePanel]);
-
 
   // ── ACCENT COLOR — apply hex to CSS vars + localStorage ──
   function applyAccentColor(hex: string) {
     const ri = parseInt(hex.slice(1, 3), 16);
     const gi = parseInt(hex.slice(3, 5), 16);
     const bi = parseInt(hex.slice(5, 7), 16);
-    const r = ri / 255, g = gi / 255, b = bi / 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h = 0, s = 0;
+    const r = ri / 255,
+      g = gi / 255,
+      b = bi / 255;
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b);
+    let h = 0,
+      s = 0;
     const l = (max + min) / 2;
     if (max !== min) {
       const d = max - min;
@@ -444,17 +483,37 @@ export default function Home() {
       else if (max === g) h = ((b - r) / d + 2) / 6;
       else h = ((r - g) / d + 4) / 6;
     }
-    const hd = Math.round(h * 360), sp = Math.round(s * 100), lp = Math.round(l * 100);
+    const hd = Math.round(h * 360),
+      sp = Math.round(s * 100),
+      lp = Math.round(l * 100);
     function hsl2hex(hh: number, ss: number, ll: number) {
-      const sn = ss / 100, ln = ll / 100, a = sn * Math.min(ln, 1 - ln);
-      const f = (n: number) => { const k = (n + hh / 30) % 12; return Math.round(255 * (ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1))).toString(16).padStart(2, "0"); };
+      const sn = ss / 100,
+        ln = ll / 100,
+        a = sn * Math.min(ln, 1 - ln);
+      const f = (n: number) => {
+        const k = (n + hh / 30) % 12;
+        return Math.round(
+          255 * (ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)),
+        )
+          .toString(16)
+          .padStart(2, "0");
+      };
       return `#${f(0)}${f(8)}${f(4)}`;
     }
     const root = document.documentElement;
     root.style.setProperty("--accent", hex);
-    root.style.setProperty("--accent-soft", hsl2hex(hd, Math.min(sp + 10, 100), Math.min(lp + 42, 97)));
-    root.style.setProperty("--accent-mid", hsl2hex(hd, Math.min(sp + 5, 100), Math.min(lp + 28, 90)));
-    root.style.setProperty("--accent-dim", hsl2hex(hd, Math.min(sp + 5, 100), Math.max(lp - 18, 15)));
+    root.style.setProperty(
+      "--accent-soft",
+      hsl2hex(hd, Math.min(sp + 10, 100), Math.min(lp + 42, 97)),
+    );
+    root.style.setProperty(
+      "--accent-mid",
+      hsl2hex(hd, Math.min(sp + 5, 100), Math.min(lp + 28, 90)),
+    );
+    root.style.setProperty(
+      "--accent-dim",
+      hsl2hex(hd, Math.min(sp + 5, 100), Math.max(lp - 18, 15)),
+    );
     root.style.setProperty("--accent-rgb", `${ri}, ${gi}, ${bi}`);
     localStorage.setItem("tyunnie_accent", hex);
   }
@@ -661,11 +720,18 @@ export default function Home() {
     setTodoRefreshKey((k) => k + 1);
   }
 
-  async function handleTodoUpdated(id: string, patch: { text?: string; tag?: string; due?: string | null }) {
+  async function handleTodoUpdated(
+    id: string,
+    patch: { text?: string; tag?: string; due?: string | null },
+  ) {
     await updateTodo(id, patch);
-    setTodos((prev) => prev.map((t) =>
-      t.id === id ? { ...t, ...patch, tag: (patch.tag ?? t.tag) as TodoType["tag"] } : t,
-    ));
+    setTodos((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, ...patch, tag: (patch.tag ?? t.tag) as TodoType["tag"] }
+          : t,
+      ),
+    );
     setTodoRefreshKey((k) => k + 1);
   }
 
@@ -722,7 +788,11 @@ export default function Home() {
           onNewSticky={async () => {
             const { createStickyNote } = await import("@/lib/database");
             const offset = (stickyNotes.length % 6) * 24;
-            const note = await createStickyNote(user.id, 120 + offset, 120 + offset);
+            const note = await createStickyNote(
+              user.id,
+              120 + offset,
+              120 + offset,
+            );
             if (note) setStickyNotes((prev) => [...prev, note]);
           }}
           onFocusMode={() => setFocusMode(true)}
@@ -739,7 +809,9 @@ export default function Home() {
             >
               <span
                 className="font-serif text-xl italic tracking-tight transition-colors"
-                style={{ color: activePanel === "desk" ? "var(--accent)" : "#1c1917" }}
+                style={{
+                  color: activePanel === "desk" ? "var(--accent)" : "#1c1917",
+                }}
               >
                 Tyunnie
               </span>
@@ -775,7 +847,9 @@ export default function Home() {
               >
                 ?
               </button>
-              <div className="hidden md:block"><Weather /></div>
+              <div className="hidden md:block">
+                <Weather />
+              </div>
 
               {/* Date — desktop full, mobile short */}
               <span className="hidden md:inline font-mono text-[11px] text-[#9a8f7e]">
@@ -823,9 +897,7 @@ export default function Home() {
                           ? "var(--accent)"
                           : "rgba(var(--accent-rgb), 0.12)",
                       color:
-                        activePanel === "profile"
-                          ? "#fff"
-                          : "var(--accent)",
+                        activePanel === "profile" ? "#fff" : "var(--accent)",
                     }}
                   >
                     {userName
@@ -850,7 +922,8 @@ export default function Home() {
               top: 56,
               opacity: pullProgress,
               transform: `translateX(-50%) translateY(${-16 + pullProgress * 32}px)`,
-              transition: pullProgress === 0 ? "opacity 0.25s, transform 0.25s" : "none",
+              transition:
+                pullProgress === 0 ? "opacity 0.25s, transform 0.25s" : "none",
             }}
           >
             <div
@@ -967,7 +1040,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-
       </div>
 
       {/* TyunniePanel — fixed bottom-center overlay, always mounted for chat history persistence */}
@@ -1018,7 +1090,11 @@ export default function Home() {
         onCreateSticky={async () => {
           const { createStickyNote } = await import("@/lib/database");
           const offset = (stickyNotes.length % 6) * 24;
-          const note = await createStickyNote(user.id, 120 + offset, 120 + offset);
+          const note = await createStickyNote(
+            user.id,
+            120 + offset,
+            120 + offset,
+          );
           if (note) setStickyNotes((prev) => [...prev, note]);
         }}
         onFocusMode={() => setFocusMode(true)}
@@ -1043,7 +1119,10 @@ export default function Home() {
         }}
       />
       {/* Floating mini player — appears when playing music outside the Music panel */}
-      <MiniPlayer activePanel={activePanel} onNavigate={(p) => setActivePanel(p as Panel)} />
+      <MiniPlayer
+        activePanel={activePanel}
+        onNavigate={(p) => setActivePanel(p as Panel)}
+      />
 
       {/* Music keyboard bridge — listens for tyunnie-music-toggle inside MusicProvider */}
       <MusicKeyboardBridge />
@@ -1059,11 +1138,16 @@ export default function Home() {
         onNavigate={(panel) => setActivePanel(panel)}
         onFocusMode={() => setFocusMode(true)}
         onTyunnieOpen={() => setTyunnieOpen(true)}
-        onMusicToggle={() => window.dispatchEvent(new CustomEvent("tyunnie-music-toggle"))}
+        onMusicToggle={() =>
+          window.dispatchEvent(new CustomEvent("tyunnie-music-toggle"))
+        }
       />
 
       {/* ── SHORTCUT HELP ── */}
-      <ShortcutHelp open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <ShortcutHelp
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
 
       {focusMode && (
         <FocusMode

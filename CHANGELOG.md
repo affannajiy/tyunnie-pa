@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.15.1] — 2026-04-20
+
+### Fixed
+
+- **Calculator dark mode** — Tailwind `dark:` variant now bound to `.dark` class via `@custom-variant` in `globals.css`; previously responded to system preference, so toggling the app to light mode left calculator buttons/inputs dark
+- **Currency CORS** — moved Frankfurter API call to a server-side proxy route (`/api/exchange-rates`) to avoid browser CORS block; response cached 1 hour on Vercel
+
+---
+
+## [3.15.0] — 2026-04-20
+
+### Added
+
+- **Calculator hub** — Scientific mode expanded into a four-mode calculator (Windows Calculator style) with a scrollable tab bar
+- **Graphing calculator** — canvas-based 2D function plotter; drag to pan, +/− to zoom, up to 5 simultaneous functions in distinct colours; supports `sin`, `cos`, `tan`, `sqrt`, `log`, `ln`, `abs`, `π`, `e`, `^`; safe expression sandbox via allowlist regex + `Function("x", ...)`
+- **Unit converter** — 7 categories: Length, Weight, Temperature, Area, Volume, Speed, Currency; swap button flips units and preserves value
+- **Live currency rates** — fetched from Frankfurter API on mount (USD base); falls back to static estimates on error; timestamp shown
+- **Date calculator** — Duration mode (difference between two dates in Y/M/D + total days) and Add/Subtract mode (start date ± days/months/years) using `date-fns`
+- **Theme-aware calculator** — all four modes follow light/dark mode and the user's chosen accent colour; graphing canvas adapts grid/axis colours at draw time
+
+### Changed
+
+- Scientific calculator outer container widened to `max-w-2xl` on desktop; mobile width unchanged
+- Calculator title uses `var(--accent)` colour; subtitle shortened to "Scientific" (removed "· fx-570 style")
+- Duplicate `=` button removed from scientific layout
+
+---
+
 ## [3.14.0] — 2026-04-20
 
 ### Added

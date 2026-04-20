@@ -51,7 +51,7 @@ const CARDS = [
     panel: "calculator",
     icon: "🔢",
     title: "Calculator",
-    desc: "Scientific calculator · fx-570 style",
+    desc: "All the calculations types",
     color: "#6366f1",
   },
 ];
@@ -76,7 +76,12 @@ export default function ProductivityHub({ onNavigate }: Props) {
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
-              style={{ backgroundColor: card.color === "#f97316" ? "rgba(var(--accent-rgb),0.094)" : `${card.color}18` }}
+              style={{
+                backgroundColor:
+                  card.color === "#f97316"
+                    ? "rgba(var(--accent-rgb),0.094)"
+                    : `${card.color}18`,
+              }}
             >
               {card.icon}
             </div>

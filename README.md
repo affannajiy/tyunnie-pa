@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.14.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.15.1-f97316?style=flat-square)
 
 ---
 
@@ -56,12 +56,16 @@
 - Session dot tracker scales with the configured long-break interval
 - **Focus Mode** (`Ctrl/⌘+Shift+F` or Sidebar dock button) — fullscreen overlay with music-reactive background glow (Web Audio beat detection drives the radial gradient in real time), preset picker, task selector, full Pomodoro controls, and floating sticky notes
 
-### Scientific Calculator
+### Calculator Hub
 
-- Casio fx-570EX–style scientific calculator in the Productivity hub
-- Full trig (sin/cos/tan + inverses), hyperbolic, log/ln, powers, roots, combinatorics (nCr, nPr, n!), absolute value, constants (π, ℯ), memory (MC/MR/M+/M−)
-- SHIFT key unlocks secondary functions (sin⁻¹, ∛, 10ˣ, etc.) — secondary labels shown in yellow
-- DEG/RAD toggle, live expression preview, ANS and Mem references, keyboard input support
+Four-mode calculator accessible from the Productivity hub — switch modes via a scrollable tab bar:
+
+- **Scientific** — Casio fx-570EX–style; full trig (sin/cos/tan + inverses), hyperbolic, log/ln, powers, roots, combinatorics (nCr, nPr, n!), absolute value, constants (π, ℯ), memory (MC/MR/M+/M−); SHIFT key unlocks secondary functions; DEG/RAD toggle, live expression preview, ANS and Mem references, keyboard input
+- **Graphing** — canvas-based 2D plotter; type expressions like `sin(x)`, `x^2 + 1`; drag to pan, zoom in/out; up to 5 functions plotted simultaneously in distinct colours
+- **Converter** — 7 categories: Length, Weight, Temperature, Area, Volume, Speed, Currency; live exchange rates via Frankfurter API (USD base, cached hourly); swap button flips units
+- **Date** — Duration mode (difference between two dates in years/months/days) and Add/Subtract mode (start date ± days/months/years)
+
+All modes follow the app's light/dark theme and chosen accent colour.
 
 ### Games Hub
 

@@ -1,6 +1,9 @@
 /* app/globals.css */
 @import "tailwindcss";
 
+/* Bind Tailwind's dark: variant to the .dark class (not system preference) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --bg: #faf8f5;
   --surface: #ffffff;
