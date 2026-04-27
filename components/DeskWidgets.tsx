@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
 import type { Profile, Todo, Project, FinanceEntry } from "@/lib/database";
@@ -309,7 +309,18 @@ export default function DeskWidgets({
     }
   }, [layouts, hidden, userId]);
 
-  // ResizeObserver
+  // Synchronous initial measurement — prevents grid jump on first paint
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    const w = containerRef.current.getBoundingClientRect().width;
+    if (w > 0) {
+      const mobile = w < 580;
+      setIsMobile(mobile);
+      if (!mobile) setCellW((w - GAP * (COLS - 1)) / COLS);
+    }
+  }, []);
+
+  // ResizeObserver — handles subsequent resizes
   useEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver((entries) => {

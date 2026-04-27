@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getProfile, upsertProfile, type Profile } from "@/lib/database";
 import { useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, authHeader } from "@/lib/supabase";
 import {
   getVaultEntries,
   addVaultEntry,
@@ -514,10 +514,12 @@ export default function Profile({
               data: { user },
             } = await supabase.auth.getUser();
             if (user?.email) {
-              fetch("/api/vault-notify", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: user.email, type: "setup" }),
+              authHeader().then((ah) => {
+                fetch("/api/vault-notify", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", ...ah },
+                  body: JSON.stringify({ email: user.email, type: "setup" }),
+                });
               });
             }
           }
@@ -646,10 +648,12 @@ export default function Profile({
             data: { user },
           } = await supabase.auth.getUser();
           if (user?.email) {
-            fetch("/api/vault-notify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: user.email, type: "change" }),
+            authHeader().then((ah) => {
+              fetch("/api/vault-notify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...ah },
+                body: JSON.stringify({ email: user.email, type: "change" }),
+              });
             });
           }
           // Reset change PIN UI
@@ -686,7 +690,7 @@ export default function Profile({
       }
       const res = await fetch("/api/vault-notify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await authHeader()) },
         body: JSON.stringify({ email: user.email, type: "pin_change_request" }),
       });
       if (!res.ok) throw new Error();
@@ -710,7 +714,7 @@ export default function Profile({
       if (!user?.email) return;
       const res = await fetch("/api/vault-notify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await authHeader()) },
         body: JSON.stringify({
           email: user.email,
           type: "verify",

@@ -15,8 +15,8 @@ import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
 function sanitizeHtml(html: string): string {
   return html
     .replace(/<(?!\/?(?:b|strong|em|i|code|br)\b)[^>]*>/gi, "")
-    .replace(/\son\w+="[^"]*"/gi, "")
-    .replace(/javascript:/gi, "");
+    .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
+    .replace(/javascript\s*:/gi, "");
 }
 
 const MONTHS = [

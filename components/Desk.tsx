@@ -72,10 +72,14 @@ export default function Desk({
         .filter((f) => f.type === "expense")
         .reduce((s, f) => s + f.amount, 0);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+
     authHeader().then((ah) =>
       fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...ah },
+        signal: controller.signal,
         body: JSON.stringify({
           messages: [{ role: "user", content: "desk oneliner" }],
           systemPrompt: `You are Tyunnie, warm AI assistant based on Taehyun from TXT. Write ONE short motivational sentence (max 12 words) for the user's day. Be warm, casual, personal. No emojis at start.
@@ -85,11 +89,14 @@ Just one sentence, no quotes, no action blocks.`,
       })
         .then((r) => r.json())
         .then((d) => {
+          clearTimeout(timeoutId);
           const text = d.text?.trim() ?? null;
-          setOneliner(text);
+          setOneliner(text ?? "Make today one worth remembering.");
           if (text) sessionStorage.setItem("desk_oneliner", text);
         })
-        .catch(() => {}),
+        .catch(() => {
+          setOneliner("Make today one worth remembering.");
+        }),
     );
   }, []);
 
@@ -159,16 +166,9 @@ Just one sentence, no quotes, no action blocks.`,
           <h1 className="font-serif italic text-2xl md:text-5xl text-[#1a1208] mb-2 md:mb-3 leading-tight pr-24 md:pr-0">
             {getGreeting(profile?.display_name ?? userName)} 👋
           </h1>
-          {oneliner ? (
-            <p className="text-sm md:text-lg text-[#8a6f5a] font-serif italic leading-relaxed max-w-lg pr-20 md:pr-0">
-              Welcome home 🧡
-            </p>
-          ) : (
-            <div className="flex gap-2 mt-2">
-              <div className="h-3 w-32 md:w-48 bg-[#f0e8e0] rounded-full animate-pulse" />
-              <div className="h-3 w-16 md:w-24 bg-[#f0e8e0] rounded-full animate-pulse" />
-            </div>
-          )}
+          <p className="text-sm md:text-lg text-[#8a6f5a] font-serif italic leading-relaxed max-w-lg pr-20 md:pr-0">
+            Welcome home 🧡
+          </p>
         </div>
 
         {/* Sprite — absolute on mobile, normal flow on desktop */}

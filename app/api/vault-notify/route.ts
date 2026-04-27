@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
+import { verifyAuth } from "@/lib/apiAuth";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -11,6 +12,12 @@ const MAX_OTP_LEN   = 10;
 const otpStore = new Map<string, { otp: string; expires: number; attempts: number }>();
 
 export async function POST(req: NextRequest) {
+  // ── Auth ──
+  const auth = req.headers.get("authorization");
+  if (!(await verifyAuth(auth))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // ── Rate limit: 5 requests / 10 minutes per IP ──
   const key = `vault:${clientKey(req)}`;
   if (!rateLimit(key, 5, 10 * 60_000)) {

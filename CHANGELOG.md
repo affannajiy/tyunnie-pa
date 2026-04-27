@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.17.1] — 2026-04-28
+
+### Security
+
+- **`/api/vault-notify` auth guard** — endpoint now requires a valid Supabase JWT (`Authorization: Bearer <token>`). Previously unauthenticated callers could trigger OTP and notification emails to arbitrary addresses. All four `fetch` calls in `Profile.tsx` updated to include the `Authorization` header via `authHeader()`
+- **`sanitizeHtml` single-quote bypass** — event handler stripping regex in `TyunniePanel.tsx` was `\son\w+="[^"]*"` (double-quotes only); replaced with `\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)` to also strip single-quoted and unquoted event handlers. `javascript:` check strengthened to `javascript\s*:` to handle whitespace variants
+- **Content-Security-Policy header** — added CSP to `next.config.ts` restricting scripts, styles, images, media, fonts, and outbound connections to known-safe origins. Blocks object/embed injection (`object-src 'none'`), base-tag injection (`base-uri 'self'`), and cross-origin form submission (`form-action 'self'`). `unsafe-inline`/`unsafe-eval` retained for Next.js inline scripts and the Calculator's `new Function()` evaluator
+
+### Changed
+
+- **Error page redesign** (`app/error.tsx`) — replaced dark single-panel layout with a split left-panel/right-card design matching the auth page style. Left panel shows accent-gradient background, animated glow bubbles, and the default Tyunnie sprite; right panel shows a clean card with Try Again + Go Home buttons. Fully accent-color-aware (reads `localStorage['tyunnie_accent']`), dark mode supported, responsive (single-column on mobile, split on `lg+`)
+- **404 page redesign** (`app/not-found.tsx`) — same split-layout redesign as error page; now a client component to read accent color. Uses the happy sprite on the left panel; dev-mode error block removed (404 has no error object). Mobile-first with sprite shown above the card on small viewports
+- **Desk one-liner timeout + fallback** (`components/Desk.tsx`) — AI one-liner fetch now aborts after 1.5 s via `AbortController`; both timeout and network error paths set a static fallback string (`"Make today one worth remembering."`) so the hero section is never blank. Loading skeleton removed — hero subtitle is always the static "Welcome home 🧡" line while the one-liner populates the quote widget separately
+- **Widget grid layout flash fix** (`components/DeskWidgets.tsx`) — added `useLayoutEffect` for synchronous initial container width measurement before first paint, eliminating the grid-width jump that occurred when the `ResizeObserver` (async) fired after the initial render
+
+---
+
 ## [3.17.0] — 2026-04-27
 
 ### Performance
