@@ -10,6 +10,7 @@ import {
   deleteTodo,
   type Todo,
 } from "@/lib/database";
+import { useWorkspace } from "@/lib/WorkspaceContext";
 
 type Props = {
   userId: string;
@@ -49,6 +50,7 @@ function getTagLabel(value: string) {
 }
 
 export default function Todo({ userId, onAction, refreshKey }: Props) {
+  const { setSnapshot } = useWorkspace();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +82,26 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
     window.addEventListener("tyunnie-new-task", handler);
     return () => window.removeEventListener("tyunnie-new-task", handler);
   }, []);
+
+  // ── WORKSPACE BROADCAST ──
+  useEffect(() => {
+    if (loading || todos.length === 0) return;
+    const pending = todos.filter((t) => !t.done);
+    if (pending.length === 0) return;
+    const summary = pending
+      .map((t) => `- [${t.tag}] ${t.text}${t.due ? ` (due ${t.due})` : ""}`)
+      .join("\n");
+    setSnapshot({
+      panel: "todo",
+      content: summary,
+      label: "your task list",
+      updatedAt: Date.now(),
+    });
+  }, [todos, loading, setSnapshot]);
+
+  useEffect(() => {
+    return () => setSnapshot(null);
+  }, [setSnapshot]);
 
   // ── HANDLERS ──
   async function handleAdd(e: React.FormEvent) {

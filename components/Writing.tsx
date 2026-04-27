@@ -9,6 +9,7 @@ import {
   deleteDraft,
   type Draft
 } from '@/lib/database'
+import { useWorkspace } from '@/lib/WorkspaceContext'
 
 type Props = {
   userId: string
@@ -17,6 +18,7 @@ type Props = {
 }
 
 export default function Writing({ userId, onAction, refreshKey }: Props) {
+  const { setSnapshot } = useWorkspace()
   const [drafts, setDrafts]       = useState<Draft[]>([])
   const [loading, setLoading]     = useState(true)
 
@@ -49,6 +51,26 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
   // openNew is stable (no deps change it), safe to run once
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── WORKSPACE BROADCAST ──
+  useEffect(() => {
+    if (!editorOpen || !body || body.length < 80) return
+    const timer = setTimeout(() => {
+      const wc = body.trim() ? body.trim().split(/\s+/).length : 0
+      setSnapshot({
+        panel: 'writing',
+        content: body,
+        label: `draft '${title || 'Untitled'}'`,
+        meta: { title: title || 'Untitled', wordCount: String(wc) },
+        updatedAt: Date.now(),
+      })
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [body, title, editorOpen, setSnapshot])
+
+  useEffect(() => {
+    return () => setSnapshot(null)
+  }, [setSnapshot])
 
   // ── DERIVED ──
   const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0

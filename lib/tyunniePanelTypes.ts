@@ -1,6 +1,15 @@
 // lib/tyunniePanelTypes.ts
 // Standalone type file — no "use client", no Next.js plugin interference.
 // Shared between TyunniePanel.tsx and dashboard/page.tsx for dynamic() typing.
+//
+// Internal TyunniePanel state added in v3.17.0 (not exposed as props — consumed internally):
+//   isFloating       — detached floating window mode, persisted to localStorage['tyunnie_float']
+//   floatPos         — { x, y } pixel position, persisted to localStorage['tyunnie_float_pos'] on drag end
+//   proactiveSuggestion — { heading, suggestion, prefill } from WorkspaceContext-triggered AI call
+//   proactiveDismissed  — user dismissed the current suggestion card
+//   lastProactiveRef    — useRef<number> tracking 90s cooldown between proactive calls
+//   lastMessageAtRef    — useRef<number> tracking last user message time (guards against interrupting active chats)
+//   WorkspaceContext is consumed internally via useWorkspace() — no prop needed from parent.
 
 import type { Profile as ProfileType } from "@/lib/database";
 import type { Todo, Draft, Project, Snip, FinanceEntry } from "@/lib/database";

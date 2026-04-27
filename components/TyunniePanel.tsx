@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useMusicContext } from "@/lib/MusicContext";
+import { useWorkspace } from "@/lib/WorkspaceContext";
 import Image from "next/image";
 import type { Profile as ProfileType } from "@/lib/database";
 import { useSpeech } from "@/lib/useSpeech";
@@ -122,6 +123,9 @@ export default function TyunniePanel({
   onMemoryAdded,
   onMemoryDeleted,
 }: TyunniePanelProps) {
+  // ── WORKSPACE CONTEXT ──
+  const { snapshot } = useWorkspace();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -220,6 +224,36 @@ export default function TyunniePanel({
   const [briefing, setBriefing] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(false);
   const briefingFiredRef = useRef(false);
+
+  // ── PROACTIVE SUGGESTION STATE ──
+  const [proactiveSuggestion, setProactiveSuggestion] = useState<{
+    heading: string;
+    suggestion: string;
+    prefill: string;
+  } | null>(null);
+  const [proactiveDismissed, setProactiveDismissed] = useState(false);
+  const lastProactiveRef = useRef<number>(0);
+  const lastMessageAtRef = useRef<number>(0);
+  const isOpenRef = useRef(isOpen);
+
+  // ── FLOAT MODE STATE ──
+  /*
+   * Internal states for float mode (detachable panel):
+   *   isFloating    — whether the panel is detached as a floating window
+   *   floatPos      — { x, y } pixel position of the floating window
+   *   floatPosRef   — ref mirror of floatPos (avoids stale closure in drag handlers)
+   *   floatDragState — tracks active drag operation
+   */
+  const [isFloating, setIsFloating] = useState(false);
+  const [floatPos, setFloatPos] = useState<{ x: number; y: number } | null>(null);
+  const floatPosRef = useRef<{ x: number; y: number } | null>(null);
+  const floatDragState = useRef<{
+    active: boolean;
+    startX: number;
+    startY: number;
+    startPosX: number;
+    startPosY: number;
+  } | null>(null);
 
   // ── HELPERS ──
 
@@ -347,6 +381,133 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
     fetchBriefing();
   }, []);
 
+  // ── KEEP isOpenRef IN SYNC ──
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+  // ── KEEP floatPosRef IN SYNC ──
+  useEffect(() => { floatPosRef.current = floatPos; }, [floatPos]);
+
+  // ── LOAD FLOAT STATE FROM LOCALSTORAGE (client-only) ──
+  useEffect(() => {
+    const floatStored = localStorage.getItem("tyunnie_float");
+    if (floatStored === "true") setIsFloating(true);
+
+    const posStored = localStorage.getItem("tyunnie_float_pos");
+    if (posStored) {
+      try {
+        setFloatPos(JSON.parse(posStored));
+      } catch {
+        setFloatPos({ x: window.innerWidth - 420, y: 80 });
+      }
+    } else {
+      setFloatPos({ x: window.innerWidth - 420, y: 80 });
+    }
+  }, []);
+
+  // ── DISABLE FLOAT ON MOBILE ──
+  useEffect(() => {
+    if (isMobile && isFloating) {
+      setIsFloating(false);
+      localStorage.setItem("tyunnie_float", "false");
+    }
+  }, [isMobile, isFloating]);
+
+  // ── RESET PROACTIVE SUGGESTION WHEN SNAPSHOT CHANGES ──
+  useEffect(() => {
+    setProactiveDismissed(false);
+    setProactiveSuggestion(null);
+  }, [snapshot?.updatedAt]);
+
+  // ── PROACTIVE SUGGESTION TRIGGER ──
+  useEffect(() => {
+    if (!snapshot) return;
+    if (snapshot.content.length < 80) return;
+
+    const key = `tyunnie_proactive_${snapshot.updatedAt}`;
+    if (sessionStorage.getItem(key)) return;
+    if (Date.now() - lastProactiveRef.current < 90_000) return;
+    // Don't interrupt if user is actively chatting
+    if (isOpenRef.current && Date.now() - lastMessageAtRef.current < 60_000) return;
+
+    const timer = setTimeout(async () => {
+      // Re-check guards after the 4s "Tyun pause"
+      if (sessionStorage.getItem(key)) return;
+      if (Date.now() - lastProactiveRef.current < 90_000) return;
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(await authHeader()) },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "[proactive workspace analysis]" }],
+            systemPrompt: `You are watching the user's active workspace. The user is currently working on: ${snapshot.label}.
+Here is the current content: ---
+${snapshot.content.slice(0, 1500)}
+Based ONLY on this content, generate a single brief, non-intrusive, genuinely useful suggestion.
+For code: look for obvious bugs, missing error handling, or a quick optimisation.
+For writing/notes: offer to generate 2-3 active-recall quiz questions from the content.
+For tasks: notice if any task has been sitting incomplete and suggest a focus tip.
+Reply with ONLY a JSON object: { "heading": string (max 8 words), "suggestion": string (max 40 words), "prefill": string (the message to inject into chat input if the user clicks 'Use this', written as a natural user request) }.
+No preamble. No markdown fences.`,
+          }),
+        });
+        const data = await res.json();
+        const raw = (data.text ?? "").trim().replace(/[^}]*$/, "").trim();
+        const parsed = JSON.parse(raw);
+        if (parsed.heading && parsed.suggestion && parsed.prefill) {
+          setProactiveSuggestion(parsed);
+          setProactiveDismissed(false);
+          sessionStorage.setItem(key, "1");
+          lastProactiveRef.current = Date.now();
+        }
+      } catch {
+        // Silently fail — proactive suggestions are non-critical
+      }
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [snapshot]);
+
+  // ── FLOAT DRAG HANDLERS ──
+  function onFloatPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest("button, input, textarea")) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    floatDragState.current = {
+      active: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startPosX: floatPosRef.current?.x ?? window.innerWidth - 420,
+      startPosY: floatPosRef.current?.y ?? 80,
+    };
+  }
+
+  function onFloatPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!floatDragState.current?.active) return;
+    const dx = e.clientX - floatDragState.current.startX;
+    const dy = e.clientY - floatDragState.current.startY;
+    setFloatPos({
+      x: floatDragState.current.startPosX + dx,
+      y: floatDragState.current.startPosY + dy,
+    });
+  }
+
+  function onFloatPointerUp() {
+    if (!floatDragState.current) return;
+    floatDragState.current.active = false;
+    const PANEL_W = 400;
+    const PANEL_H = 560;
+    const pos = floatPosRef.current;
+    if (pos) {
+      const clamped = {
+        x: Math.max(0, Math.min(window.innerWidth - PANEL_W, pos.x)),
+        y: Math.max(0, Math.min(window.innerHeight - PANEL_H, pos.y)),
+      };
+      setFloatPos(clamped);
+      localStorage.setItem("tyunnie_float_pos", JSON.stringify(clamped));
+    }
+    floatDragState.current = null;
+  }
+
   // ── SYSTEM PROMPT with full app context ──
   function buildSystemPrompt(): string {
     const { todos, drafts, projects, snips, finance } = appData;
@@ -431,7 +592,7 @@ PERSONALITY: Calm, direct, quietly caring. Dry humour when the mood is right. Ne
 
 REPLY LENGTH: 1–3 sentences before any action block. Match the energy: short for casual, thorough for complex questions.
 ${profileContext}
-Today: ${today}  |  Currently viewing: ${MONTHS[viewM]} ${viewY}
+Today: ${today}  |  Active panel: ${activePanel}  |  Finance view: ${MONTHS[viewM]} ${viewY}
 
 ══════════════════════════
 APP DATA (your live context)
@@ -470,6 +631,13 @@ MUSIC:
   Now playing: ${music.currentTrack ? `"${music.currentTrack.title}" by ${music.currentTrack.artist}` : "Nothing"}
   State: ${music.isPlaying ? "Playing" : "Paused"} | Shuffle: ${music.shuffle ? "on" : "off"} | Repeat: ${music.repeat}
   Playlist (${music.tracks.length} tracks): ${music.tracks.map((t) => t.title).join(", ") || "Empty"}
+
+ACTIVE WORKSPACE:
+${snapshot
+  ? `  Panel: ${snapshot.panel} | ${snapshot.label}
+  Content (use this for context-aware answers; do NOT re-read from app data lists):
+${snapshot.content.slice(0, 600)}`
+  : "  None — user is not actively editing anything right now"}
 
 GAMES (in the Games panel):
   Available: Tetris, Chess, Sudoku, Minesweeper, TicTacToe, Solitaire
@@ -524,6 +692,7 @@ navigate       → data: { "panel":"desk"|"profile"|"productivity"|"entertainmen
 
 ─── MUSIC ───
 music_control  → data: { "action":"play"|"pause"|"next"|"prev"|"toggle"|"shuffle"|"repeat", "trackName":"..." (optional), "repeatMode":"all"|"one"|"off" (for repeat) }
+set_volume     → data: { "volume":0.0–1.0 }  (0.0 = mute, 1.0 = max; e.g. "70%" → 0.7, "half" → 0.5)
 
 ─── STICKY NOTES ───
 create_sticky  → data: { "content":"...", "color":"yellow"|"blue"|"green"|"pink"|"purple" }
@@ -615,6 +784,11 @@ MEMORY:
 - "remember that / don't forget / keep in mind" → save_memory
 - "forget that / delete memory / remove that fact" → delete_memory with exact id
 - PROACTIVELY save memories when user reveals: goals, preferences, study schedule, relationships, important dates, health info, work deadlines
+
+WORKSPACE CONTEXT:
+- When ACTIVE WORKSPACE is set, use its content to answer questions without asking the user to paste it ("what does this do?", "explain this code", "fix this", "continue this draft")
+- Never announce that you're reading from the workspace — just use it naturally
+- If the workspace content changes a question's answer, prefer the live content over the static app data lists
 
 CALCULATOR:
 - Any math/calculation question → calculate. Answer in chat text AND send expression to calculator.
@@ -1018,6 +1192,7 @@ calculate:
   async function sendChat() {
     const msg = input.trim();
     if (!msg || thinking) return;
+    lastMessageAtRef.current = Date.now(); // track for proactive suggestion cooldown
 
     setInput("");
     addBubble("user", msg);
@@ -1087,107 +1262,345 @@ calculate:
   }
 
   // ── RENDER ──
-  return (
+
+  // Bubble max-width: wider in float mode or when panel is expanded
+  const bubbleMaxWidth = isFloating || snapPct <= 4 ? "max-w-xl" : "max-w-[210px]";
+
+  // Proactive suggestion card — shown above input in both modes
+  const proactiveSuggestionCard = proactiveSuggestion && !proactiveDismissed ? (
+    <div className="shrink-0 px-3 pb-2">
+      <div
+        className="bg-[#1a1714] rounded-xl px-3.5 py-3 relative"
+        style={{
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderLeft: "2px solid var(--accent)",
+        }}
+      >
+        <button
+          onClick={() => setProactiveDismissed(true)}
+          className="absolute top-2 right-2.5 text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors"
+        >
+          ✕
+        </button>
+        <div className="flex items-center gap-2 mb-1.5 pr-4">
+          <Image
+            src={MOOD_SPRITES["thinking"]}
+            alt=""
+            width={20}
+            height={20}
+            style={{ width: 20, height: "auto" }}
+          />
+          <span className="text-[9px] font-bold text-[#f97316] uppercase tracking-widest font-mono">
+            Tyun noticed something
+          </span>
+        </div>
+        <p className="text-[11px] text-[#c8b89a] leading-[1.6] mb-2.5">
+          <strong className="text-[#e8ddd0] text-[11px]">{proactiveSuggestion.heading}</strong>
+          <br />
+          {proactiveSuggestion.suggestion}
+        </p>
+        <button
+          onClick={() => {
+            setInput(proactiveSuggestion.prefill);
+            setProactiveDismissed(true);
+            setTimeout(() => inputRef.current?.focus(), 50);
+          }}
+          className="text-[10px] font-bold text-[#f97316] bg-[#f97316]/10 border border-[#f97316]/30 rounded-lg px-3 py-1.5 hover:bg-[#f97316]/20 transition-colors"
+        >
+          Use this →
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  // Briefing cards
+  const briefingSection = (
     <>
-      {/* Backdrop — dims content when panel is open (not fullscreen) */}
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 59,
-          background: "rgba(0,0,0,0.45)",
-          backdropFilter: isOpen && snapPct > 0 ? "blur(2px)" : "none",
-          opacity: isOpen && snapPct > 0 ? 1 : 0,
-          pointerEvents: isOpen && snapPct > 0 ? "auto" : "none",
-          transition: "opacity 0.3s ease",
-        }}
-      />
+      {briefingLoading && profile?.show_briefing !== false && (
+        <div className="shrink-0 px-3 pt-3 pb-1">
+          <div className="bg-[#1e1b17] border border-[#2a2520] rounded-[4px_16px_16px_16px] px-3.5 py-2.5 flex gap-1.5 items-center">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-[#f97316]"
+                style={{
+                  animation: "thinkPulse 1.2s ease-in-out infinite",
+                  animationDelay: `${i * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {briefing && !briefingLoading && profile?.show_briefing !== false && (
+        <div className="shrink-0 px-3 pt-3 pb-1">
+          <div className="bg-[#1e1b17] border border-[#f97316]/30 rounded-2xl px-3.5 py-2.5 w-full">
+            <div className="text-[9px] font-bold text-[#f97316] uppercase tracking-widest mb-1.5 font-mono">
+              Daily briefing
+            </div>
+            <p className="text-[12px] text-[#c8b89a] leading-[1.7]">
+              {briefing}
+            </p>
+          </div>
+        </div>
+      )}
+    </>
+  );
 
-      {/* Panel */}
-      <div
-        className="fixed z-60 bg-[#111010] flex flex-col overflow-hidden"
-        style={{
-          bottom: 0,
-          left: "50%",
-          width: getPanelWidth(),
-          height: "100dvh",
-          borderRadius: snapPct === 0 ? 0 : "20px 20px 0 0",
-          borderTop: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
-          borderLeft: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
-          borderRight: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
-          borderBottom: "none",
-          transform: isOpen
-            ? `translateX(-50%) translateY(${snapPct}vh)`
-            : "translateX(-50%) translateY(100dvh)",
-          transition: "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), width 0.35s ease, border-radius 0.3s ease",
-          boxShadow:
-            "0 -8px 50px rgba(0,0,0,0.7), 0 -1px 0 rgba(255,255,255,0.05)",
-        }}
-      >
-      {/* Subtle radial glow */}
-      <div
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 100%, rgba(var(--accent-rgb),0.10) 0%, transparent 65%)",
-        }}
-      />
+  // Chat history (shared between both modes)
+  const chatHistorySection = (
+    <div
+      ref={historyRef}
+      className="flex-1 overflow-y-auto px-3 pt-3 pb-6 md:pb-2 flex flex-col gap-2.5 relative min-h-0 overscroll-contain"
+      style={{
+        scrollbarWidth: "thin",
+        scrollbarColor: "#2a2520 transparent",
+      }}
+    >
+      <div className="h-10 md:flex-1" />
+      {bubbles.map((b, index) => {
+        const distanceFromBottom = bubbles.length - 1 - index;
+        const opacity =
+          distanceFromBottom > 3
+            ? Math.max(0.15, 1 - (distanceFromBottom - 3) * 0.18)
+            : 1;
 
-      {/* ── CHAT COLUMN ── */}
-      {/* Height = visible portion only — prevents input being hidden below translateY offset */}
-      <div
-        className="flex flex-col overflow-hidden relative z-10 min-w-0"
-        style={{
-          height: `${100 - snapPct}dvh`,
-          transition: "height 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
-        }}
-      >
-
-        {/* ── PANEL HEADER ── */}
-        <div className="shrink-0 relative z-10">
-          {/* Handle bar — click/tap to cycle snap sizes (desktop only; hidden on mobile with single snap point) */}
-          {!isMobile && (
+        return (
+          <div
+            key={b.id}
+            className={`flex ${b.who === "tyunnie" ? "justify-start" : "justify-end"}`}
+            style={{
+              animation: "bubbleIn 0.3s ease",
+              opacity,
+              transition: "opacity 0.3s ease",
+            }}
+          >
             <div
-              className="flex flex-col items-center gap-1.5 pt-3 pb-2 cursor-pointer select-none active:opacity-70 transition-opacity"
-              onClick={cycleSnap}
-              title="Click to resize"
+              className={`
+                ${bubbleMaxWidth} px-3 py-2 md:px-3.5 md:py-2.5 text-[11px] md:text-[12.5px] leading-[1.6] font-medium
+                ${
+                  b.who === "tyunnie"
+                    ? "bg-[#f97316] text-white rounded-[4px_16px_16px_16px]"
+                    : "bg-[#2a2520] text-[#e8ddd0] rounded-[16px_4px_16px_16px] border border-[#3a3028]"
+                }
+              `}
             >
-              {/* Snap indicator — filled segments show how open the panel is */}
-              <div className="flex items-center gap-2">
-                {SNAP_POINTS.map((p, i) => {
-                  const currentIdx = SNAP_POINTS.indexOf(snapPct);
-                  const isActive = snapPct === p;
-                  const isFilled = i <= currentIdx;
-                  return (
-                    <div
-                      key={p}
-                      className="rounded-full transition-all duration-300"
-                      style={{
-                        width: isActive ? 26 : 8,
-                        height: 5,
-                        background: isActive
-                          ? "#f97316"
-                          : isFilled
-                          ? "rgba(var(--accent-rgb),0.6)"
-                          : "rgba(255,255,255,0.2)",
-                      }}
-                    />
-                  );
-                })}
+              <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(b.text) }} />
+              <div className="text-[9px] opacity-60 mt-1 text-right font-mono">
+                {b.time}
               </div>
             </div>
-          )}
-          <div className="flex items-center justify-between px-4 pb-2.5 pt-0.5 border-b border-[#2a2520]">
-            <span
-              className="font-serif italic text-lg"
-              style={{ color: "var(--accent)" }}
+          </div>
+        );
+      })}
+
+      {/* Thinking dots */}
+      {thinking && (
+        <div className="flex justify-start">
+          <div className="bg-[#f97316] rounded-[16px_4px_16px_16px] px-4 py-3 flex gap-1 items-center">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-white"
+                style={{
+                  animation: "thinkPulse 1.2s ease-in-out infinite",
+                  animationDelay: `${i * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation card */}
+      {confirm && (
+        <div
+          className="bg-[#1e1b17] border border-[#f97316] rounded-xl p-3.5 mx-1"
+          style={{ animation: "bubbleIn 0.3s ease" }}
+        >
+          <div className="text-[10px] font-bold text-[#f97316] mb-2 tracking-wide">
+            ✦ {confirm.label}
+          </div>
+          <div
+            className="text-[11px] text-[#c8b89a] leading-[1.8] mb-3"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(confirm.detail) }}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={confirm.onConfirm}
+              className="flex-1 bg-[#16a34a] text-white text-[11px] font-bold rounded-lg py-2 hover:opacity-90 transition-opacity"
             >
-              Tyunnie
-            </span>
+              Looks good ✓
+            </button>
+            <button
+              onClick={() => {
+                setConfirm(null);
+                addBubble("tyunnie", "No worries, I won't add it 🧡");
+              }}
+              className="flex-1 bg-transparent border border-[#3a3028] text-[#9a8f7e] text-[11px] font-bold rounded-lg py-2 hover:border-red-800 hover:text-red-400 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Chat input area (shared between both modes)
+  const inputArea = (
+    <div className="px-3 pt-3 pb-4 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0 relative z-20">
+      {/* Mic button */}
+      {supported && (
+        <button
+          onClick={toggleMic}
+          title={listening ? "Stop listening" : "Voice input"}
+          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 self-end transition-all ${
+            listening
+              ? "bg-red-500/20 border border-red-500/40 text-red-400 animate-pulse"
+              : "bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+          }`}
+        >
+          {listening ? (
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="currentColor"
+            >
+              <rect x="2" y="2" width="10" height="10" rx="2" />
+            </svg>
+          ) : (
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <rect x="4.5" y="1" width="5" height="7" rx="2.5" />
+              <path
+                d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5"
+                strokeLinecap="round"
+              />
+              <line x1="7" y1="12" x2="7" y2="14" strokeLinecap="round" />
+            </svg>
+          )}
+        </button>
+      )}
+
+      <textarea
+        ref={inputRef}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={listening ? "Listening..." : "Talk to Tyunnie..."}
+        rows={1}
+        className={`flex-1 bg-[#1e1b17] border rounded-xl text-[#e8ddd0] text-[11px] md:text-xs px-3 py-2 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors ${
+          listening
+            ? "border-red-500/40 placeholder:text-red-400/60"
+            : "border-[#3a3028] focus:border-[#f97316]"
+        }`}
+        style={{ minHeight: "36px", maxHeight: "72px" }}
+      />
+
+      <button
+        onClick={sendChat}
+        disabled={thinking || !input.trim()}
+        className="w-10 h-10 bg-[#f97316] rounded-xl text-white text-base flex items-center justify-center shrink-0 hover:bg-[#c2500f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
+      >
+        ↑
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      {isFloating && floatPos && !isMobile ? (
+        /* ── FLOAT WINDOW MODE ── */
+        <div
+          style={{
+            position: "fixed",
+            left: floatPos.x,
+            top: floatPos.y,
+            width: 400,
+            height: 560,
+            zIndex: 60,
+            boxShadow: "0 8px 32px rgba(var(--accent-rgb),0.18), 0 2px 8px rgba(0,0,0,0.5)",
+            border: "1px solid rgba(255,255,255,0.09)",
+          }}
+          className="rounded-2xl bg-[#111010] flex flex-col overflow-hidden"
+        >
+          {/* Radial glow */}
+          <div
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 100%, rgba(var(--accent-rgb),0.10) 0%, transparent 65%)",
+            }}
+          />
+
+          {/* Drag handle bar */}
+          <div
+            onPointerDown={onFloatPointerDown}
+            onPointerMove={onFloatPointerMove}
+            onPointerUp={onFloatPointerUp}
+            style={{ touchAction: "none", cursor: "grab" }}
+            className="shrink-0 flex items-center justify-between px-3 py-2.5 border-b border-[#2a2520] bg-[#1a1714] select-none relative z-10"
+          >
+            <div className="flex items-center gap-2">
+              <Image
+                src={currentSprite}
+                alt="Tyunnie"
+                width={28}
+                height={28}
+                style={{
+                  width: 28,
+                  height: "auto",
+                  filter: spriteGlow
+                    ? "drop-shadow(0 -2px 8px rgba(var(--accent-rgb),0.55))"
+                    : "drop-shadow(0 -2px 8px rgba(var(--accent-rgb),0.25))",
+                }}
+              />
+              <span
+                className="font-serif italic text-[15px]"
+                style={{ color: "var(--accent)" }}
+              >
+                Tyunnie
+              </span>
+            </div>
             <div className="flex items-center gap-1.5">
+              {/* Snap back to bottom sheet */}
               <button
-                onClick={onClose}
+                onClick={() => {
+                  setIsFloating(false);
+                  localStorage.setItem("tyunnie_float", "false");
+                  onOpen?.();
+                }}
+                title="Snap back to panel"
+                className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all flex items-center justify-center"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M6 2v6M3.5 5.5L6 8l2.5-2.5" />
+                  <path d="M1 10.5h10" />
+                </svg>
+              </button>
+              {/* Close float window — hides panel, preserves chat */}
+              <button
+                onClick={() => {
+                  setIsFloating(false);
+                  localStorage.setItem("tyunnie_float", "false");
+                }}
                 title="Close"
                 className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
               >
@@ -1195,226 +1608,192 @@ calculate:
               </button>
             </div>
           </div>
+
+          {/* Float chat body */}
+          <div className="flex flex-col flex-1 overflow-hidden min-h-0 relative z-10">
+            {briefingSection}
+            {chatHistorySection}
+            {proactiveSuggestionCard}
+            {inputArea}
+          </div>
         </div>
+      ) : (
+        <>
+          {/* ── BACKDROP — dims content when panel is open (not fullscreen) ── */}
+          <div
+            onClick={onClose}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 59,
+              background: "rgba(0,0,0,0.45)",
+              backdropFilter: isOpen && snapPct > 0 ? "blur(2px)" : "none",
+              opacity: isOpen && snapPct > 0 ? 1 : 0,
+              pointerEvents: isOpen && snapPct > 0 ? "auto" : "none",
+              transition: "opacity 0.3s ease",
+            }}
+          />
 
-        {/* ── DAILY BRIEFING CARD (pinned, outside scroll) ── */}
-        {briefingLoading && profile?.show_briefing !== false && (
-          <div className="shrink-0 px-3 pt-3 pb-1">
-            <div className="bg-[#1e1b17] border border-[#2a2520] rounded-[4px_16px_16px_16px] px-3.5 py-2.5 flex gap-1.5 items-center">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="w-1.5 h-1.5 rounded-full bg-[#f97316]"
-                  style={{
-                    animation: "thinkPulse 1.2s ease-in-out infinite",
-                    animationDelay: `${i * 0.2}s`,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-        {briefing && !briefingLoading && profile?.show_briefing !== false && (
-          <div className="shrink-0 px-3 pt-3 pb-1">
-            <div className="bg-[#1e1b17] border border-[#f97316]/30 rounded-2xl px-3.5 py-2.5 w-full">
-              <div className="text-[9px] font-bold text-[#f97316] uppercase tracking-widest mb-1.5 font-mono">
-                Daily briefing
-              </div>
-              <p className="text-[12px] text-[#c8b89a] leading-[1.7]">
-                {briefing}
-              </p>
-            </div>
-          </div>
-        )}
+          {/* ── BOTTOM SHEET PANEL ── */}
+          <div
+            className="fixed z-60 bg-[#111010] flex flex-col overflow-hidden"
+            style={{
+              bottom: 0,
+              left: "50%",
+              width: getPanelWidth(),
+              height: "100dvh",
+              borderRadius: snapPct === 0 ? 0 : "20px 20px 0 0",
+              borderTop: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
+              borderLeft: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
+              borderRight: snapPct === 0 ? "none" : "1px solid rgba(255,255,255,0.09)",
+              borderBottom: "none",
+              transform: isOpen
+                ? `translateX(-50%) translateY(${snapPct}vh)`
+                : "translateX(-50%) translateY(100dvh)",
+              transition: "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), width 0.35s ease, border-radius 0.3s ease",
+              boxShadow:
+                "0 -8px 50px rgba(0,0,0,0.7), 0 -1px 0 rgba(255,255,255,0.05)",
+            }}
+          >
+            {/* Subtle radial glow */}
+            <div
+              className="absolute inset-0 pointer-events-none z-0"
+              style={{
+                background:
+                  "radial-gradient(ellipse at 50% 100%, rgba(var(--accent-rgb),0.10) 0%, transparent 65%)",
+              }}
+            />
 
-        {/* ── CHAT HISTORY ── */}
-        <div
-          ref={historyRef}
-          className="flex-1 overflow-y-auto px-3 pt-3 pb-6 md:pb-2 flex flex-col gap-2.5 relative min-h-0 overscroll-contain"
-          style={{
-            scrollbarWidth: "thin",
-            scrollbarColor: "#2a2520 transparent",
-          }}
-        >
-          <div className="h-10 md:flex-1" />
-          {bubbles.map((b, index) => {
-            const distanceFromBottom = bubbles.length - 1 - index;
-            const opacity =
-              distanceFromBottom > 3
-                ? Math.max(0.15, 1 - (distanceFromBottom - 3) * 0.18)
-                : 1;
+            {/* ── CHAT COLUMN ── */}
+            {/* Height = visible portion only — prevents input being hidden below translateY offset */}
+            <div
+              className="flex flex-col overflow-hidden relative z-10 min-w-0"
+              style={{
+                height: `${100 - snapPct}dvh`,
+                transition: "height 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
+              }}
+            >
 
-            return (
-              <div
-                key={b.id}
-                className={`flex ${b.who === "tyunnie" ? "justify-start" : "justify-end"}`}
-                style={{
-                  animation: "bubbleIn 0.3s ease",
-                  opacity,
-                  transition: "opacity 0.3s ease",
-                }}
-              >
-                <div
-                  className={`
-                    ${snapPct <= 4 ? "max-w-xl" : "max-w-52.5"} px-3 py-2 md:px-3.5 md:py-2.5 text-[11px] md:text-[12.5px] leading-[1.6] font-medium
-                    ${
-                      b.who === "tyunnie"
-                        ? "bg-[#f97316] text-white rounded-[4px_16px_16px_16px]"
-                        : "bg-[#2a2520] text-[#e8ddd0] rounded-[16px_4px_16px_16px] border border-[#3a3028]"
-                    }
-                  `}
-                >
-                  <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(b.text) }} />
-                  <div className="text-[9px] opacity-60 mt-1 text-right font-mono">
-                    {b.time}
+              {/* ── PANEL HEADER ── */}
+              <div className="shrink-0 relative z-10">
+                {/* Handle bar — click/tap to cycle snap sizes (desktop only; hidden on mobile with single snap point) */}
+                {!isMobile && (
+                  <div
+                    className="flex flex-col items-center gap-1.5 pt-3 pb-2 cursor-pointer select-none active:opacity-70 transition-opacity"
+                    onClick={cycleSnap}
+                    title="Click to resize"
+                  >
+                    {/* Snap indicator — filled segments show how open the panel is */}
+                    <div className="flex items-center gap-2">
+                      {SNAP_POINTS.map((p, i) => {
+                        const currentIdx = SNAP_POINTS.indexOf(snapPct);
+                        const isActive = snapPct === p;
+                        const isFilled = i <= currentIdx;
+                        return (
+                          <div
+                            key={p}
+                            className="rounded-full transition-all duration-300"
+                            style={{
+                              width: isActive ? 26 : 8,
+                              height: 5,
+                              background: isActive
+                                ? "#f97316"
+                                : isFilled
+                                ? "rgba(var(--accent-rgb),0.6)"
+                                : "rgba(255,255,255,0.2)",
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-4 pb-2.5 pt-0.5 border-b border-[#2a2520]">
+                  <span
+                    className="font-serif italic text-lg"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    Tyunnie
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {/* Detach button — desktop only */}
+                    {!isMobile && (
+                      <button
+                        onClick={() => {
+                          setIsFloating(true);
+                          localStorage.setItem("tyunnie_float", "true");
+                          onClose?.();
+                        }}
+                        title="Float panel"
+                        className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all flex items-center justify-center"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M5 2H2.5A.5.5 0 0 0 2 2.5v7a.5.5 0 0 0 .5.5h7A.5.5 0 0 0 10 9.5V7" />
+                          <path d="M7.5 2H10v2.5" />
+                          <path d="M10 2L6 6" />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={onClose}
+                      title="Close"
+                      className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
+                    >
+                      ✕
+                    </button>
                   </div>
                 </div>
               </div>
-            );
-          })}
 
-          {/* Thinking dots */}
-          {thinking && (
-            <div className="flex justify-start">
-              <div className="bg-[#f97316] rounded-[16px_4px_16px_16px] px-4 py-3 flex gap-1 items-center">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-white"
-                    style={{
-                      animation: "thinkPulse 1.2s ease-in-out infinite",
-                      animationDelay: `${i * 0.2}s`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+              {/* ── DAILY BRIEFING CARD (pinned, outside scroll) ── */}
+              {briefingSection}
 
-          {/* Confirmation card */}
-          {confirm && (
-            <div
-              className="bg-[#1e1b17] border border-[#f97316] rounded-xl p-3.5 mx-1"
-              style={{ animation: "bubbleIn 0.3s ease" }}
-            >
-              <div className="text-[10px] font-bold text-[#f97316] mb-2 tracking-wide">
-                ✦ {confirm.label}
-              </div>
-              <div
-                className="text-[11px] text-[#c8b89a] leading-[1.8] mb-3"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(confirm.detail) }}
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={confirm.onConfirm}
-                  className="flex-1 bg-[#16a34a] text-white text-[11px] font-bold rounded-lg py-2 hover:opacity-90 transition-opacity"
-                >
-                  Looks good ✓
-                </button>
-                <button
-                  onClick={() => {
-                    setConfirm(null);
-                    addBubble("tyunnie", "No worries, I won't add it 🧡");
+              {/* ── CHAT HISTORY ── */}
+              {chatHistorySection}
+
+              {/* ── SPRITE ── */}
+              <div className="h-64 shrink-0 relative flex items-end justify-start overflow-hidden">
+                <div
+                  className="absolute top-0 left-0 right-0 h-10 pointer-events-none z-10"
+                  style={{ background: "linear-gradient(#111010, transparent)" }}
+                />
+                <Image
+                  src={currentSprite}
+                  alt="Tyunnie"
+                  width={200}
+                  height={256}
+                  className="object-contain object-bottom relative z-2 transition-all duration-500 -ml-2"
+                  style={{
+                    width: "200px",
+                    height: "auto",
+                    filter: spriteGlow
+                      ? "drop-shadow(0 -8px 40px rgba(var(--accent-rgb),0.55)) brightness(1.06)"
+                      : "drop-shadow(0 -8px 30px rgba(var(--accent-rgb),0.20))",
                   }}
-                  className="flex-1 bg-transparent border border-[#3a3028] text-[#9a8f7e] text-[11px] font-bold rounded-lg py-2 hover:border-red-800 hover:text-red-400 transition-colors"
-                >
-                  Cancel
-                </button>
+                  priority
+                />
               </div>
+
+              {/* ── PROACTIVE SUGGESTION CARD ── */}
+              {proactiveSuggestionCard}
+
+              {/* ── CHAT INPUT ── */}
+              {inputArea}
             </div>
-          )}
-        </div>
-
-        {/* ── SPRITE ── */}
-        <div className="h-64 shrink-0 relative flex items-end justify-start overflow-hidden">
-          <div
-            className="absolute top-0 left-0 right-0 h-10 pointer-events-none z-10"
-            style={{ background: "linear-gradient(#111010, transparent)" }}
-          />
-          <Image
-            src={currentSprite}
-            alt="Tyunnie"
-            width={200}
-            height={256}
-            className="object-contain object-bottom relative z-2 transition-all duration-500 -ml-2"
-            style={{
-              width: "200px",
-              height: "auto",
-              filter: spriteGlow
-                ? "drop-shadow(0 -8px 40px rgba(var(--accent-rgb),0.55)) brightness(1.06)"
-                : "drop-shadow(0 -8px 30px rgba(var(--accent-rgb),0.20))",
-            }}
-            priority
-          />
-        </div>
-
-        {/* ── CHAT INPUT ── */}
-        <div className="px-3 pt-3 pb-4 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0 relative z-20">
-          {/* Mic button */}
-          {supported && (
-            <button
-              onClick={toggleMic}
-              title={listening ? "Stop listening" : "Voice input"}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 self-end transition-all ${
-                listening
-                  ? "bg-red-500/20 border border-red-500/40 text-red-400 animate-pulse"
-                  : "bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
-              }`}
-            >
-              {listening ? (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="currentColor"
-                >
-                  <rect x="2" y="2" width="10" height="10" rx="2" />
-                </svg>
-              ) : (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                >
-                  <rect x="4.5" y="1" width="5" height="7" rx="2.5" />
-                  <path
-                    d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5"
-                    strokeLinecap="round"
-                  />
-                  <line x1="7" y1="12" x2="7" y2="14" strokeLinecap="round" />
-                </svg>
-              )}
-            </button>
-          )}
-
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={listening ? "Listening..." : "Talk to Tyunnie..."}
-            rows={1}
-            className={`flex-1 bg-[#1e1b17] border rounded-xl text-[#e8ddd0] text-[11px] md:text-xs px-3 py-2 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors ${
-              listening
-                ? "border-red-500/40 placeholder:text-red-400/60"
-                : "border-[#3a3028] focus:border-[#f97316]"
-            }`}
-            style={{ minHeight: "36px", maxHeight: "72px" }}
-          />
-
-          <button
-            onClick={sendChat}
-            disabled={thinking || !input.trim()}
-            className="w-10 h-10 bg-[#f97316] rounded-xl text-white text-base flex items-center justify-center shrink-0 hover:bg-[#c2500f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
-          >
-            ↑
-          </button>
-        </div>
-      </div>
-      {/* end chat column */}
+            {/* end chat column */}
+          </div>
+          {/* end panel */}
+        </>
+      )}
 
       {/* Keyframe animations */}
       <style>{`
@@ -1427,8 +1806,6 @@ calculate:
           40%           { transform: scale(1);   opacity: 1;   }
         }
       `}</style>
-      </div>
-      {/* end panel */}
     </>
   );
 }

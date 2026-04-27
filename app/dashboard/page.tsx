@@ -25,31 +25,45 @@ import {
 import type { Memory } from "@/lib/database";
 import type { StickyNote } from "@/lib/database";
 import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
+import { WorkspaceProvider } from "@/lib/WorkspaceContext";
+
+function PanelSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4 pt-2">
+      <div className="h-7 w-48 rounded-xl bg-[#e8e2d8]" />
+      <div className="h-4 w-full rounded-lg bg-[#f3f0ea]" />
+      <div className="h-4 w-5/6 rounded-lg bg-[#f3f0ea]" />
+      <div className="h-4 w-4/6 rounded-lg bg-[#f3f0ea]" />
+    </div>
+  );
+}
 
 // Heavy panels — loaded only when first visited
 const TyunniePanel = dynamic<TyunniePanelProps>(
   () => import("@/components/TyunniePanel"),
   { ssr: false },
 );
-const Todo = dynamic(() => import("@/components/Todo"), { ssr: false });
-const Writing = dynamic(() => import("@/components/Writing"), { ssr: false });
-const Projects = dynamic(() => import("@/components/Projects"), { ssr: false });
-const Snippets = dynamic(() => import("@/components/Snippets"), { ssr: false });
-const Finance = dynamic(() => import("@/components/Finance"), { ssr: false });
-const Music = dynamic(() => import("@/components/Music"), { ssr: false });
-const Pomodoro = dynamic(() => import("@/components/Pomodoro"), { ssr: false });
-const Games = dynamic(() => import("@/components/Games"), { ssr: false });
+const Todo = dynamic(() => import("@/components/Todo"), { ssr: false, loading: PanelSkeleton });
+const Writing = dynamic(() => import("@/components/Writing"), { ssr: false, loading: PanelSkeleton });
+const Projects = dynamic(() => import("@/components/Projects"), { ssr: false, loading: PanelSkeleton });
+const Snippets = dynamic(() => import("@/components/Snippets"), { ssr: false, loading: PanelSkeleton });
+const Finance = dynamic(() => import("@/components/Finance"), { ssr: false, loading: PanelSkeleton });
+const Music = dynamic(() => import("@/components/Music"), { ssr: false, loading: PanelSkeleton });
+const Pomodoro = dynamic(() => import("@/components/Pomodoro"), { ssr: false, loading: PanelSkeleton });
+const Games = dynamic(() => import("@/components/Games"), { ssr: false, loading: PanelSkeleton });
 const Calculator = dynamic(() => import("@/components/Calculator"), {
   ssr: false,
+  loading: PanelSkeleton,
 });
 const Weather = dynamic(() => import("@/components/Weather"), { ssr: false });
-const Profile = dynamic(() => import("@/components/Profile"), { ssr: false });
+const Profile = dynamic(() => import("@/components/Profile"), { ssr: false, loading: PanelSkeleton });
 const ProductivityHub = dynamic(() => import("@/components/ProductivityHub"), {
   ssr: false,
+  loading: PanelSkeleton,
 });
 const EntertainmentHub = dynamic(
   () => import("@/components/EntertainmentHub"),
-  { ssr: false },
+  { ssr: false, loading: PanelSkeleton },
 );
 const StickyLayer = dynamic(() => import("@/components/StickyLayer"), {
   ssr: false,
@@ -523,7 +537,7 @@ export default function Home() {
     if (!user) return;
 
     async function loadAll() {
-      const [td, dr, pr, sn, fi, stickies, mems] = await Promise.all([
+      const [td, dr, pr, sn, fi, stickies, mems, prof] = await Promise.all([
         getTodos(user!.id),
         getDrafts(user!.id),
         getProjects(user!.id),
@@ -531,8 +545,8 @@ export default function Home() {
         getFinanceEntries(user!.id),
         getStickyNotes(user!.id),
         getMemories(user!.id),
+        getProfile(user!.id),
       ]);
-      const prof = await getProfile(user!.id);
       setProfile(prof);
       if (prof?.avatar_url) setAvatarUrl(prof.avatar_url);
       if (prof) {
@@ -777,6 +791,7 @@ export default function Home() {
 
   // ── MAIN APP ──
   return (
+    <WorkspaceProvider>
     <MusicProvider>
       <div className="flex h-dvh w-screen overflow-hidden bg-[#faf8f5]">
         <Sidebar
@@ -1163,5 +1178,6 @@ export default function Home() {
         onNotesChange={setStickyNotes}
       />
     </MusicProvider>
+    </WorkspaceProvider>
   );
 }

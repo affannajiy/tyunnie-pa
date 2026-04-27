@@ -1,7 +1,7 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import { Instrument_Serif, Nunito } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
@@ -56,6 +56,8 @@ export default function RootLayout({
         )}
         {/* Preconnect to Groq for faster first AI response */}
         <link rel="preconnect" href="https://api.groq.com" />
+        {/* Preconnect to Open-Meteo for faster weather fetch */}
+        <link rel="preconnect" href="https://api.open-meteo.com" />
       </head>
       <body className="font-sans antialiased">
         <script

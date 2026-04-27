@@ -176,3 +176,25 @@ npm run dev      # Start dev server (Next.js + Turbopack)
 npm run build    # Production build + TypeScript check
 npm run lint     # ESLint
 ```
+
+---
+
+### WorkspaceContext
+
+- `lib/WorkspaceContext.tsx` — broadcast-only pattern; panels push snapshots in, TyunniePanel reads them out
+- Always call `setSnapshot(null)` on panel unmount — prevents stale context bleeding into the next panel
+- Debounce snapshot writes at 600ms inside each panel; TyunniePanel adds an additional 4s "Tyun pause" before firing the proactive API call
+- Proactive suggestion rate limit: 90s cooldown tracked via `lastProactiveRef` — not sessionStorage (per-session is fine)
+- Gate per-snapshot firing with sessionStorage key `tyunnie_proactive_${snapshot.updatedAt}` to survive remounts
+- Panels broadcasting: `Snippets.tsx` (active code), `Writing.tsx` (draft body, editor open only), `Todo.tsx` (pending task summary)
+
+### TyunniePanel Float Mode
+
+- `isFloating` persisted to `localStorage['tyunnie_float']` — survives page refresh
+- Float position persisted to `localStorage['tyunnie_float_pos']` — written on drag end only
+- Float mode disabled on mobile (< 768px) — `isFloating` forced false, detach button hidden
+- Always-mounted wrapper `div` stays in DOM in both modes — chat history is never lost
+- Drag uses same Pointer Events pattern as `MiniPlayer.tsx` — `setPointerCapture`, `touchAction none`, exclude buttons/inputs/textareas
+- `z-index: 60` (above dock `z-50`)
+- Float window: 400×560px fixed, `rounded-2xl`, accent glow shadow
+- Bottom sheet unchanged when `isFloating` is false — all snap logic intact

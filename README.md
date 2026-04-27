@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.16.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.17.0-f97316?style=flat-square)
 
 ---
 
@@ -17,8 +17,11 @@
 
 - Context-aware assistant powered by **Groq (Llama 3.3 70B)**
 - Knows your tasks, drafts, projects, finances, snippets, sticky notes, and memories
-- Natural language actions: add/delete tasks, create drafts, log finance (with account tagging), run snippets, start Pomodoro, toggle theme, enter focus mode, **calculate** (evaluates math and sends the expression to the Calculator panel)
+- Natural language actions: add/delete tasks, create drafts, log finance (with account tagging), run snippets, start Pomodoro, toggle theme, enter focus mode, control music (play/pause/next/volume), **calculate** (evaluates math and sends the expression to the Calculator panel)
+- **Live workspace awareness** — Tyunnie reads the content you're actively editing (code, draft, or task list) and injects it into every chat request; ask "what does this do?" or "fix this bug" without pasting anything
+- **Proactive suggestions** — after 4 seconds of editing, Tyunnie silently analyses your active workspace and surfaces a non-intrusive tip (bug catch for code, quiz questions for writing, focus nudge for tasks) as a dismissable card with a "Use this →" pre-fill shortcut
 - **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
+- **Detachable floating window** — "Float panel" button (desktop) converts the bottom-sheet into a free-floating, draggable 400×560px window; position persists across page loads. Snap-back button returns to the sheet
 - **Bottom-sheet overlay** — slides up from the dock; chat history persists across all tab switches
 - **Snap resize** — cycle through snap sizes (default → wide → fullscreen on desktop; fullscreen-only on mobile)
 - **Swipe-up gesture** — swipe from the bottom edge to open on mobile
@@ -100,6 +103,15 @@ All modes follow the app's light/dark theme and chosen accent colour.
 - **MiniPlayer** — floating draggable overlay appears when music is playing outside the Music panel; click art/title to navigate to the player
 - **Fluid animations** — spring-based panel entrance, modal scale-in, backdrop fade, and dock/tab active-dot pop throughout the app
 - **Mobile pull-to-refresh** — swipe down at scroll top to reload all data; horizontal swipe to navigate between Home, Productivity, and Entertainment
+
+### Performance
+
+- **Parallel data loading** — profile, tasks, drafts, projects, snippets, finance, sticky notes, and memories all fetched in a single `Promise.all` on login; no sequential waterfalls
+- **Lazy panel loading with skeletons** — each panel chunk downloads only on first visit; pulsing skeleton shown while the chunk loads so the UI is never blank
+- **Immutable static asset cache** — hashed JS/CSS chunks cached for 1 year; public images cached 1 day with stale-while-revalidate
+- **Bundle tree-shaking** — `recharts` and `date-fns` tree-shaken via `optimizePackageImports`; only imported symbols included in the final bundle
+- **Preconnect hints** — Supabase, Groq, and Open-Meteo DNS + TLS resolved before first request fires
+- **No `X-Powered-By` header** — reduces response size and hides tech fingerprint
 
 ---
 

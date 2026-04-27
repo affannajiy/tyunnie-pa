@@ -10,6 +10,7 @@ import {
   type Snip,
 } from "@/lib/database";
 import { authHeader } from "@/lib/supabase";
+import { useWorkspace } from "@/lib/WorkspaceContext";
 
 type Props = {
   userId: string;
@@ -38,6 +39,7 @@ function getLangLabel(value: string) {
 }
 
 export default function Snippets({ userId, onAction, refreshKey }: Props) {
+  const { setSnapshot } = useWorkspace();
   const [snips, setSnips] = useState<Snip[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -87,6 +89,25 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
     return () => window.removeEventListener("tyunnie-new-snippet", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── WORKSPACE BROADCAST ──
+  useEffect(() => {
+    if (!code || code.length < 80) return;
+    const timer = setTimeout(() => {
+      setSnapshot({
+        panel: "snippets",
+        content: code,
+        label: `${getLangLabel(language)} snippet '${fileName}'`,
+        meta: { language, title: fileName },
+        updatedAt: Date.now(),
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [code, fileName, language, setSnapshot]);
+
+  useEffect(() => {
+    return () => setSnapshot(null);
+  }, [setSnapshot]);
 
   // ── HELPERS ──
 

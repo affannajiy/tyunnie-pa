@@ -18,11 +18,34 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['resend'],
+  poweredByHeader: false,
+  reactStrictMode: true,
+
+  experimental: {
+    // Tree-shake large packages to only include what's imported
+    optimizePackageImports: ['recharts', 'date-fns'],
+  },
+
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: securityHeaders,
+      },
+      // Immutable cache for hashed Next.js static chunks (JS/CSS)
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      // Long-lived cache for public images and fonts
+      {
+        source: '/(.*\\.(?:png|jpg|jpeg|gif|svg|ico|woff2?))',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
       },
     ]
   },

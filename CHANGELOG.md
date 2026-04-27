@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.17.0] — 2026-04-27
+
+### Performance
+
+- **Parallel data loading** — `getProfile` now fetched inside the initial `Promise.all` alongside todos, drafts, projects, snippets, finance, sticky notes, and memories, eliminating a sequential Supabase round-trip on every dashboard load
+- **Panel skeleton loaders** — lazy-loaded panels (Tasks, Writing, Projects, Snippets, Finance, Music, Pomodoro, Games, Calculator, Profile, and Hub panels) now show a pulsing skeleton while their JS chunk downloads instead of a blank area, improving perceived load time
+- **Static asset caching** — `/_next/static/` chunks now served with `Cache-Control: immutable` (1 year); public images/fonts cached for 1 day with 7-day stale-while-revalidate
+- **Bundle tree-shaking** — `recharts` and `date-fns` added to `optimizePackageImports` so Next.js only bundles the symbols actually imported, shrinking the Finance and date utility chunks
+- **Open-Meteo preconnect** — `<link rel="preconnect" href="https://api.open-meteo.com">` added to `<head>` so the TLS handshake for the weather widget completes before the request fires
+- **Build hygiene** — `poweredByHeader: false` removes the `X-Powered-By: Next.js` response header; `reactStrictMode: true` made explicit
+
+### Added
+
+- **WorkspaceContext** (`lib/WorkspaceContext.tsx`) — new React context that lets panels broadcast their active content to TyunniePanel in real time. `Snippets.tsx`, `Writing.tsx`, and `Todo.tsx` now push debounced (600ms) snapshots of the user's active content, resetting to `null` on unmount
+- **Proactive workspace suggestions** — TyunniePanel watches the active workspace snapshot and, after a 4-second "Tyun pause", fires a background `/api/chat` call with a special system prompt that generates a short, genuinely useful suggestion (bug catch for code, quiz generation for writing, focus tip for tasks). The suggestion appears as a dismissable frosted-glass card above the chat input, with a "Use this →" button that pre-fills the input without auto-sending
+- **Detachable floating TyunniePanel** — new "Float panel" button (desktop only) in the panel header converts the bottom-sheet into a free-floating, draggable 400×560px window using Pointer Events drag (`setPointerCapture`). Position is persisted to `localStorage['tyunnie_float_pos']` on drag end; float state persisted to `localStorage['tyunnie_float']`. The always-mounted wrapper preserves chat history across mode switches. Snap-back button in the float handle returns to the bottom sheet
+
+### Changed
+
+- **TyunniePanel header** — "Float panel" detach button (pop-out SVG icon) added beside the close button on desktop; hidden on mobile
+- **Proactive suggestion cooldown** — 90-second global cooldown via `lastProactiveRef`; per-snapshot sessionStorage gate prevents re-firing on remount; respects active-chat guard (skips if panel open and last message < 60s ago)
+- **Tyunnie system prompt** — workspace snapshot now injected into every chat request (first 600 chars of active panel content); allows Tyunnie to answer "what does this do?" / "fix this" without the user pasting code or draft text. `set_volume` added to the declared action table (was handled in executeAction but undocumented in the prompt). Active panel name surfaced in context line alongside finance view month. New `WORKSPACE CONTEXT` strict rule block instructs Tyunnie to use live content naturally
+- **Build** — `@vercel/analytics` import corrected from `/next` (missing in v1.1.4) to `/react`; `resend` added to `serverExternalPackages` so Turbopack no longer tries to statically resolve its optional `@react-email/render` dynamic import
+- **CLAUDE.md** — documented WorkspaceContext broadcast pattern and float mode architecture rules
+
+---
+
 ## [3.16.0] — 2026-04-21
 
 ### Added
