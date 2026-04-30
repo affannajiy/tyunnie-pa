@@ -65,6 +65,17 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
 
   // Filter
   const [filter, setFilter] = useState<"all" | "pending" | "done">("pending");
+  const [filterTag, setFilterTag] = useState<string | null>(null);
+
+  // ── AGENTIC FILTER LISTENER ──
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { panel, filter: tag } = (e as CustomEvent).detail as { panel: string; filter: string };
+      if (panel === "todo") setFilterTag(tag);
+    };
+    window.addEventListener("tyunnie-filter-panel", handler);
+    return () => window.removeEventListener("tyunnie-filter-panel", handler);
+  }, []);
 
   useEffect(() => {
     getTodos(userId).then((data) => {
@@ -152,7 +163,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
     if (filter === "pending") return !t.done;
     if (filter === "done") return t.done;
     return true;
-  });
+  }).filter((t) => !filterTag || t.tag === filterTag);
 
   const pendingCount = todos.filter((t) => !t.done).length;
   const doneCount = todos.filter((t) => t.done).length;

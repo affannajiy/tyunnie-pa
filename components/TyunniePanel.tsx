@@ -10,6 +10,7 @@ import { useSpeech } from "@/lib/useSpeech";
 import type { Todo, Draft, Project, Snip, FinanceEntry } from "@/lib/database";
 import { authHeader } from "@/lib/supabase";
 import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
+import { getCyclingQuote } from "@/lib/tyunnieQuotes";
 
 /** Strip all tags except a safe whitelist — prevents XSS in AI-rendered chat bubbles. */
 function sanitizeHtml(html: string): string {
@@ -220,10 +221,34 @@ export default function TyunniePanel({
     };
   }, [isOpen, onOpen]);
 
+  // ── THINKING QUOTE ──
+  const [thinkQuoteIdx, setThinkQuoteIdx] = useState(0);
+  const thinkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (thinking) {
+      thinkIntervalRef.current = setInterval(() => {
+        setThinkQuoteIdx((i) => i + 1);
+      }, 2500);
+    } else {
+      if (thinkIntervalRef.current) {
+        clearInterval(thinkIntervalRef.current);
+        thinkIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (thinkIntervalRef.current) {
+        clearInterval(thinkIntervalRef.current);
+        thinkIntervalRef.current = null;
+      }
+    };
+  }, [thinking]);
+
   // ── BREIFING ──
   const [briefing, setBriefing] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(false);
   const briefingFiredRef = useRef(false);
+  const [briefingKey, setBriefingKey] = useState(0);
 
   // ── PROACTIVE SUGGESTION STATE ──
   const [proactiveSuggestion, setProactiveSuggestion] = useState<{
@@ -320,9 +345,19 @@ export default function TyunniePanel({
     }
   }, [bubbles, thinking, confirm]);
 
+  // ── TRIGGER BRIEFING EVENT ──
+  useEffect(() => {
+    const handler = () => {
+      sessionStorage.removeItem("tyunnie_briefing");
+      setBriefingKey((k) => k + 1);
+    };
+    window.addEventListener("tyunnie-trigger-briefing", handler);
+    return () => window.removeEventListener("tyunnie-trigger-briefing", handler);
+  }, []);
+
   // ── DAILY BRIEFING ──
   useEffect(() => {
-    if (sessionStorage.getItem("tyunnie_briefing")) {
+    if (briefingKey === 0 && sessionStorage.getItem("tyunnie_briefing")) {
       setBriefing(sessionStorage.getItem("tyunnie_briefing"));
       return;
     }
@@ -379,7 +414,8 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
     }
 
     fetchBriefing();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [briefingKey]);
 
   // ── KEEP isOpenRef IN SYNC ──
   useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
@@ -655,11 +691,11 @@ ${
 ══════════════════════════
 ACTIONS
 ══════════════════════════
-Append ONE action block at the end of your reply. Format EXACTLY:
+You may emit one or more action blocks at the end of your reply. For multi-step agentic workflows, emit multiple action blocks in sequence on separate lines. Format EXACTLY:
 <action>{"type":"ACTION_NAME","data":{...}}</action>
 
 Use < and > literally. NOT $action> or [action].
-The action block MUST be the LAST line of your reply.
+Action block(s) MUST be the LAST line(s) of your reply.
 If no action is needed for a message, omit the block entirely.
 NEVER mention "action block", "JSON", or any technical detail to the user.
 
@@ -688,7 +724,7 @@ add_snippet    → data: { "name":"file.py", "language":"py"|"js"|"ts"|"bash"|"o
 delete_snippet → data: { "id":"uuid" }
 
 ─── NAVIGATION ───
-navigate       → data: { "panel":"desk"|"profile"|"productivity"|"entertainment"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games"|"calculator" }
+navigate       → data: { "panel":"desk"|"profile"|"productivity"|"entertainment"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games"|"calculator", "filter":"cs"|"write"|"personal"|"other" (optional) }
 
 ─── MUSIC ───
 music_control  → data: { "action":"play"|"pause"|"next"|"prev"|"toggle"|"shuffle"|"repeat", "trackName":"..." (optional), "repeatMode":"all"|"one"|"off" (for repeat) }
@@ -712,6 +748,17 @@ calculate      → data: { "expr":"calculator-compatible expression string" }
 
 ─── SYSTEM ───
 set_theme      → data: { "theme":"dark"|"light" }
+
+─── AGENTIC — PANEL VISIBILITY (flat JSON, no "data" wrapper) ───
+hide_panel          → {"type":"hide_panel","panel":"entertainment"|"games"|"music"|"productivity"|"pomodoro"|"finance"|"snippets"|"writing"|"todo"}
+show_panel          → {"type":"show_panel","panel":"..."}
+show_all_panels     → {"type":"show_all_panels"}
+
+─── AGENTIC — PRESETS & FILTERS (flat JSON, no "data" wrapper) ───
+set_pomodoro_preset → {"type":"set_pomodoro_preset","preset":"classic"|"extended"|"short_sprint"|"deep_work"}
+filter_panel        → {"type":"filter_panel","panel":"writing"|"todo","filter":"cs"|"write"|"personal"|"other"}
+enter_focus_mode    → {"type":"enter_focus_mode"}
+trigger_briefing    → {"type":"trigger_briefing"}
 
 ══════════════════════════
 STRICT RULES
@@ -800,6 +847,42 @@ SYSTEM:
 - "dark mode / switch to dark" → set_theme dark
 - "light mode / switch to light" → set_theme light
 
+══════════════════════════
+AGENTIC MODE — MULTI-STEP ORCHESTRATION
+══════════════════════════
+
+You are not just a chatbot — you are an active orchestrator. When the user expresses intent that maps to a known workflow, confirm the plan first, then execute it as a sequence of actions.
+
+CONFIRMATION RULE (NON-NEGOTIABLE):
+Before executing ANY multi-step workflow (2+ actions), confirm first:
+"Got it — here's my plan:
+1. [action description in plain English]
+2. [action description in plain English]
+Should I go ahead?"
+
+After user confirms ("yes", "go", "do it", "yeah", "sure", "okay", "yep", "go ahead", "just do it"), respond with one brief line, then emit all actions on separate lines.
+
+SINGLE-ACTION RULE:
+If intent maps to exactly ONE action, no confirmation needed. Just do it and say one brief line.
+
+INTENT → WORKFLOW MAPPING:
+"I need to study" / "help me focus"         → set_pomodoro_preset(deep_work) + hide_panel(entertainment) + navigate(todo, cs filter)
+"I'm done for the day" / "wrap up"          → navigate(desk)
+"quick break" / "take a break"              → set_pomodoro_preset(classic) + navigate(entertainment)
+"I want to game" / "let me play"            → navigate(games)
+"morning routine" / "start my day"          → navigate(desk) + trigger_briefing
+"deep work" / "study sprint"                → set_pomodoro_preset(deep_work) + hide_panel(entertainment) + enter_focus_mode
+"I'm feeling overwhelmed"                   → navigate(desk)
+"show everything" / "unhide panels"         → show_all_panels
+
+STRICT AGENTIC RULES:
+- NEVER run a multi-step workflow without explicit confirmation first
+- NEVER emit actions during the confirmation message — only AFTER the user confirms
+- NEVER chain more than 5 actions in one workflow
+- If user says "cancel" / "never mind" / "stop" after confirmation, abort entirely
+- hide_panel and show_panel affect DOCK VISIBILITY only — describe as "hiding from your dock", not "disabling"
+- navigate supports an optional "filter" field (flat format): {"type":"navigate","panel":"todo","filter":"cs"}
+
 RESPONSE FORMAT EXAMPLES:
 
 add_todo:
@@ -854,9 +937,15 @@ calculate:
       );
 
       switch (action.type) {
-        case "navigate":
-          onNavigate(action.data.panel);
+        case "navigate": {
+          const navPanel = (action.data?.panel ?? action.panel) as string;
+          const navFilter = action.data?.filter ?? action.filter;
+          onNavigate(navPanel);
+          if (navFilter) {
+            setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-filter-panel", { detail: { panel: navPanel, filter: navFilter } })), 200);
+          }
           break;
+        }
 
         case "add_todo": {
           const d = action.data;
@@ -1116,6 +1205,39 @@ calculate:
           }
           break;
         }
+
+        case "hide_panel":
+          window.dispatchEvent(new CustomEvent("tyunnie-hide-panel", { detail: { panel: action.panel } }));
+          break;
+
+        case "show_panel":
+          window.dispatchEvent(new CustomEvent("tyunnie-show-panel", { detail: { panel: action.panel } }));
+          break;
+
+        case "show_all_panels":
+          window.dispatchEvent(new CustomEvent("tyunnie-show-all-panels"));
+          break;
+
+        case "set_pomodoro_preset":
+          window.dispatchEvent(new CustomEvent("tyunnie-pomodoro-preset", { detail: { preset: action.preset } }));
+          break;
+
+        case "filter_panel":
+          window.dispatchEvent(new CustomEvent("tyunnie-filter-panel", { detail: { panel: action.panel, filter: action.filter } }));
+          break;
+
+        case "enter_focus_mode":
+          if (onFocusMode) {
+            onFocusMode();
+            setCurrentMood("thinking");
+            setTimeout(() => setCurrentMood(null), 4000);
+          }
+          break;
+
+        case "trigger_briefing":
+          sessionStorage.removeItem("tyunnie_briefing");
+          setBriefingKey((k) => k + 1);
+          break;
         case "set_volume": {
           const d = action.data;
           const vol = Math.min(1, Math.max(0, parseFloat(d.volume)));
@@ -1228,8 +1350,8 @@ calculate:
         .replace(/<action=/gi, "<action>")
         .replace(/<action =/gi, "<action>");
 
-      // Strip the action block from the visible message
-      const actionMatch = normalized.match(/<action>([\s\S]*?)<\/action>/);
+      // Strip action blocks from the visible message; collect all for execution
+      const actionMatches = [...normalized.matchAll(/<action>([\s\S]*?)<\/action>/g)];
       const cleanMessage = normalized
         .replace(/<action>[\s\S]*?<\/action>/g, "")
         .trim();
@@ -1238,16 +1360,16 @@ calculate:
       setCurrentMood(null);
       addBubble("tyunnie", cleanMessage);
 
-      // Update message history with clean text (no action block)
+      // Update message history with clean text (no action blocks)
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: cleanMessage },
       ]);
 
-      // Execute action if present
-      if (actionMatch) {
-        setTimeout(() => executeAction(actionMatch[1]), 300);
-      }
+      // Execute all actions in sequence
+      actionMatches.forEach((match, i) => {
+        setTimeout(() => executeAction(match[1]), 300 + i * 200);
+      });
     } catch {
       setThinking(false);
       addBubble("tyunnie", "Something went wrong on my end 😔 Try again?");
@@ -1394,20 +1516,29 @@ calculate:
         );
       })}
 
-      {/* Thinking dots */}
+      {/* Thinking state — sprite + rotating quote */}
       {thinking && (
         <div className="flex justify-start">
-          <div className="bg-[#f97316] rounded-[16px_4px_16px_16px] px-4 py-3 flex gap-1 items-center">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-white"
-                style={{
-                  animation: "thinkPulse 1.2s ease-in-out infinite",
-                  animationDelay: `${i * 0.2}s`,
-                }}
-              />
-            ))}
+          <div className="flex flex-col items-start gap-1.5">
+            <Image
+              src={MOOD_SPRITES["thinking"]}
+              alt="Tyunnie thinking"
+              width={360}
+              height={460}
+              style={{ width: 80, height: "auto" }}
+            />
+            <div
+              className="px-3 py-1.5 rounded-xl"
+              style={{
+                background: "rgba(0,0,0,0.25)",
+                backdropFilter: "blur(4px)",
+                border: "1px solid rgba(255,255,255,0.07)",
+              }}
+            >
+              <span className="text-[11px] italic font-serif text-[#9a8f7e]">
+                &ldquo;{getCyclingQuote(thinkQuoteIdx)}&rdquo;
+              </span>
+            </div>
           </div>
         </div>
       )}

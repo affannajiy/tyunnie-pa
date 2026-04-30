@@ -52,6 +52,16 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // ── AGENTIC FILTER LISTENER ──
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { panel, filter } = (e as CustomEvent).detail as { panel: string; filter: string }
+      if (panel === 'writing') setSearch(filter)
+    }
+    window.addEventListener('tyunnie-filter-panel', handler)
+    return () => window.removeEventListener('tyunnie-filter-panel', handler)
+  }, [])
+
   // ── WORKSPACE BROADCAST ──
   useEffect(() => {
     if (!editorOpen || !body || body.length < 80) return

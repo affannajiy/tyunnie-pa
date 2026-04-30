@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.18.0] — 2026-04-30
+
+### Added
+
+- **Sassy loading quotes** (`lib/tyunnieQuotes.ts`) — new module exporting `TYUNNIE_QUOTES` (20 dry, deadpan Taehyun-inspired quotes), `getRandomQuote()`, and `getCyclingQuote(index)` for timed rotations
+- **TyunniePanel thinking state** (`components/TyunniePanel.tsx`) — replaced the three pulsing dots with the `tyun-mood-thinking` sprite (80px) and a frosted-glass pill showing a quote that rotates every 2.5 seconds via `setInterval`. Interval ref (`useRef`) prevents re-renders; quote index (`useState<number>`) drives updates. Interval is cleared as soon as the AI response arrives
+- **Dashboard auth loading screen** (`app/dashboard/page.tsx`) — replaced the static "Loading..." screen with the default Tyunnie sprite (120px), a quote that rotates every 3 seconds, and a muted "Loading your space..." label. Respects dark mode via Tailwind `dark:` classes; accent color uses the CSS custom property set by the layout script
+- **Panel skeleton quote** (`app/dashboard/page.tsx`) — `PanelSkeleton` now shows a single static Taehyun quote (picked once at module load via `getRandomQuote()`) in centered italic muted text below the pulse bars
+- **404 Tyunnie Runner mini-game** (`app/not-found.tsx`) — canvas-based side-scrolling runner game added inside the 404 right card. Tyunnie (dark warm rectangle with a white eye) jumps over procedurally spawned pixel-block obstacles. Space / ArrowUp / tap to jump and start. Speed ramps by 0.0015 px/frame; obstacles alternate tall (16×40) and wide (30×20); gaps randomised 220–380px. Score increments each frame; high score persisted to `localStorage['tyunnie_runner_hs']`. On death, an overlay shows score, a random Taehyun quote, and restart prompt. All game state lives in a `useRef<RunnerRef>` (no React re-renders per frame); accent color read from `--accent-rgb` CSS variable each frame for dynamic theming
+- **Agentic Pomodoro preset switching** (`components/Pomodoro.tsx`) — listens for the `tyunnie-pomodoro-preset` custom event dispatched by TyunniePanel actions. Supports four presets: `classic` (25/5), `extended` (50/10), `short_sprint` (15/3), and `deep_work` (45/15). Applies the selected preset by updating settings, resetting the timer to focus mode, and persisting via `saveSettings` — all without requiring the user to manually open the settings sheet
+- **Agentic tag filter for Todo** (`components/Todo.tsx`) — listens for the `tyunnie-filter-panel` custom event with `panel: "todo"`. Sets `filterTag` state which layers on top of the existing done/pending filter, letting Tyunnie narrow the task list to a specific tag (cs / write / personal / other) via chat command
+- **Agentic search filter for Writing** (`components/Writing.tsx`) — listens for the `tyunnie-filter-panel` custom event with `panel: "writing"`. Populates the search field so Tyunnie can surface a specific draft by title keyword via chat command
+- **Sidebar `hiddenPanels` prop** (`components/Sidebar.tsx`) — new optional `Set<string>` prop filters nav items on both desktop dock and mobile bar, enabling future per-user panel visibility preferences without changing the `NAV_ITEMS` constant
+
+---
+
 ## [3.17.1] — 2026-04-28
 
 ### Security

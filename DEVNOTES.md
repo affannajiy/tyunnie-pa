@@ -258,6 +258,25 @@ The `clear_sticky` action was triggering on "what's on my sticky" because the "M
 
 Tyunnie can only act on the right item if it knows the UUID. Expose IDs in the system prompt with a consistent prefix:
 
+### Agentic panel control via custom events
+
+Some actions need to drive React state deep inside a panel (e.g. set a Pomodoro preset, filter a list) without prop drilling. The pattern is a `window` custom event:
+
+```ts
+// TyunniePanel.tsx — dispatch
+window.dispatchEvent(new CustomEvent("tyunnie-pomodoro-preset", { detail: { preset } }));
+window.dispatchEvent(new CustomEvent("tyunnie-filter-panel", { detail: { panel, filter } }));
+
+// Panel — listen
+useEffect(() => {
+  const handler = (e: Event) => { /* read (e as CustomEvent).detail */ };
+  window.addEventListener("tyunnie-pomodoro-preset", handler);
+  return () => window.removeEventListener("tyunnie-pomodoro-preset", handler);
+}, []);
+```
+
+Events in use: `tyunnie-pomodoro-preset` (Pomodoro), `tyunnie-filter-panel` (Todo, Writing). Always clean up in `useEffect` return to avoid duplicate listeners on remount.
+
 ---
 
 ## 📦 Environment Variables

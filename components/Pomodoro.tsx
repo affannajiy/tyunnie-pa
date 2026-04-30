@@ -101,6 +101,28 @@ export default function Pomodoro({ userId, initialTask }: Props) {
     setSecondsLeft(s.focusMins * 60);
   }, []);
 
+  // ── AGENTIC PRESET LISTENER ──
+  useEffect(() => {
+    const PRESET_KEY: Record<string, number> = { classic: 0, extended: 1, short_sprint: 2, deep_work: 3 };
+    const PRESET_LONG_AFTER: Record<string, number> = { classic: 4, extended: 4, short_sprint: 4, deep_work: 3 };
+    const handler = (e: Event) => {
+      const { preset } = (e as CustomEvent).detail as { preset: string };
+      const idx = PRESET_KEY[preset];
+      if (idx === undefined) return;
+      const p = PRESETS[idx];
+      const next: PomSettings = { ...p.settings, longAfter: PRESET_LONG_AFTER[preset] ?? 4 };
+      setSettings(next);
+      setDraftSettings(next);
+      saveSettings(next);
+      setRunning(false);
+      setMode("focus");
+      setSecondsLeft(next.focusMins * 60);
+      setShowDone(false);
+    };
+    window.addEventListener("tyunnie-pomodoro-preset", handler);
+    return () => window.removeEventListener("tyunnie-pomodoro-preset", handler);
+  }, []);
+
   // Load pending todos for task linking
   useEffect(() => {
     getTodos(userId).then((data) => {

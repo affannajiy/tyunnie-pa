@@ -5,9 +5,11 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import Image from "next/image";
 
 import dynamic from "next/dynamic";
 import Desk from "@/components/Desk";
+import { getCyclingQuote, getRandomQuote } from "@/lib/tyunnieQuotes";
 import Sidebar, { type Panel } from "@/components/Sidebar";
 import { MusicProvider, useMusicContext } from "@/lib/MusicContext";
 import CommandPalette from "@/components/CommandPalette";
@@ -27,13 +29,18 @@ import type { StickyNote } from "@/lib/database";
 import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
 import { WorkspaceProvider } from "@/lib/WorkspaceContext";
 
+const skeletonQuote = getRandomQuote();
+
 function PanelSkeleton() {
   return (
     <div className="animate-pulse space-y-4 pt-2">
-      <div className="h-7 w-48 rounded-xl bg-[#e8e2d8]" />
-      <div className="h-4 w-full rounded-lg bg-[#f3f0ea]" />
-      <div className="h-4 w-5/6 rounded-lg bg-[#f3f0ea]" />
-      <div className="h-4 w-4/6 rounded-lg bg-[#f3f0ea]" />
+      <div className="h-7 w-48 rounded-xl bg-[#e8e2d8] dark:bg-[#2a2520]" />
+      <div className="h-4 w-full rounded-lg bg-[#f3f0ea] dark:bg-[#1e1b17]" />
+      <div className="h-4 w-5/6 rounded-lg bg-[#f3f0ea] dark:bg-[#1e1b17]" />
+      <div className="h-4 w-4/6 rounded-lg bg-[#f3f0ea] dark:bg-[#1e1b17]" />
+      <p className="text-[11px] italic font-serif text-center text-[#9a8f7e] dark:text-[#b0a090] pt-2">
+        &ldquo;{skeletonQuote}&rdquo;
+      </p>
     </div>
   );
 }
@@ -151,6 +158,26 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // ── LOADING SCREEN QUOTE ──
+  const [loadingQuoteIdx, setLoadingQuoteIdx] = useState(0);
+  const loadingQuoteIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (authLoading) {
+      loadingQuoteIntervalRef.current = setInterval(() => {
+        setLoadingQuoteIdx((i) => i + 1);
+      }, 3000);
+    } else {
+      if (loadingQuoteIntervalRef.current) {
+        clearInterval(loadingQuoteIntervalRef.current);
+        loadingQuoteIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (loadingQuoteIntervalRef.current) clearInterval(loadingQuoteIntervalRef.current);
+    };
+  }, [authLoading]);
+
   // ── PROFILE ──
   const [profile, setProfile] = useState<ProfileType | null>(null);
 
@@ -214,6 +241,28 @@ export default function Home() {
   const [pomodoroKey, setPomodoroKey] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [hiddenPanels, setHiddenPanels] = useState<Set<string>>(new Set());
+
+  // ── AGENTIC PANEL VISIBILITY EVENTS ──
+  useEffect(() => {
+    const hide = (e: Event) => {
+      const { panel } = (e as CustomEvent).detail as { panel: string };
+      setHiddenPanels((prev) => new Set([...prev, panel]));
+    };
+    const show = (e: Event) => {
+      const { panel } = (e as CustomEvent).detail as { panel: string };
+      setHiddenPanels((prev) => { const s = new Set(prev); s.delete(panel); return s; });
+    };
+    const showAll = () => setHiddenPanels(new Set());
+    window.addEventListener("tyunnie-hide-panel", hide);
+    window.addEventListener("tyunnie-show-panel", show);
+    window.addEventListener("tyunnie-show-all-panels", showAll);
+    return () => {
+      window.removeEventListener("tyunnie-hide-panel", hide);
+      window.removeEventListener("tyunnie-show-panel", show);
+      window.removeEventListener("tyunnie-show-all-panels", showAll);
+    };
+  }, []);
 
   // ── MOBILE: pull-to-refresh + swipe navigation ──
   const contentRef = useRef<HTMLDivElement>(null);
@@ -776,13 +825,24 @@ export default function Home() {
   // ── LOADING SCREEN ──
   if (authLoading) {
     return (
-      <div className="min-h-dvh bg-[#faf8f5] flex items-center justify-center">
-        <div className="text-center">
-          <div className="font-serif italic text-4xl text-[#f97316] mb-3">
-            Tyunnie
-          </div>
-          <div className="text-sm text-[#9a8f7e]">Loading...</div>
-        </div>
+      <div className="min-h-dvh bg-[#faf8f5] dark:bg-[#0e0d0b] flex flex-col items-center justify-center gap-5">
+        <Image
+          src="/sprites/tyun-mood-default.png"
+          alt="Tyunnie"
+          width={360}
+          height={460}
+          priority
+          style={{ width: 120, height: "auto" }}
+        />
+        <p
+          className="text-sm italic font-serif text-[#9a8f7e] dark:text-[#b0a090] px-6 text-center max-w-xs"
+          style={{ transition: "opacity 0.4s ease" }}
+        >
+          &ldquo;{getCyclingQuote(loadingQuoteIdx)}&rdquo;
+        </p>
+        <p className="text-xs text-[#b0a090] dark:text-[#4a4038] font-mono">
+          Loading your space...
+        </p>
       </div>
     );
   }
@@ -800,6 +860,7 @@ export default function Home() {
           onSignOut={handleSignOut}
           tyunnieOpen={tyunnieOpen}
           onTyunnieToggle={() => setTyunnieOpen((v) => !v)}
+          hiddenPanels={hiddenPanels}
           onNewSticky={async () => {
             const { createStickyNote } = await import("@/lib/database");
             const offset = (stickyNotes.length % 6) * 24;

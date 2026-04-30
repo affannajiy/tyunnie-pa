@@ -26,6 +26,7 @@ type Props = {
   onTyunnieToggle?: () => void;
   onNewSticky?: () => void;
   onFocusMode?: () => void;
+  hiddenPanels?: Set<string>;
 };
 
 const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
@@ -58,8 +59,10 @@ export default function Sidebar({
   onTyunnieToggle,
   onNewSticky,
   onFocusMode,
+  hiddenPanels,
 }: Props) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const visibleNavItems = NAV_ITEMS.filter((item) => !hiddenPanels?.has(item.panel));
 
   return (
     <>
@@ -80,7 +83,7 @@ export default function Sidebar({
         <div className="w-px h-5 bg-white/10 mx-1 self-center shrink-0" />
 
         {/* Nav items */}
-        {NAV_ITEMS.map(({ panel, icon, label }, idx) => {
+        {visibleNavItems.map(({ panel, icon, label }, idx) => {
           const isActive = active === panel;
           const scale = dockScale(idx, hoveredIdx);
           return (
@@ -350,7 +353,7 @@ export default function Sidebar({
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        {NAV_ITEMS.map(({ panel, icon, label }) => {
+        {visibleNavItems.map(({ panel, icon, label }) => {
           const isActive = active === panel;
           return (
             <button

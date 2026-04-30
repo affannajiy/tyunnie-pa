@@ -30,7 +30,7 @@ export default function Error({
 
       {/* Left panel — branding + sprite */}
       <div
-        className="hidden lg:flex flex-col w-[400px] shrink-0 relative overflow-hidden"
+        className="hidden lg:flex flex-col w-100 shrink-0 relative overflow-hidden"
         style={{ background: `linear-gradient(160deg, rgba(${accentRgb},0.06) 0%, rgba(${accentRgb},0.16) 100%)` }}
       >
         <div className="absolute inset-0 pointer-events-none">
@@ -118,7 +118,7 @@ export default function Error({
 
             {process.env.NODE_ENV === "development" && (
               <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl px-4 py-3 mb-5">
-                <p className="text-[10px] font-mono text-red-500 dark:text-red-400 break-words">
+                <p className="text-[10px] font-mono text-red-500 dark:text-red-400 wrap-break-word">
                   {error.message}
                 </p>
               </div>

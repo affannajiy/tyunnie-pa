@@ -1,6 +1,6 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.15.0.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.18.0.
 
 See [DEPLOYMENT.md](../DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](../DATABASE.md) for schema and SQL.
 
@@ -16,7 +16,7 @@ app/
 ├── dashboard/page.tsx      Main app shell — renders all panels, auth guard (15s timeout)
 ├── auth/page.tsx           Login/signup — split layout, Supabase email + Google OAuth
 ├── error.tsx               Error boundary with sprite + Try Again
-├── not-found.tsx           404 with sprite + /dashboard link
+├── not-found.tsx           404 with split layout, Tyunnie Runner canvas mini-game (space/tap to jump, localStorage high score)
 └── api/
     ├── chat/route.ts       POST — Groq chat (llama-3.3-70b, 400 max tokens), {messages, systemPrompt} → {text}
     ├── run/route.ts        POST — JDoodle code execution, {code, language} → {output}
@@ -26,16 +26,16 @@ app/
 components/
 ├── Desk.tsx                Home dashboard — hero greeting, top 3 tasks, progress rings, finance, music, daily quote
 ├── TyunniePanel.tsx        AI chat panel — bottom-sheet overlay, snap resize (3 desktop / 2 mobile points), swipe-up gesture, always-mounted for chat persistence
-├── Sidebar.tsx             macOS-style bottom-center dock (desktop) + full-width bar (mobile) — magnify-on-hover, Tyun + Sticky buttons, logout
+├── Sidebar.tsx             macOS-style bottom-center dock (desktop) + full-width bar (mobile) — magnify-on-hover, Tyun + Sticky buttons, logout; accepts optional `hiddenPanels: Set<string>` to filter nav items on both layouts
 ├── Profile.tsx             User settings, password vault (AES-GCM encrypted), preferences
-├── Todo.tsx                Task list — tags (cs/write/personal/other), due dates, done toggle, confetti
-├── Writing.tsx             Draft editor — title, body, word count, CRUD
+├── Todo.tsx                Task list — tags (cs/write/personal/other), due dates, done toggle, confetti; listens for `tyunnie-filter-panel` (panel:"todo") to filter by tag
+├── Writing.tsx             Draft editor — title, body, word count, CRUD; listens for `tyunnie-filter-panel` (panel:"writing") to populate search field
 ├── Projects.tsx            Project tracker — status, progress %, dates, Gantt chart
 ├── Snippets.tsx            Code editor — JDoodle live execution (py/js/ts/bash), save/delete
 ├── Finance.tsx             Monthly income/expense — account tags, Recharts analytics
 ├── MiniPlayer.tsx          Floating draggable mini player — appears when playing music outside Music panel, auto-closes 30s after pause, mobile pill layout
 ├── Music.tsx               Audio player — playlist.json + user uploads, album art, shuffle/repeat, skip ±10s, audio visualizer
-├── Pomodoro.tsx            25/5 timer — task binding, notifications
+├── Pomodoro.tsx            Configurable timer — task binding, notifications, 4 presets; listens for `tyunnie-pomodoro-preset` custom event (agentic preset switching)
 ├── Games.tsx               Game hub dispatcher
 ├── ProductivityHub.tsx     Hub panel — links to Todo, Writing, Projects, Snippets, Pomodoro, Finance
 ├── EntertainmentHub.tsx    Hub panel — links to Music and Games
@@ -59,6 +59,7 @@ lib/
 ├── apiAuth.ts              verifyAuth(header) — server-side Supabase JWT validation for API routes
 ├── rateLimit.ts            In-memory rate limiter — rateLimit(key, limit, windowMs)
 ├── MusicContext.tsx         React Context — player state (tracks, playback, shuffle, repeat, skip, Web Audio analyser); persists volume/track/position to localStorage
+├── tyunnieQuotes.ts        20 dry Taehyun-inspired loading quotes — exports `TYUNNIE_QUOTES`, `getRandomQuote()`, `getCyclingQuote(index)`; used by TyunniePanel thinking state, dashboard loading screen, and panel skeletons
 └── useSpeech.ts            Web Speech API hook — {listening, supported, toggle}
 ```
 
@@ -111,6 +112,11 @@ lib/
 - Strip trailing garbage before parsing action JSON: `.trim().replace(/[^}]*$/, "").trim()`
 - Expose item UUIDs in system prompt as `[id:uuid]` prefix so AI can target precisely
 - Read-only queries must NOT trigger destructive actions (sticky `clear_sticky` guard required)
+
+### Agentic Custom Events (panel control via Tyunnie chat)
+- `tyunnie-pomodoro-preset` — dispatched by TyunniePanel `executeAction`; detail: `{ preset: "classic"|"extended"|"short_sprint"|"deep_work" }`. `Pomodoro.tsx` listens and applies the preset immediately (settings + timer reset)
+- `tyunnie-filter-panel` — dispatched for filter/search actions; detail: `{ panel: string, filter: string }`. `Todo.tsx` filters by tag when `panel === "todo"`; `Writing.tsx` sets search when `panel === "writing"`
+- Pattern: dispatch on `window`, listen in `useEffect` with cleanup — no prop drilling or context needed
 
 ### Password Vault
 - PIN is never stored — only PBKDF2 verifier + salt + IV

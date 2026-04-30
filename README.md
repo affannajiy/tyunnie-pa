@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.17.1-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.18.0-f97316?style=flat-square)
 
 ---
 
@@ -17,7 +17,7 @@
 
 - Context-aware assistant powered by **Groq (Llama 3.3 70B)**
 - Knows your tasks, drafts, projects, finances, snippets, sticky notes, and memories
-- Natural language actions: add/delete tasks, create drafts, log finance (with account tagging), run snippets, start Pomodoro, toggle theme, enter focus mode, control music (play/pause/next/volume), **calculate** (evaluates math and sends the expression to the Calculator panel)
+- Natural language actions: add/delete tasks, create drafts, log finance (with account tagging), run snippets, start Pomodoro (**set preset** via chat — Classic, Extended, Short Sprint, Deep Work), toggle theme, enter focus mode, control music (play/pause/next/volume), **calculate** (evaluates math and sends the expression to the Calculator panel), **filter panels** (narrow Tasks by tag or search Writing drafts by keyword via chat)
 - **Live workspace awareness** — Tyunnie reads the content you're actively editing (code, draft, or task list) and injects it into every chat request; ask "what does this do?" or "fix this bug" without pasting anything
 - **Proactive suggestions** — after 4 seconds of editing, Tyunnie silently analyses your active workspace and surfaces a non-intrusive tip (bug catch for code, quiz questions for writing, focus nudge for tasks) as a dismissable card with a "Use this →" pre-fill shortcut
 - **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
@@ -98,6 +98,7 @@ All modes follow the app's light/dark theme and chosen accent colour.
 ### Other
 
 - Draggable/resizable sticky notes, persisted to Supabase
+- **404 Tyunnie Runner** — canvas-based side-scrolling mini-game on the 404 page; jump over obstacles, speed ramps over time, high score persisted to `localStorage`
 - City-based weather (Open-Meteo, no API key needed)
 - Dark / light mode, user-selectable accent color (synced to account via Supabase)
 - **MiniPlayer** — floating draggable overlay appears when music is playing outside the Music panel; click art/title to navigate to the player
