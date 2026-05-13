@@ -48,18 +48,21 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
+    const isProd = process.env.NODE_ENV === 'production'
     return [
       {
         source: '/(.*)',
         headers: securityHeaders,
       },
-      // Immutable cache for hashed Next.js static chunks (JS/CSS)
-      {
+      // Immutable cache for hashed Next.js static chunks — production only.
+      // In dev, Next.js uses non-hashed filenames for HMR; caching them
+      // immutably breaks fast refresh.
+      ...(isProd ? [{
         source: '/_next/static/(.*)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
-      },
+      }] : []),
       // Long-lived cache for public images and fonts
       {
         source: '/(.*\\.(?:png|jpg|jpeg|gif|svg|ico|woff2?))',

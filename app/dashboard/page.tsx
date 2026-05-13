@@ -62,9 +62,17 @@ const Calculator = dynamic(() => import("@/components/Calculator"), {
   ssr: false,
   loading: PanelSkeleton,
 });
+const SpeedTest = dynamic(() => import("@/components/SpeedTest"), {
+  ssr: false,
+  loading: PanelSkeleton,
+});
 const Weather = dynamic(() => import("@/components/Weather"), { ssr: false });
 const Profile = dynamic(() => import("@/components/Profile"), { ssr: false, loading: PanelSkeleton });
 const ProductivityHub = dynamic(() => import("@/components/ProductivityHub"), {
+  ssr: false,
+  loading: PanelSkeleton,
+});
+const CreateHub = dynamic(() => import("@/components/CreateHub"), {
   ssr: false,
   loading: PanelSkeleton,
 });
@@ -125,8 +133,9 @@ function MusicKeyboardBridge() {
 
 const PANEL_LABELS: Record<Panel, string> = {
   desk: "Home",
-  productivity: "Productivity",
-  entertainment: "Entertainment",
+  focus: "Focus",
+  create: "Create",
+  play: "Play",
   profile: "Profile",
   todo: "Tasks",
   writing: "Writing",
@@ -137,6 +146,7 @@ const PANEL_LABELS: Record<Panel, string> = {
   pomodoro: "Pomodoro",
   games: "Games",
   calculator: "Calculator",
+  speedtest: "Speed Test",
 };
 
 export default function Home() {
@@ -271,7 +281,7 @@ export default function Home() {
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const PULL_THRESHOLD = 72;
   // Panels that horizontal swipe cycles through
-  const SWIPE_PANELS: Panel[] = ["desk", "productivity", "entertainment"];
+  const SWIPE_PANELS: Panel[] = ["desk", "focus", "create", "play"];
 
   function onContentTouchStart(e: React.TouchEvent<HTMLDivElement>) {
     const t = e.touches[0];
@@ -1038,12 +1048,17 @@ export default function Home() {
                   onFocusMode={() => setFocusMode(true)}
                 />
               )}
-              {activePanel === "productivity" && (
+              {activePanel === "focus" && (
                 <ProductivityHub
                   onNavigate={(panel) => setActivePanel(panel as Panel)}
                 />
               )}
-              {activePanel === "entertainment" && (
+              {activePanel === "create" && (
+                <CreateHub
+                  onNavigate={(panel) => setActivePanel(panel as Panel)}
+                />
+              )}
+              {activePanel === "play" && (
                 <EntertainmentHub
                   onNavigate={(panel) => setActivePanel(panel as Panel)}
                 />
@@ -1099,10 +1114,11 @@ export default function Home() {
               )}
               {activePanel === "games" && <Games />}
               {activePanel === "calculator" && <Calculator />}
+              {activePanel === "speedtest" && <SpeedTest />}
               {activePanel === "profile" && (
                 <Profile
                   userId={user.id}
-                  onClose={() => setActivePanel("productivity")}
+                  onClose={() => setActivePanel("focus")}
                   onSave={(p) => {
                     setProfile(p);
                     if (p.display_name) setUserName(p.display_name);

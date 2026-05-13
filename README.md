@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.18.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.19.0-f97316?style=flat-square)
 
 ---
 
@@ -61,7 +61,7 @@
 
 ### Calculator Hub
 
-Four-mode calculator accessible from the Productivity hub — switch modes via a scrollable tab bar:
+Four-mode calculator accessible from the Create hub — switch modes via a scrollable tab bar:
 
 - **Scientific** — Casio fx-570EX–style; full trig (sin/cos/tan + inverses), hyperbolic, log/ln, powers, roots, combinatorics (nCr, nPr, n!), absolute value, constants (π, ℯ), memory (MC/MR/M+/M−); SHIFT key unlocks secondary functions; DEG/RAD toggle, live expression preview, ANS and Mem references, keyboard input
 - **Graphing** — canvas-based 2D plotter; type expressions like `sin(x)`, `x^2 + 1`; drag to pan, zoom in/out; up to 5 functions plotted simultaneously in distinct colours
@@ -69,6 +69,10 @@ Four-mode calculator accessible from the Productivity hub — switch modes via a
 - **Date** — Duration mode (difference between two dates in years/months/days) and Add/Subtract mode (start date ± days/months/years)
 
 All modes follow the app's light/dark theme and chosen accent colour.
+
+### Speed Test
+
+- Real network speed test via Cloudflare — ping, jitter, download (4 parallel streams), upload (4 parallel streams), 10-second measurement windows, live Mbps gauges, abort at any time
 
 ### Games Hub
 
@@ -78,7 +82,7 @@ All modes follow the app's light/dark theme and chosen accent colour.
 
 - **Desktop** — fixed bottom-center frosted glass pill with macOS-style magnification
 - **Mobile** — full-width bottom bar
-- Items: Home, Productivity, Entertainment, Profile, Tyun (chat), Sticky (new note), Focus Mode 🎯, Sign Out
+- Items: Home, Focus 🎯, Create ✨, Play 🎮, Tyun (chat), Sticky (new note), Focus Mode 🎯, Sign Out
 
 ### Profile + Vault
 
@@ -103,7 +107,7 @@ All modes follow the app's light/dark theme and chosen accent colour.
 - Dark / light mode, user-selectable accent color (synced to account via Supabase)
 - **MiniPlayer** — floating draggable overlay appears when music is playing outside the Music panel; click art/title to navigate to the player
 - **Fluid animations** — spring-based panel entrance, modal scale-in, backdrop fade, and dock/tab active-dot pop throughout the app
-- **Mobile pull-to-refresh** — swipe down at scroll top to reload all data; horizontal swipe to navigate between Home, Productivity, and Entertainment
+- **Mobile pull-to-refresh** — swipe down at scroll top to reload all data; horizontal swipe to navigate between Home, Focus, Create, and Play
 
 ### Performance
 
@@ -159,7 +163,7 @@ Create tables, enable RLS, add indexes — see [DATABASE.md](./DATABASE.md) for 
 
 Place transparent PNGs in `public/sprites/`. Canvas size: **360×460px** for panel/mood sprites, **560×720px** for the hero.
 
-- Panel sprites: `tyun-panel-{desk,profile,todo,writing,projects,snippets,finance,music,pomodoro,games,productivity,entertainment}.png`
+- Panel sprites: `tyun-panel-{desk,profile,todo,writing,projects,snippets,finance,music,pomodoro,games,focus,create,play}.png`
 - Mood sprites: `tyun-mood-{default,happy,concerned,celebrating,thinking}.png`
 
 ### 5. Add music (optional)

@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.19.0] — 2026-05-13
+
+### Added
+
+- **Speed Test panel** (`components/SpeedTest.tsx`) — real network speed test using Cloudflare's speed endpoint. Tests ping (10 round trips, drops 2 cold-start samples), jitter (std dev of ping samples), download (4 parallel streams, 10-second window, live Mbps gauge), and upload (4 parallel streams, 10-second window). Abort controller cancels all in-flight requests on stop. Results displayed as animated gauges with colour-coded thresholds. Accessible from the Create hub
+- **Create hub** (`components/CreateHub.tsx`) — new hub panel grouping Writing, Snippets, Finance, Calculator, SpeedTest under a "Make something." headline
+
+### Changed
+
+- **Hub reorganisation** — replaced the two-hub layout (Productivity + Entertainment) with three purpose-driven hubs:
+  - **Focus** 🎯 (`ProductivityHub.tsx`) — Tasks, Projects, Pomodoro. "Where things get done."
+  - **Create** ✨ (`CreateHub.tsx`) — Writing, Snippets, Finance, Calculator, SpeedTest. "Make something."
+  - **Play** 🎮 (`EntertainmentHub.tsx`) — Music, Games. "Rest is part of the work."
+- `Panel` type updated — `"productivity"` and `"entertainment"` replaced by `"focus"`, `"create"`, `"play"`
+- Sidebar dock now has 4 NAV_ITEMS (desk, focus, create, play); `TYUN_IDX` updated to 4, `STICKY_IDX` 5, `FOCUS_IDX` 6, `LOGOUT_IDX` 7
+- Mobile horizontal swipe now cycles through Home → Focus → Create → Play
+- `CommandPalette.tsx` — hub entries updated to Focus Hub, Create Hub, Play Hub with relevant keywords
+- `TyunniePanel.tsx` — `PANEL_SPRITES` keys updated; system prompt `navigate`, `hide_panel`, and agentic workflow references updated to new panel IDs
+
+### Fixed
+
+- **HMR / fast refresh broken in dev** — `/_next/static/(.*)` `Cache-Control: immutable` header in `next.config.ts` was applied unconditionally, causing the browser to cache HMR chunks forever. Header now production-only (`process.env.NODE_ENV === 'production'`). Dev fast refresh works normally again
+
+---
+
 ## [3.18.0] — 2026-04-30
 
 ### Added

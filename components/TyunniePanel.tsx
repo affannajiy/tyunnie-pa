@@ -42,8 +42,9 @@ type MoodType = "default" | "happy" | "concerned" | "celebrating" | "thinking";
 const PANEL_SPRITES: Record<string, string> = {
   desk: "/sprites/tyun-panel-desk.png",
   profile: "/sprites/tyun-panel-profile.png",
-  productivity: "/sprites/tyun-panel-productivity.png",
-  entertainment: "/sprites/tyun-panel-entertainment.png",
+  focus: "/sprites/tyun-panel-productivity.png",
+  create: "/sprites/tyun-panel-writing.png",
+  play: "/sprites/tyun-panel-entertainment.png",
   todo: "/sprites/tyun-panel-todo.png",
   writing: "/sprites/tyun-panel-writing.png",
   projects: "/sprites/tyun-panel-projects.png",
@@ -724,7 +725,7 @@ add_snippet    → data: { "name":"file.py", "language":"py"|"js"|"ts"|"bash"|"o
 delete_snippet → data: { "id":"uuid" }
 
 ─── NAVIGATION ───
-navigate       → data: { "panel":"desk"|"profile"|"productivity"|"entertainment"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games"|"calculator", "filter":"cs"|"write"|"personal"|"other" (optional) }
+navigate       → data: { "panel":"desk"|"profile"|"focus"|"create"|"play"|"todo"|"writing"|"projects"|"snippets"|"finance"|"music"|"pomodoro"|"games"|"calculator"|"speedtest", "filter":"cs"|"write"|"personal"|"other" (optional) }
 
 ─── MUSIC ───
 music_control  → data: { "action":"play"|"pause"|"next"|"prev"|"toggle"|"shuffle"|"repeat", "trackName":"..." (optional), "repeatMode":"all"|"one"|"off" (for repeat) }
@@ -750,7 +751,7 @@ calculate      → data: { "expr":"calculator-compatible expression string" }
 set_theme      → data: { "theme":"dark"|"light" }
 
 ─── AGENTIC — PANEL VISIBILITY (flat JSON, no "data" wrapper) ───
-hide_panel          → {"type":"hide_panel","panel":"entertainment"|"games"|"music"|"productivity"|"pomodoro"|"finance"|"snippets"|"writing"|"todo"}
+hide_panel          → {"type":"hide_panel","panel":"play"|"games"|"music"|"focus"|"create"|"pomodoro"|"finance"|"snippets"|"writing"|"todo"}
 show_panel          → {"type":"show_panel","panel":"..."}
 show_all_panels     → {"type":"show_all_panels"}
 
@@ -800,7 +801,7 @@ CODE:
 
 NAVIGATION:
 - NEVER navigate automatically. Only navigate when user EXPLICITLY says "go to / open / take me to / show me [panel]"
-- Known panels: desk, profile, productivity, entertainment, todo, writing, projects, snippets, finance, music, pomodoro, games, calculator
+- Known panels: desk, profile, focus, create, play, todo, writing, projects, snippets, finance, music, pomodoro, games, calculator
 - "open calculator / go to calculator" → navigate calculator
 - "play a game / open games / what games are there" → navigate games (then tell them: Tetris, Chess, Sudoku, Minesweeper, TicTacToe, Solitaire)
 
@@ -866,12 +867,12 @@ SINGLE-ACTION RULE:
 If intent maps to exactly ONE action, no confirmation needed. Just do it and say one brief line.
 
 INTENT → WORKFLOW MAPPING:
-"I need to study" / "help me focus"         → set_pomodoro_preset(deep_work) + hide_panel(entertainment) + navigate(todo, cs filter)
+"I need to study" / "help me focus"         → set_pomodoro_preset(deep_work) + hide_panel(play) + navigate(todo, cs filter)
 "I'm done for the day" / "wrap up"          → navigate(desk)
-"quick break" / "take a break"              → set_pomodoro_preset(classic) + navigate(entertainment)
+"quick break" / "take a break"              → set_pomodoro_preset(classic) + navigate(play)
 "I want to game" / "let me play"            → navigate(games)
 "morning routine" / "start my day"          → navigate(desk) + trigger_briefing
-"deep work" / "study sprint"                → set_pomodoro_preset(deep_work) + hide_panel(entertainment) + enter_focus_mode
+"deep work" / "study sprint"                → set_pomodoro_preset(deep_work) + hide_panel(play) + enter_focus_mode
 "I'm feeling overwhelmed"                   → navigate(desk)
 "show everything" / "unhide panels"         → show_all_panels
 

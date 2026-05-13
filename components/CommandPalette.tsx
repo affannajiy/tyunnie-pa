@@ -45,8 +45,9 @@ const PANEL_ENTRIES: { panel: Panel; icon: string; title: string; keywords: stri
   { panel: "music",        icon: "🎵", title: "Music",      keywords: ["music", "songs", "playlist", "player"] },
   { panel: "pomodoro",     icon: "⏲️", title: "Pomodoro",   keywords: ["pomodoro", "focus", "timer", "study"] },
   { panel: "games",        icon: "🎮", title: "Games",      keywords: ["games", "game", "play", "chess", "sudoku", "tetris"] },
-  { panel: "productivity", icon: "⚡", title: "Productivity Hub", keywords: ["productivity", "hub", "work"] },
-  { panel: "entertainment",icon: "🎭", title: "Entertainment Hub", keywords: ["entertainment", "play"] },
+  { panel: "focus",        icon: "🎯", title: "Focus Hub",         keywords: ["focus", "hub", "tasks", "work", "pomodoro", "projects"] },
+  { panel: "create",       icon: "✨", title: "Create Hub",        keywords: ["create", "hub", "writing", "snippets", "finance", "calculator"] },
+  { panel: "play",         icon: "🎮", title: "Play Hub",          keywords: ["play", "hub", "music", "games", "entertainment"] },
   { panel: "profile",      icon: "👤", title: "Profile",    keywords: ["profile", "settings", "account", "me"] },
 ];
 
@@ -82,7 +83,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-[#fff0e6] text-[var(--accent)] rounded-sm px-0.5 not-italic">
+      <mark className="bg-[#fff0e6] text-(--accent) rounded-sm px-0.5 not-italic">
         {text.slice(idx, idx + query.length)}
       </mark>
       {text.slice(idx + query.length)}
@@ -374,7 +375,7 @@ export default function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-4"
+      className="fixed inset-0 z-60 flex items-start justify-center pt-[12vh] px-4"
       onClick={onClose}
     >
       {/* Backdrop */}

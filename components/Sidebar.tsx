@@ -5,8 +5,9 @@ import { useState } from "react";
 
 export type Panel =
   | "desk"
-  | "productivity"
-  | "entertainment"
+  | "focus"
+  | "create"
+  | "play"
   | "profile"
   | "todo"
   | "writing"
@@ -16,7 +17,8 @@ export type Panel =
   | "music"
   | "pomodoro"
   | "games"
-  | "calculator";
+  | "calculator"
+  | "speedtest";
 
 type Props = {
   active: Panel;
@@ -30,9 +32,10 @@ type Props = {
 };
 
 const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
-  { panel: "desk", icon: "🏠", label: "Home" },
-  { panel: "productivity", icon: "⚡", label: "Work" },
-  { panel: "entertainment", icon: "🎮", label: "Play" },
+  { panel: "desk",   icon: "🏠", label: "Home" },
+  { panel: "focus",  icon: "🎯", label: "Focus" },
+  { panel: "create", icon: "✨", label: "Create" },
+  { panel: "play",   icon: "🎮", label: "Play" },
 ];
 
 // macOS dock magnification: returns scale based on distance from hovered index
@@ -45,11 +48,11 @@ function dockScale(idx: number, hoveredIdx: number | null): number {
   return 1;
 }
 
-// Dock item indices: 0-2 = NAV_ITEMS, 3 = Tyun, 4 = Sticky, 5 = Focus, 6 = Logout
-const TYUN_IDX   = NAV_ITEMS.length;       // 3
-const STICKY_IDX = NAV_ITEMS.length + 1;  // 4
-const FOCUS_IDX  = NAV_ITEMS.length + 2;  // 5
-const LOGOUT_IDX = NAV_ITEMS.length + 3;  // 6
+// Dock item indices: 0-3 = NAV_ITEMS, 4 = Tyun, 5 = Sticky, 6 = FocusMode, 7 = Logout
+const TYUN_IDX   = NAV_ITEMS.length;      // 4
+const STICKY_IDX = NAV_ITEMS.length + 1; // 5
+const FOCUS_IDX  = NAV_ITEMS.length + 2; // 6
+const LOGOUT_IDX = NAV_ITEMS.length + 3; // 7
 
 export default function Sidebar({
   active,

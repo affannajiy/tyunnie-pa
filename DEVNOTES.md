@@ -77,6 +77,20 @@ This burned us across three consecutive failed Vercel deployments (3.0.0 → 3.0
 
 ## ⚡ Performance
 
+### `immutable` Cache-Control header breaks HMR in dev
+
+`next.config.ts` applies `Cache-Control: public, max-age=31536000, immutable` to `/_next/static/(.*)`. In production this is correct — chunks are content-hashed. In dev, Next.js uses non-hashed filenames for HMR; the browser caches them immutably and never fetches fresh versions, so edits stop appearing.
+
+**Fix — wrap the static header in a production guard:**
+
+```ts
+const isProd = process.env.NODE_ENV === 'production'
+// ...
+...(isProd ? [{ source: '/_next/static/(.*)', headers: [...] }] : []),
+```
+
+If fast refresh stops working, check this first before digging into component code. After applying the fix, a hard refresh + dev server restart clears the cached chunks.
+
 ### Daily briefing and desk one-liner fire repeatedly without sessionStorage guard
 
 The `useRef` guard (`briefingFiredRef`) resets every time the component remounts — which happens on every panel switch since components unmount when not active.

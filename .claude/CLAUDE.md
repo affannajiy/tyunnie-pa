@@ -1,6 +1,6 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.18.0.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.19.0.
 
 See [DEPLOYMENT.md](../DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](../DATABASE.md) for schema and SQL.
 
@@ -37,8 +37,9 @@ components/
 ├── Music.tsx               Audio player — playlist.json + user uploads, album art, shuffle/repeat, skip ±10s, audio visualizer
 ├── Pomodoro.tsx            Configurable timer — task binding, notifications, 4 presets; listens for `tyunnie-pomodoro-preset` custom event (agentic preset switching)
 ├── Games.tsx               Game hub dispatcher
-├── ProductivityHub.tsx     Hub panel — links to Todo, Writing, Projects, Snippets, Pomodoro, Finance
-├── EntertainmentHub.tsx    Hub panel — links to Music and Games
+├── ProductivityHub.tsx     Focus hub — links to Todo, Projects, Pomodoro
+├── CreateHub.tsx           Create hub — links to Writing, Snippets, Finance, Calculator, SpeedTest
+├── EntertainmentHub.tsx    Play hub — links to Music, Games
 ├── Weather.tsx             Weather display — city lat/lon from profile, Open-Meteo API
 ├── FocusMode.tsx           Fullscreen focus overlay — task + Pomodoro + music + sticky notes
 ├── StickyLayer.tsx         Sticky notes container — renders draggable StickyNote children
@@ -69,6 +70,10 @@ lib/
 
 ### Routing
 - Root `/` redirect lives in `next.config.ts` `redirects()`, not `app/page.tsx`
+
+### next.config.ts Cache Headers
+- `/_next/static/(.*)` Cache-Control (`immutable`) is **production-only** — applying it in dev caches HMR chunks and breaks fast refresh
+- Images/fonts cache header applies in all environments (safe; filenames don't change during dev)
 
 ### TypeScript / Vercel Build
 - **Always use `any`** for Web Speech API event types in `lib/useSpeech.ts` — `SpeechRecognitionEvent` breaks Vercel even with `global.d.ts` declarations
@@ -139,7 +144,8 @@ lib/
 
 ### Sidebar Dock
 - `dockScale(idx, hoveredIdx)` returns `1.55 / 1.22 / 1.08 / 1.0` based on distance — scale applied via inline style
-- `TYUN_IDX = NAV_ITEMS.length` (4), `STICKY_IDX = 5`, `LOGOUT_IDX = 6`
+- NAV_ITEMS = `[desk, focus, create, play]` (4 items, indices 0–3); `TYUN_IDX = 4`, `STICKY_IDX = 5`, `FOCUS_IDX = 6`, `LOGOUT_IDX = 7`
+- Hub panels: `focus` → `ProductivityHub.tsx`, `create` → `CreateHub.tsx`, `play` → `EntertainmentHub.tsx`
 - Desktop: `fixed bottom-5 left-1/2 -translate-x-1/2 z-50` frosted glass pill
 - Mobile: full-width bar, shows Tyun 🧡 and Sticky 📌 items inline with nav
 - Dock item glow uses `rgba(var(--accent-rgb), ...)` — must use CSS variable, not hardcoded orange
