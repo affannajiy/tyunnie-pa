@@ -147,6 +147,18 @@ create policy "owner" on memories     for all using (auth.uid() = user_id);
 create policy "owner" on vault        for all using (auth.uid() = user_id);
 create policy "owner" on vault_meta   for all using (auth.uid() = user_id);
 
+-- Grants (required from May 30 2026 for new projects; enforced Oct 30 2026 for all)
+grant select, insert, update, delete on public.todos        to authenticated;
+grant select, insert, update, delete on public.drafts       to authenticated;
+grant select, insert, update, delete on public.projects     to authenticated;
+grant select, insert, update, delete on public.snips        to authenticated;
+grant select, insert, update, delete on public.finance      to authenticated;
+grant select, insert, update, delete on public.profiles     to authenticated;
+grant select, insert, update, delete on public.sticky_notes to authenticated;
+grant select, insert, update, delete on public.memories     to authenticated;
+grant select, insert, update, delete on public.vault        to authenticated;
+grant select, insert, update, delete on public.vault_meta   to authenticated;
+
 -- Indexes
 create index if not exists todos_user_done       on todos(user_id, done);
 create index if not exists finance_user_date     on finance(user_id, date);
@@ -172,6 +184,7 @@ create table music_tracks (
 );
 alter table music_tracks enable row level security;
 create policy "owner" on music_tracks for all using (auth.uid() = user_id);
+grant select, insert, update, delete on public.music_tracks to authenticated;
 create index if not exists music_tracks_user on music_tracks(user_id, position);
 ```
 

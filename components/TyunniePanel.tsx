@@ -16,7 +16,7 @@ import { getCyclingQuote } from "@/lib/tyunnieQuotes";
 function sanitizeHtml(html: string): string {
   return html
     .replace(/<(?!\/?(?:b|strong|em|i|code|br)\b)[^>]*>/gi, "")
-    .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
+    .replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
     .replace(/javascript\s*:/gi, "");
 }
 

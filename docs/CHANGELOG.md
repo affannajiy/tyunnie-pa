@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.20.0] — 2026-05-14
+
+### Changed
+
+- **Search bar redesign** — topbar search button: emoji 🔍 replaced with consistent SVG magnifier icon; `⌘K` badge is now platform-aware (`Ctrl K` on Windows); badge anchored to right edge with `ml-auto`; `aria-label` added for screen readers; topbar gains explicit `dark:bg-[#1a1814] dark:border-[#2a2520]` classes
+- **CommandPalette UX** — exit animation added (`animate-modal-out`, 180ms); selected item contrast fixed (text stays `#111010`, bg opacity raised `0.08 → 0.14`); group section labels corrected to `text-[#9a8f7e]` for dark-mode legibility; `highlightMatch` mark uses `style={{ color: "var(--accent)" }}` instead of non-standard Tailwind shorthand; z-index raised to `z-[70]` to always render above floating TyunniePanel
+- **ShortcutHelp UX** — redundant `Ctrl` label span removed from `Row` component; keyboard badge dark-mode contrast corrected; group title typo fixed; footer simplified to "esc to close"; z-index raised to `z-[70]`
+- **Accessibility** — `role="dialog" aria-modal aria-label` added to CommandPalette and ShortcutHelp modals; `role="listbox"` + `role="option" aria-selected` on palette results; `aria-label` on search input, clear button, and shortcut button; clear button and close button enlarged to 32px touch target
+
+### Added
+
+- **`lib/platform.ts`** — shared `isMac()` and `modKey()` utilities; eliminates duplicate implementations in CommandPalette and ShortcutHelp
+- **`components/ui/Kbd.tsx`** — shared `<Kbd size="sm|md">` component; unifies keyboard badge padding, font size, and dark-mode colours across the command palette and shortcut help modal
+- **`app/globals.css`** — `@keyframes modal-out` + `.animate-modal-out` (scale-down exit, 180ms) for CommandPalette close animation
+
+### Security
+
+- **Session token validation** — `authHeader()` in `lib/supabase.ts` switched from `getSession()` (reads stale cached token) to `refreshSession()` (validates with Supabase server); revoked sessions now correctly return no token
+- **Message role injection blocked** — `/api/chat` validates each message `role` against `Set(["user","assistant"])`; authenticated callers can no longer inject `"system"` role to override the AI persona
+- **HTML injection in daily quote emails** — `escapeHtml()` applied to Groq output before interpolation into Resend HTML in `/api/daily-quote`
+- **`/api/exchange-rates` hardened** — added `verifyAuth()` + `rateLimit(10/min)`; was an unauthenticated open proxy; `Calculator.tsx` updated to send the auth header
+- **Email format validation** — `EMAIL_RE` regex added to `/api/vault-notify` alongside existing length check
+- **Avatar upload validation** — MIME type allowlist (`image/png`, `image/jpeg`, `image/gif`, `image/webp`) and 5 MB cap enforced in `Profile.tsx` before `FileReader` runs
+- **`sanitizeHtml` regex hardened** — `\son\w+` → `\bon\w+` in `TyunniePanel.tsx`; word boundary closes edge case where an event handler without a leading space could slip through tag-whitelist stripping
+- **CSP `connect-src` updated** — `geocoding-api.open-meteo.com` added to `next.config.ts`; city geocoding in `Profile.tsx` and `Weather.tsx` was blocked under a strict CSP
+- **PIN change confirmation email fixed** — `Profile.tsx` was sending `type: "change"` but the server allowlist required `"changed"`; confirmation email was silently discarded on every PIN change
+- **Supabase Data API grants documented** — explicit `GRANT SELECT, INSERT, UPDATE, DELETE ... TO authenticated` added to `DATABASE.md` SQL setup for all 11 tables; required for all Supabase projects from October 30, 2026 per Supabase platform change
+
+---
+
 ## [3.19.0] — 2026-05-13
 
 ### Added

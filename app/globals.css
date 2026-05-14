@@ -94,6 +94,18 @@ body {
   }
 }
 
+/* Modal / dialog exit — scale down to 96% */
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
 /* Backdrop fade */
 @keyframes fade-in {
   from { opacity: 0; }
@@ -118,6 +130,10 @@ body {
 
 .animate-modal-in {
   animation: modal-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-modal-out {
+  animation: modal-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 .animate-fade-in {

@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.19.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.20.0-f97316?style=flat-square)
 
 ---
 
@@ -153,11 +153,11 @@ npm install
 cp .env.example .env.local
 ```
 
-Fill in the values — see [DEPLOYMENT.md](./DEPLOYMENT.md) for the full variable list.
+Fill in the values — see [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the full variable list.
 
 ### 3. Set up Supabase
 
-Create tables, enable RLS, add indexes — see [DATABASE.md](./DATABASE.md) for the complete SQL.
+Create tables, enable RLS, add indexes — see [DATABASE.md](./docs/DATABASE.md) for the complete SQL.
 
 ### 4. Add sprites (optional)
 
@@ -193,7 +193,7 @@ npm run dev
 
 Push to GitHub → import on [vercel.com](https://vercel.com) → add env vars → deploy.
 
-Full instructions, Google OAuth setup, and Supabase auth config: [DEPLOYMENT.md](./DEPLOYMENT.md)
+Full instructions, Google OAuth setup, and Supabase auth config: [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 ---
 
@@ -207,7 +207,7 @@ public/sprites/         Tyunnie sprite PNGs
 public/music/           MP3s, cover art, playlist.json
 ```
 
-Full file-by-file breakdown in [CLAUDE.md](./CLAUDE.md).
+Full file-by-file breakdown in [.claude/CLAUDE.md](./.claude/CLAUDE.md).
 
 ---
 
@@ -219,13 +219,23 @@ Full file-by-file breakdown in [CLAUDE.md](./CLAUDE.md).
 
 ## Release History
 
-See [CHANGELOG.md](./CHANGELOG.md).
+See [CHANGELOG.md](./docs/CHANGELOG.md).
 
 ---
 
 ## About
 
 Tyunnie is a personal productivity app built as a CS student project. The assistant is designed to feel like a warm, supportive friend — calm, a little dry, and genuinely helpful — inspired by the personality of Taehyun from TXT.
+
+---
+
+## Documentation
+
+All project documentation lives in [`docs/`](./docs/):
+- [CHANGELOG.md](./docs/CHANGELOG.md) — full release history
+- [DATABASE.md](./docs/DATABASE.md) — schema, SQL setup, RLS policies
+- [DEPLOYMENT.md](./docs/DEPLOYMENT.md) — env vars, Vercel setup, OAuth
+- [DEVNOTES.md](./docs/DEVNOTES.md) — developer gotchas and non-obvious decisions
 
 ---
 

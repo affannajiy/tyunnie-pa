@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
   const { email, type, otp: submittedOtp } = await req.json();
 
   // ── Input validation ──
-  if (!email || typeof email !== "string" || email.length > MAX_EMAIL_LEN) {
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || typeof email !== "string" || email.length > MAX_EMAIL_LEN || !EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }
   const ALLOWED_TYPES = new Set(["verify", "pin_change_request", "setup", "changed"]);

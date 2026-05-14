@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import Groq from "groq-sdk";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -63,9 +72,10 @@ export async function GET(req: NextRequest) {
         temperature: 0.9,
       });
 
-      const quote =
+      const quote = escapeHtml(
         completion.choices[0]?.message?.content?.trim() ??
-        "Hey. Just checking in. You're doing better than you think. — Taehyun";
+        "Hey. Just checking in. You're doing better than you think. — Taehyun",
+      );
 
       const typeLabels: Record<string, string> = {
         motivational: "For today",

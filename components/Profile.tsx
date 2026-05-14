@@ -652,7 +652,7 @@ export default function Profile({
               fetch("/api/vault-notify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...ah },
-                body: JSON.stringify({ email: user.email, type: "change" }),
+                body: JSON.stringify({ email: user.email, type: "changed" }),
               });
             });
           }
@@ -870,6 +870,16 @@ export default function Profile({
   function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+    const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+    if (!ALLOWED_TYPES.has(file.type)) {
+      alert("Please upload a PNG, JPEG, GIF, or WebP image.");
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      alert("Image must be under 5 MB.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       setCropSrc(ev.target?.result as string);

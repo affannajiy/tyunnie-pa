@@ -1,10 +1,10 @@
-# 🛠️ Tyunnie — Developer Notes
+# Tyunnie — Developer Notes
 
 A running log of gotchas, non-obvious decisions, and things that will waste your time if you don't know about them.
 
 ---
 
-## 🔀 Routing
+## Routing
 
 ### Root redirect lives in `next.config.ts`, not `app/page.tsx`
 
@@ -30,7 +30,7 @@ This burned us when `/chat` was deleted but the root still redirected there, cau
 
 ---
 
-## 🔐 Auth
+## Auth
 
 ### Supabase session can get into a bad state after failed OAuth attempts
 
@@ -57,7 +57,7 @@ If they're entered as one combined string it silently fails.
 
 ---
 
-## 🗣️ Web Speech API (Voice Input)
+## Web Speech API (Voice Input)
 
 ### Never use explicit Speech API types in TypeScript
 
@@ -75,7 +75,7 @@ This burned us across three consecutive failed Vercel deployments (3.0.0 → 3.0
 
 ---
 
-## ⚡ Performance
+## Performance
 
 ### `immutable` Cache-Control header breaks HMR in dev
 
@@ -119,7 +119,7 @@ Both regenerate on new tab or hard refresh, which is the correct behavior.
 
 ---
 
-## 🎵 Audio / Music
+## Audio / Music
 
 ### `togglePlay` must be async
 
@@ -139,7 +139,7 @@ The music glow effect in `Music.tsx` drives `boxShadow` directly via `coverRef` 
 
 ---
 
-## 🖼️ Images & Sprites
+## Images & Sprites
 
 ### Next.js `Image` src must not include `/public/`
 
@@ -161,7 +161,7 @@ For the Desk hero upper-torso sprite, recommended size is **560×720px** (displa
 
 ---
 
-## 🗄️ Supabase
+## Supabase
 
 ### Demo user guard in `database.ts`
 
@@ -179,7 +179,7 @@ If the `FinanceEntry` type is updated with new required fields (e.g. `account`),
 
 ---
 
-## 🔧 CSS / Tailwind
+## CSS / Tailwind
 
 ### CSS module declarations go in `global.d.ts`, not `next-env.d.ts`
 
@@ -191,7 +191,9 @@ Put it in `global.d.ts` at the repo root instead.
 
 Use `flex-1` vs `flex-none` (not `w-0`) for collapsible panel transitions. Using `w-0` causes layout collapse issues with flex children that have `min-width`.
 
-## 🗒️ Sticky Notes
+---
+
+## Sticky Notes
 
 ### Jitter fix — `isTypingRef` guard on content sync
 
@@ -211,7 +213,7 @@ The model was reading `[yellow]` and using that as the id. Fixed by prefixing ea
 
 ---
 
-## ⏲️ Pomodoro Autostart
+## Pomodoro Autostart
 
 ### Use sessionStorage, not props, for autostart flag
 
@@ -246,7 +248,7 @@ key = { pomodoroTask }; // resets to "default" when task clears
 
 ---
 
-## 🤖 Tyunnie Action System
+## Tyunnie Action System
 
 ### Trailing garbage in Groq JSON output
 
@@ -293,7 +295,7 @@ Events in use: `tyunnie-pomodoro-preset` (Pomodoro), `tyunnie-filter-panel` (Tod
 
 ---
 
-## 📦 Environment Variables
+## Environment Variables
 
 Required in `.env.local`:
 
@@ -303,6 +305,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GROQ_API_KEY=
 JDOODLE_CLIENT_ID=
 JDOODLE_CLIENT_SECRET=
+RESEND_API_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+CRON_SECRET=
 ```
 
 Previously used (now removed):
@@ -311,14 +316,39 @@ Previously used (now removed):
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=   # Google Calendar integration — removed in 3.0.0
 GOOGLE_CLIENT_SECRET=           # Google Calendar integration — removed in 3.0.0
 NEXT_PUBLIC_APP_URL=            # Google Calendar integration — removed in 3.0.0
-RESEND_API_KEY=                 # Vault email notifications — removed
-SUPABASE_SERVICE_ROLE_KEY=      # Vault gcal callback — removed
-CRON_SECRET=                    # Daily quote cron — removed
 ```
 
 ---
 
-## 📝 Versioning Convention
+## Security
+
+### `authHeader()` uses `refreshSession()`, not `getSession()`
+
+`lib/supabase.ts` calls `supabase.auth.refreshSession()` (not `getSession()`) when building the Authorization header for API calls. `getSession()` reads from the local cache and can return a stale token for a session that has already been revoked on the server. `refreshSession()` validates with the Supabase server on every call, so revoked sessions correctly produce no token. This adds a small network round-trip per API call — that is intentional and acceptable for security.
+
+### `sanitizeHtml` uses `\b` word boundary before `on\w+`
+
+`TyunniePanel.tsx` strips event handler attributes from HTML using `\bon\w+` (word boundary), not `\son\w+` (space prefix). The space-prefix form fails when an attribute appears immediately after the tag name or after a quote with no intervening space — a valid HTML parser accepts `<img/onload=x>` and `<img\tonload=x>`. The word boundary catches all variants without needing to enumerate whitespace characters.
+
+### `/api/exchange-rates` requires auth — Calculator must send `authHeader()`
+
+`/api/exchange-rates` is protected by `verifyAuth()` and `rateLimit(10/min)`. Any component calling this endpoint must include the Authorization header. `Calculator.tsx` already does this. If you add another consumer, copy the pattern: `headers: { ...authHeader() }`.
+
+---
+
+## Shared UI Components
+
+### `lib/platform.ts` — always import `isMac()` / `modKey()` from here
+
+`isMac()` checks `navigator.platform` and `modKey()` returns `"⌘"` on Mac or `"Ctrl"` elsewhere. Both CommandPalette and ShortcutHelp import from `lib/platform.ts`. Never define these locally in a component — the duplication was what prompted extracting this module, and re-duplicating it will cause the platform detection to diverge again.
+
+### `components/ui/Kbd.tsx` — use for all keyboard badge rendering
+
+`<Kbd size="sm|md">` is the single source of truth for keyboard badge styling: border, background, padding, font size, and dark-mode colours. Use it wherever a `<kbd>`-style badge appears in a modal or help text. Do not write inline `<kbd>` elements with manual Tailwind classes — the old inconsistency between CommandPalette and ShortcutHelp dark-mode contrast was caused by duplicated manual styles drifting apart.
+
+---
+
+## Versioning Convention
 
 - **Patch (x.x.X)** — bug fixes, build failures, type errors
 - **Minor (x.X.0)** — new features, UI additions, panel changes

@@ -1,8 +1,8 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.19.0.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.20.0.
 
-See [DEPLOYMENT.md](../DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](../DATABASE.md) for schema and SQL.
+See [DEPLOYMENT.md](../docs/DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](../docs/DATABASE.md) for schema and SQL.
 
 ---
 
@@ -44,6 +44,8 @@ components/
 ├── FocusMode.tsx           Fullscreen focus overlay — task + Pomodoro + music + sticky notes
 ├── StickyLayer.tsx         Sticky notes container — renders draggable StickyNote children
 ├── StickyNote.tsx          Individual sticky — drag/resize, colors, Supabase persist
+├── ui/
+│   └── Kbd.tsx             Shared `<Kbd size="sm|md">` component — unified keyboard badge padding, font size, dark-mode colours; used by CommandPalette and ShortcutHelp
 └── games/
     ├── Tetris.tsx           All 7 tetrominoes, ghost piece, hold, next preview, mobile swipe
     ├── Chess.tsx            Full legal moves, castling, en passant, promotion, 3 bot difficulties, 8 time controls
@@ -59,6 +61,7 @@ lib/
 ├── crypto.ts               AES-GCM 256-bit + PBKDF2 (100k iterations) — vault encryption, PIN verifier
 ├── apiAuth.ts              verifyAuth(header) — server-side Supabase JWT validation for API routes
 ├── rateLimit.ts            In-memory rate limiter — rateLimit(key, limit, windowMs)
+├── platform.ts             Shared `isMac()` + `modKey()` utilities — used by CommandPalette and ShortcutHelp; import from here, never define locally
 ├── MusicContext.tsx         React Context — player state (tracks, playback, shuffle, repeat, skip, Web Audio analyser); persists volume/track/position to localStorage
 ├── tyunnieQuotes.ts        20 dry Taehyun-inspired loading quotes — exports `TYUNNIE_QUOTES`, `getRandomQuote()`, `getCyclingQuote(index)`; used by TyunniePanel thinking state, dashboard loading screen, and panel skeletons
 └── useSpeech.ts            Web Speech API hook — {listening, supported, toggle}
@@ -150,6 +153,11 @@ lib/
 - Mobile: full-width bar, shows Tyun 🧡 and Sticky 📌 items inline with nav
 - Dock item glow uses `rgba(var(--accent-rgb), ...)` — must use CSS variable, not hardcoded orange
 
+### Shared UI Components
+- `lib/platform.ts` exports `isMac()` (checks `navigator.platform`) and `modKey()` (returns `"⌘"` on Mac, `"Ctrl"` on Windows/Linux) — always import from here, never define `isMac` or `modKey` locally in a component
+- `components/ui/Kbd.tsx` exports `<Kbd size="sm|md">` — the single source of truth for keyboard badge styling (padding, font size, border, dark-mode colours). Use for all `<kbd>`-style badge rendering in modals and help text; do not write inline `<kbd>` elements with manual classes
+- Both CommandPalette and ShortcutHelp use these; any future component showing keyboard shortcuts must follow the same pattern
+
 ---
 
 ## Key Architectural Patterns
@@ -166,7 +174,7 @@ lib/
 | AI personality | Taehyun from TXT — calm, caring, dry humor, poetic |
 | Daily quote emails | Vercel cron `0 1 * * *` → `/api/daily-quote` → Groq → Resend |
 | Code execution | `/api/run` proxies to JDoodle API |
-| API security | Auth via `verifyAuth()` (JWT), rate limiting via `rateLimit()`, XSS via `sanitizeHtml()` |
+| API security | Auth via `verifyAuth()` (JWT), rate limiting via `rateLimit()`, XSS via `sanitizeHtml()`; `authHeader()` uses `refreshSession()` (not `getSession()`) to prevent stale revoked tokens |
 | Shared prop types | Heavy components use `lib/tyunniePanelTypes.ts` — avoids Next.js plugin type inference issues |
 
 ---

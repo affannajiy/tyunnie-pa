@@ -28,6 +28,7 @@ import type { Memory } from "@/lib/database";
 import type { StickyNote } from "@/lib/database";
 import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
 import { WorkspaceProvider } from "@/lib/WorkspaceContext";
+import { isMac } from "@/lib/platform";
 
 const skeletonQuote = getRandomQuote();
 
@@ -887,7 +888,7 @@ export default function Home() {
         {/* Main content */}
         <div className="relative flex flex-col overflow-hidden min-w-0 flex-1">
           {/* Topbar */}
-          <div className="h-14 bg-white border-b border-[#e8e2d8] flex items-center px-4 md:px-7 shrink-0 relative">
+          <div className="h-14 bg-white dark:bg-[#1a1814] border-b border-[#e8e2d8] dark:border-[#2a2520] flex items-center px-4 md:px-7 shrink-0 relative">
             {/* Left — Tyunnie brand (click → desk) */}
             <button
               onClick={() => setActivePanel("desk")}
@@ -913,12 +914,15 @@ export default function Home() {
             <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
               <button
                 onClick={() => setSearchOpen(true)}
+                aria-label="Open command palette"
                 className="flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-1.5 text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono w-48 lg:w-64 xl:w-80"
               >
-                <span>🔍</span>
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                </svg>
                 <span>Search</span>
-                <span className="bg-[#e8e2d8] rounded px-1.5 py-0.5 text-[9px] font-bold">
-                  ⌘K
+                <span className="bg-[#e8e2d8] rounded px-1.5 py-0.5 text-[9px] font-bold ml-auto">
+                  {isMac() ? "⌘K" : "Ctrl K"}
                 </span>
               </button>
             </div>
@@ -929,6 +933,7 @@ export default function Home() {
               <button
                 onClick={() => setShowShortcuts(true)}
                 title="Keyboard shortcuts"
+                aria-label="Keyboard shortcuts"
                 className="hidden md:flex items-center justify-center w-8 h-8 rounded-xl border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono text-xs font-bold"
               >
                 ?

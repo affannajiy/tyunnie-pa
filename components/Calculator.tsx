@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { authHeader } from "@/lib/supabase";
 import {
   differenceInDays,
   differenceInCalendarMonths,
@@ -1185,7 +1186,8 @@ function ConverterCalc() {
 
   // Fetch live rates on mount
   useEffect(() => {
-    fetch("/api/exchange-rates")
+    authHeader()
+      .then((ah) => fetch("/api/exchange-rates", { headers: ah }))
       .then((r) => r.json())
       .then((data: { base: string; rates: Record<string, number> }) => {
         setRates({ USD: 1, ...data.rates });

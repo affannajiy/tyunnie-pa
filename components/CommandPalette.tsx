@@ -4,6 +4,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Panel } from "@/components/Sidebar";
 import type { Todo, Draft, Project, Snip } from "@/lib/database";
+import { isMac, modKey } from "@/lib/platform";
+import { Kbd } from "@/components/ui/Kbd";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -51,7 +53,7 @@ const PANEL_ENTRIES: { panel: Panel; icon: string; title: string; keywords: stri
   { panel: "profile",      icon: "👤", title: "Profile",    keywords: ["profile", "settings", "account", "me"] },
 ];
 
-const SHORTCUT_ENTRIES: { title: string; shortcut: string[]; keywords: string[]; action?: string }[] = [
+const SHORTCUT_ENTRIES: { title: string; shortcut: string[]; keywords: string[] }[] = [
   { title: "Global search",          shortcut: ["⌘", "K"],         keywords: ["search", "find", "palette"] },
   { title: "Focus Mode",             shortcut: ["⌘", "⇧", "F"],    keywords: ["focus", "mode", "fullscreen"] },
   { title: "Toggle Tyunnie chat",    shortcut: ["⌘", "⇧", "T"],    keywords: ["tyunnie", "chat", "ai", "tyun"] },
@@ -67,15 +69,6 @@ const SHORTCUT_ENTRIES: { title: string; shortcut: string[]; keywords: string[];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function isMac() {
-  if (typeof navigator === "undefined") return false;
-  return /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
-}
-
-function modKey() {
-  return isMac() ? "⌘" : "Ctrl";
-}
-
 function highlightMatch(text: string, query: string): React.ReactNode {
   if (!query) return text;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -83,7 +76,10 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-[#fff0e6] text-(--accent) rounded-sm px-0.5 not-italic">
+      <mark
+        className="bg-[#fff0e6] rounded-sm px-0.5 not-italic"
+        style={{ color: "var(--accent)" }}
+      >
         {text.slice(idx, idx + query.length)}
       </mark>
       {text.slice(idx + query.length)}
@@ -107,15 +103,20 @@ export default function CommandPalette({
 }: Props) {
   const [query, setQuery] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);
+  // Keep modal in DOM during exit animation
+  const [visible, setVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Reset state when opened
   useEffect(() => {
     if (open) {
+      setVisible(true);
       setQuery("");
       setSelectedIdx(0);
       setTimeout(() => inputRef.current?.focus(), 30);
+    } else {
+      const t = setTimeout(() => setVisible(false), 180);
+      return () => clearTimeout(t);
     }
   }, [open]);
 
@@ -346,7 +347,7 @@ export default function CommandPalette({
     }
   }
 
-  if (!open) return null;
+  if (!visible) return null;
 
   // Group results for display
   const kindOrder: ResultKind[] = ["action", "panel", "shortcut", "task", "draft", "project", "snippet"];
@@ -373,17 +374,22 @@ export default function CommandPalette({
     items: g.items.map((item) => ({ ...item, flatIdx: flatIdx++ })),
   }));
 
+  const mac = isMac();
+
   return (
     <div
-      className="fixed inset-0 z-60 flex items-start justify-center pt-[12vh] px-4"
+      className="fixed inset-0 z-[70] flex items-start justify-center pt-[12vh] px-4"
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" />
+      <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm ${open ? "animate-fade-in" : ""}`} />
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-lg bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10 animate-modal-in"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        className={`relative w-full max-w-lg bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10 ${open ? "animate-modal-in" : "animate-modal-out"}`}
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: "72vh", display: "flex", flexDirection: "column" }}
       >
@@ -395,6 +401,7 @@ export default function CommandPalette({
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
+            aria-hidden="true"
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
@@ -402,6 +409,7 @@ export default function CommandPalette({
             ref={inputRef}
             type="text"
             value={query}
+            aria-label="Search commands, panels, tasks"
             onChange={(e) => { setQuery(e.target.value); setSelectedIdx(0); }}
             onKeyDown={handleKeyDown}
             placeholder="Search panels, tasks, drafts, shortcuts..."
@@ -410,19 +418,20 @@ export default function CommandPalette({
           {query && (
             <button
               onClick={() => { setQuery(""); setSelectedIdx(0); inputRef.current?.focus(); }}
-              className="text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors shrink-0 text-sm"
+              aria-label="Clear search"
+              className="w-8 h-8 flex items-center justify-center text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors shrink-0 rounded-lg"
             >
               ✕
             </button>
           )}
-          <kbd className="text-[9px] font-mono bg-[#f3f0ea] dark:bg-[#2a2520] border border-[#e8e2d8] dark:border-[#3a3530] rounded px-1.5 py-0.5 text-[#9a8f7e] shrink-0">
-            ESC
-          </kbd>
+          <Kbd>ESC</Kbd>
         </div>
 
         {/* Results */}
         <div
           ref={listRef}
+          role="listbox"
+          aria-label="Search results"
           className="overflow-y-auto flex-1"
           style={{ scrollbarWidth: "thin" }}
         >
@@ -437,7 +446,7 @@ export default function CommandPalette({
 
           {indexedGroups.map(({ kind, items: groupItems }) => (
             <div key={kind}>
-              <div className="px-4 pt-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono">
+              <div className="px-4 pt-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-[#9a8f7e] dark:text-[#7a6f60] font-mono">
                 {kindLabels[kind]}
               </div>
               {groupItems.map((item) => {
@@ -445,26 +454,25 @@ export default function CommandPalette({
                 return (
                   <button
                     key={item.id}
+                    role="option"
+                    aria-selected={isSelected}
                     data-idx={item.flatIdx}
                     onClick={() => selectItem(item)}
                     onMouseEnter={() => setSelectedIdx(item.flatIdx)}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
                     style={{
-                      background: isSelected ? "rgba(var(--accent-rgb), 0.08)" : "transparent",
+                      background: isSelected ? "rgba(var(--accent-rgb), 0.14)" : "transparent",
                     }}
                   >
                     <span className="text-base shrink-0 w-5 text-center leading-none">
                       {item.icon}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <div
-                        className="text-sm font-medium truncate"
-                        style={{ color: isSelected ? "var(--accent)" : "#111010" }}
-                      >
+                      <div className="text-sm font-medium truncate text-[#111010]">
                         {highlightMatch(item.title, query)}
                       </div>
                       {item.subtitle && (
-                        <div className="text-[10px] text-[#9a8f7e] font-mono truncate mt-0.5">
+                        <div className="text-[10px] text-[#9a8f7e] dark:text-[#b0a090] font-mono truncate mt-0.5">
                           {item.subtitle}
                         </div>
                       )}
@@ -472,12 +480,7 @@ export default function CommandPalette({
                     {item.shortcut && (
                       <div className="flex items-center gap-0.5 shrink-0 ml-2">
                         {item.shortcut.map((k, i) => (
-                          <kbd
-                            key={i}
-                            className="text-[9px] font-mono bg-[#f3f0ea] dark:bg-[#2a2520] border border-[#e8e2d8] dark:border-[#3a3530] rounded px-1.5 py-0.5 text-[#9a8f7e]"
-                          >
-                            {k}
-                          </kbd>
+                          <Kbd key={i}>{mac && k === "Ctrl" ? "⌘" : k}</Kbd>
                         ))}
                       </div>
                     )}
@@ -492,30 +495,21 @@ export default function CommandPalette({
             </div>
           ))}
 
-          {/* Empty state when query is blank and items are loaded */}
-          {items.length === 0 && !query.trim() && (
-            <div className="px-4 py-6 text-center">
-              <p className="text-xs font-mono text-[#c5bdb0]">
-                Type to search across panels, tasks, drafts, projects, snippets and shortcuts
-              </p>
-            </div>
-          )}
-
           <div className="h-2" />
         </div>
 
         {/* Footer */}
         <div className="border-t border-[#f3f0ea] dark:border-[#2a2520] px-4 py-2 flex items-center gap-4 shrink-0">
           <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#c5bdb0]">
-            <kbd className="bg-[#f3f0ea] dark:bg-[#2a2520] border border-[#e8e2d8] dark:border-[#3a3530] rounded px-1 py-0.5">↑↓</kbd>
+            <Kbd>↑↓</Kbd>
             <span>navigate</span>
           </div>
           <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#c5bdb0]">
-            <kbd className="bg-[#f3f0ea] dark:bg-[#2a2520] border border-[#e8e2d8] dark:border-[#3a3530] rounded px-1 py-0.5">↵</kbd>
+            <Kbd>↵</Kbd>
             <span>select</span>
           </div>
           <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#c5bdb0]">
-            <kbd className="bg-[#f3f0ea] dark:bg-[#2a2520] border border-[#e8e2d8] dark:border-[#3a3530] rounded px-1 py-0.5">Esc</kbd>
+            <Kbd>Esc</Kbd>
             <span>close</span>
           </div>
           {items.length > 0 && (

@@ -133,6 +133,12 @@ export async function POST(req: NextRequest) {
     if (messages.length === 0) {
       return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     }
+    const ALLOWED_ROLES = new Set(["user", "assistant"]);
+    for (const m of messages) {
+      if (!m || !ALLOWED_ROLES.has(m.role)) {
+        return NextResponse.json({ error: "Invalid message role" }, { status: 400 });
+      }
+    }
 
     // ── Primary: Gemini 2.0 Flash ──
     let text: string;
