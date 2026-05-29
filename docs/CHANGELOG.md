@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.20.1] — 2026-05-29
+
+### Fixed
+
+- **Speed Test stuck at zero** — `connect-src` in `next.config.ts` did not include `https://speed.cloudflare.com`, so every ping/download/upload request was blocked by the Content Security Policy and the gauges reported 0 Mbps. Added the Cloudflare speed origin to the `connect-src` allowlist. (Requires a dev-server restart / redeploy, since CSP is sent as a response header.)
+- **Speed Test console warning** (`components/SpeedTest.tsx`) — the `SpeedDial` spinner mixed the `borderColor` shorthand with the `borderTopColor` longhand in one inline `style` object, triggering React's "Updating a style property during rerender" warning. Both spinners now use the three non-top longhands (`borderRightColor` / `borderBottomColor` / `borderLeftColor`) alongside `borderTopColor`.
+
+### Changed
+
+- **Daily quote emails — tone & length** (`/api/daily-quote`) — Taehyun's daily message is now name-free (no "Hey [name]" greeting), shorter (Groq `max_tokens` 150 → 90, 1–2 sentences), and leans dry/sarcastic/playful. Section labels reworked (`Get up` / `A thought` / `Don't make it weird` / `Relax`) and the email HTML trimmed (dropped the Tyunnie header block and date divider, ~960 chars rendered). `display_name` lookup removed from the send loop.
+
+---
+
 ## [3.20.0] — 2026-05-14
 
 ### Changed

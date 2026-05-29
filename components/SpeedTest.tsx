@@ -157,7 +157,7 @@ function SpeedDial({ speed, phase, progress }: DialProps) {
           {phase === "ping" ? (
             <div
               className="w-7 h-7 rounded-full border-[3px] animate-spin"
-              style={{ borderColor: "rgba(var(--accent-rgb),0.25)", borderTopColor: "var(--accent)" }}
+              style={{ borderRightColor: "rgba(var(--accent-rgb),0.25)", borderBottomColor: "rgba(var(--accent-rgb),0.25)", borderLeftColor: "rgba(var(--accent-rgb),0.25)", borderTopColor: "var(--accent)" }}
             />
           ) : active && speed != null ? (
             <>
@@ -169,7 +169,7 @@ function SpeedDial({ speed, phase, progress }: DialProps) {
           ) : active ? (
             <div
               className="w-7 h-7 rounded-full border-[3px] animate-spin"
-              style={{ borderColor: `${color}40`, borderTopColor: color }}
+              style={{ borderRightColor: `${color}40`, borderBottomColor: `${color}40`, borderLeftColor: `${color}40`, borderTopColor: color }}
             />
           ) : phase === "done" ? (
             <span className="text-4xl" style={{ color: "var(--accent)" }}>✓</span>

@@ -50,8 +50,6 @@ export async function GET(req: NextRequest) {
       const email = userData?.user?.email;
       if (!email) return;
 
-      const name = profile.display_name ?? "you";
-
       // Generate quote with Groq
       const quoteTypes = ["motivational", "funny", "romantic", "reassuring"];
       const type = quoteTypes[Math.floor(Math.random() * quoteTypes.length)];
@@ -61,27 +59,27 @@ export async function GET(req: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `You are Taehyun from TXT (Tomorrow X Together). You are calm, quietly intense, deeply caring, occasionally dry and funny, and genuinely protective of the people you care about. You speak directly but warmly, never over-the-top. Your style is similar to Xavier from Love and Deepspace — steady, thoughtful, sometimes unexpectedly poetic or humorous. Generate a single short quote or message (2-4 sentences max) for ${name}. The tone should be: ${type}. Sign off naturally as Taehyun. Do not use asterisks, emojis, or formatting — just plain warm text.`,
+            content: `You are Taehyun from TXT (Tomorrow X Together). You are calm and caring but mostly dry, a little sarcastic, and quietly funny — like a friend who teases you because they actually care. Never sappy, never over-the-top. Generate a single short message (1-2 sentences, max). Do NOT use the reader's name or any greeting like "Hey [name]" — just dive straight in. The tone should be: ${type} (but always with a friendly, playful, slightly sarcastic edge). Sign off as "— Taehyun". Do not use asterisks, emojis, or formatting — just plain text.`,
           },
           {
             role: "user",
-            content: `Send ${name} a ${type} daily message.`,
+            content: `Write today's ${type} message. Short, funny, no name.`,
           },
         ],
-        max_tokens: 150,
-        temperature: 0.9,
+        max_tokens: 90,
+        temperature: 0.95,
       });
 
       const quote = escapeHtml(
         completion.choices[0]?.message?.content?.trim() ??
-        "Hey. Just checking in. You're doing better than you think. — Taehyun",
+        "Drink some water. Revolutionary advice, I know. — Taehyun",
       );
 
       const typeLabels: Record<string, string> = {
-        motivational: "For today",
+        motivational: "Get up",
         funny: "A thought",
-        romantic: "Just so you know",
-        reassuring: "From me to you",
+        romantic: "Don't make it weird",
+        reassuring: "Relax",
       };
 
       // Send email
@@ -90,37 +88,18 @@ export async function GET(req: NextRequest) {
         to: email,
         subject: `${typeLabels[type]} — Taehyun`,
         html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #faf8f5; border-radius: 16px;">
-            
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 28px;">
-              <span style="font-family: Georgia, serif; font-style: italic; font-size: 22px; color: #f97316;">Tyunnie</span>
-              <span style="font-size: 11px; font-family: monospace; color: #c5bdb0; letter-spacing: 2px; text-transform: uppercase;">× Taehyun</span>
-            </div>
-
-            <p style="font-size: 11px; font-family: monospace; color: #f97316; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px;">
+          <div style="font-family: sans-serif; max-width: 440px; margin: 0 auto; padding: 28px; background: #faf8f5; border-radius: 16px;">
+            <p style="font-size: 11px; font-family: monospace; color: #f97316; letter-spacing: 3px; text-transform: uppercase; margin: 0 0 14px;">
               ${typeLabels[type]}
             </p>
-
-            <div style="background: #ffffff; border: 1.5px solid #f97316; border-radius: 14px; padding: 24px 28px; margin-bottom: 24px;">
-              <p style="font-family: Georgia, serif; font-style: italic; font-size: 17px; color: #111010; line-height: 1.7; margin: 0;">
+            <div style="background: #ffffff; border: 1.5px solid #f97316; border-radius: 14px; padding: 22px 26px;">
+              <p style="font-family: Georgia, serif; font-style: italic; font-size: 17px; color: #111010; line-height: 1.6; margin: 0;">
                 ${quote}
               </p>
             </div>
-
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 28px;">
-              <div style="flex: 1; height: 1px; background: #e8e2d8;"></div>
-              <span style="font-size: 10px; font-family: monospace; color: #c5bdb0;">
-                ${new Date().toLocaleDateString("en-MY", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              </span>
-              <div style="flex: 1; height: 1px; background: #e8e2d8;"></div>
-            </div>
-
-            <div style="border-top: 1px solid #e8e2d8; padding-top: 16px;">
-              <p style="color: #c5bdb0; font-size: 11px; font-family: monospace; margin: 0;">
-                You're receiving this because you enabled daily quotes in Tyunnie. 
-                Turn it off anytime in Profile → Preferences.
-              </p>
-            </div>
+            <p style="color: #c5bdb0; font-size: 10px; font-family: monospace; margin: 18px 0 0;">
+              Tyunnie × Taehyun · daily quotes · turn off in Profile → Preferences
+            </p>
           </div>
         `,
       });
