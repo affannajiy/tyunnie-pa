@@ -21,29 +21,39 @@ function verifyCronSecret(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  console.log(`[daily-quote] invoked at ${new Date().toISOString()}`);
+
   if (!verifyCronSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Fetch all users who opted in
-  const { createClient } = await import("@supabase/supabase-js");
-  const adminSupabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, // service role — can read all profiles
-  );
+  try {
+    // Fetch all users who opted in
+    const { createClient } = await import("@supabase/supabase-js");
+    const adminSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!, // service role — can read all profiles
+    );
 
-  const { data: profiles, error } = await adminSupabase
-    .from("profiles")
-    .select("id, display_name, daily_quote_email")
-    .eq("daily_quote_email", true);
+    const { data: profiles, error } = await adminSupabase
+      .from("profiles")
+      .select("id, display_name, daily_quote_email")
+      .eq("daily_quote_email", true);
 
-  if (error || !profiles?.length) {
-    return NextResponse.json({ ok: true, sent: 0 });
-  }
+    if (error) {
+      console.error("[daily-quote] failed to fetch profiles", error);
+      return NextResponse.json({ ok: true, sent: 0 });
+    }
 
-  // Get user emails from auth.users for each profile
-  const results = await Promise.allSettled(
-    profiles.map(async (profile) => {
+    // Early-exit when nobody opted in — skip Groq + Resend entirely
+    if (!profiles.length) {
+      console.log("[daily-quote] no opted-in users, exiting");
+      return NextResponse.json({ sent: 0 });
+    }
+
+    // Get user emails from auth.users for each profile
+    const sendAll = Promise.allSettled(
+      profiles.map(async (profile) => {
       const { data: userData } = await adminSupabase.auth.admin.getUserById(
         profile.id,
       );
@@ -104,8 +114,29 @@ export async function GET(req: NextRequest) {
         `,
       });
     }),
-  );
+    );
 
-  const sent = results.filter((r) => r.status === "fulfilled").length;
-  return NextResponse.json({ ok: true, sent });
+    // Vercel Hobby functions cap at 10s — race the whole send batch against a
+    // 9s ceiling so we return cleanly instead of being killed mid-flight.
+    const TIMEOUT = "__timeout__" as const;
+    const timeout = new Promise<typeof TIMEOUT>((resolve) =>
+      setTimeout(() => resolve(TIMEOUT), 9000),
+    );
+
+    const raceResult = await Promise.race([sendAll, timeout]);
+
+    if (raceResult === TIMEOUT) {
+      console.error("[daily-quote] timeout — skipping");
+      return NextResponse.json({ error: "timeout" }, { status: 504 });
+    }
+
+    const recipientCount = raceResult.filter(
+      (r) => r.status === "fulfilled",
+    ).length;
+    console.log(`[daily-quote] sent to ${recipientCount} users`);
+    return NextResponse.json({ ok: true, sent: recipientCount });
+  } catch (err) {
+    console.error("[daily-quote] error", err);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
 }

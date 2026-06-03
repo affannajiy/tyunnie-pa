@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/daily-quote",
-      "schedule": "0 1 * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }

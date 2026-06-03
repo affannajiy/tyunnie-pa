@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.20.2] — 2026-06-03
+
+### Fixed
+
+- **Daily quote email arrived an hour late** (`vercel.json`) — the cron schedule was `0 1 * * *`, which is 1:00am UTC = **9:00am MYT**, an hour past the intended 8:00am delivery. Corrected to `0 0 * * *` (midnight UTC = 8:00am MYT). All Vercel cron expressions are UTC; MYT is UTC+8.
+
+### Changed
+
+- **Daily quote handler robustness** (`/api/daily-quote`) — added guards around the existing send loop without touching the Groq model, prompt, email HTML, or `CRON_SECRET` check:
+  - **9-second timeout race** — the `Promise.allSettled` send batch now races a 9000ms ceiling via `Promise.race`, staying under the Vercel Hobby 10s function limit. On timeout it logs `[daily-quote] timeout — skipping` and returns `504 { error: "timeout" }` instead of being killed mid-flight.
+  - **Zero-recipient early exit** — when no users have opted in, logs `[daily-quote] no opted-in users, exiting` and returns `200 { sent: 0 }` without calling Groq or Resend.
+  - **Structured logging** — logs `[daily-quote] invoked at <ISO>` on entry, `[daily-quote] sent to <n> users` on success, and the full error object inside a wrapping `try/catch` for usable Vercel Function Logs.
+
+### Docs
+
+- **`docs/DEVNOTES.md`** — new `⏰ Cron Jobs` section documenting that all `vercel.json` cron schedules are UTC (8am MYT = `0 0 * * *`, 9am MYT = `0 1 * * *`) and that the Hobby plan's ±few-minute execution window is normal.
+- **`docs/DEPLOYMENT.md`** — Cron Job section now states the exact schedule and UTC/MYT mapping.
+
+---
+
 ## [3.20.1] — 2026-05-29
 
 ### Fixed

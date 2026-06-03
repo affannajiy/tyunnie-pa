@@ -348,6 +348,19 @@ NEXT_PUBLIC_APP_URL=            # Google Calendar integration — removed in 3.0
 
 ---
 
+## ⏰ Cron Jobs
+
+### Vercel cron schedules are always UTC
+
+All cron expressions in `vercel.json` use UTC. MYT is UTC+8.
+
+- 8:00am MYT = `0 0 * * *`
+- 9:00am MYT = `0 1 * * *`
+
+Hobby plan has a ±few-minute execution window — this is normal and unavoidable.
+
+---
+
 ## Versioning Convention
 
 - **Patch (x.x.X)** — bug fixes, build failures, type errors

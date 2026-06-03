@@ -1,6 +1,6 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.20.1.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.20.2.
 
 See [DEPLOYMENT.md](../docs/DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](../docs/DATABASE.md) for schema and SQL.
 
@@ -20,7 +20,7 @@ app/
 └── api/
     ├── chat/route.ts       POST — Groq chat (llama-3.3-70b, 400 max tokens), {messages, systemPrompt} → {text}
     ├── run/route.ts        POST — JDoodle code execution, {code, language} → {output}
-    ├── daily-quote/route.ts  GET cron (0 1 * * *) — Groq quotes via Resend to opted-in users
+    ├── daily-quote/route.ts  GET cron (0 0 * * * = 8am MYT) — Groq quotes via Resend to opted-in users; 9s timeout race + structured logs + zero-recipient early exit
     └── vault-notify/route.ts POST — OTP generation + PIN change email via Resend
 
 components/
@@ -172,7 +172,7 @@ lib/
 | Floating mini player | `MiniPlayer.tsx` — draggable overlay, auto-closes 30s after pause, mobile pill layout |
 | Vault encryption | AES-GCM 256-bit via Web Crypto API, PBKDF2 key derivation |
 | AI personality | Taehyun from TXT — calm, caring, dry humor, poetic |
-| Daily quote emails | Vercel cron `0 1 * * *` → `/api/daily-quote` → Groq → Resend |
+| Daily quote emails | Vercel cron `0 0 * * *` (midnight UTC = 8am MYT) → `/api/daily-quote` → Groq → Resend; all cron schedules are UTC |
 | Code execution | `/api/run` proxies to JDoodle API |
 | API security | Auth via `verifyAuth()` (JWT), rate limiting via `rateLimit()`, XSS via `sanitizeHtml()`; `authHeader()` uses `refreshSession()` (not `getSession()`) to prevent stale revoked tokens |
 | Shared prop types | Heavy components use `lib/tyunniePanelTypes.ts` — avoids Next.js plugin type inference issues |

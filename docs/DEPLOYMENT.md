@@ -30,7 +30,7 @@ Set these in Vercel → Project → Settings → Environment Variables (or in `.
 
 ### Cron Job
 
-The daily quote email runs via Vercel Cron. It's already declared in `vercel.json` (or `next.config.ts`). Make sure `CRON_SECRET` and `RESEND_API_KEY` are set in production.
+The daily quote email runs via Vercel Cron. It's already declared in `vercel.json` with schedule `0 0 * * *` (midnight UTC = 8:00am MYT). **All Vercel cron expressions are UTC** — MYT is UTC+8, so `0 0 * * *` fires at 8am MYT and `0 1 * * *` would fire at 9am MYT. The Hobby plan has a ±few-minute execution window, which is normal. Make sure `CRON_SECRET` and `RESEND_API_KEY` are set in production.
 
 ---
 
