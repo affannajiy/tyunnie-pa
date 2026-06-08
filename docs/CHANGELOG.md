@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.21.0] — 2026-06-08
+
+### Added
+
+- **Guest / demo mode** — a no-login preview of the entire app, reachable via an **"Explore as a guest"** button on the auth page (`app/auth/page.tsx`). Guests see every panel populated with realistic sample data and can edit freely; changes persist in the browser only, never to an account.
+  - **`lib/guest.ts`** (new) — the core of the feature: a `tyunnie_guest` flag, a `tyunnie_guest_data` localStorage store, rich seeded sample data (profile, 6 tasks, 2 drafts, 4 projects, 2 snippets, 8 finance entries across two months, 2 sticky notes, 2 memories — all date-anchored to "now"), and a `guest` CRUD object mirroring `lib/database.ts`. Exports `GUEST_ID` (`"demo-user"`), `isGuest()`, `enterGuest()`, `exitGuest()`, `getGuestData()`, `resetGuestData()`.
+  - **`lib/database.ts`** — every CRUD function now routes through the guest store when in guest mode: userId-based calls branch on `userId === GUEST_ID`, id-only mutations branch on `isGuest()`. Auth-only resources (vault, music uploads) return empty/null for guests. The data layer needs no further change to support guests.
+  - **`app/dashboard/page.tsx`** — sets a synthetic `user = { id: GUEST_ID }` when the guest flag is set and there's no real session. **A real Supabase session always wins** and clears the stale guest flag via `exitGuest()`. Adds a slim guest banner ("🧡 Guest preview") with **Reset demo** and **Sign up to save** actions; sign-out exits guest mode back to `/auth`.
+
+### Changed
+
+- **AI chat is gated for guests** (`components/TyunniePanel.tsx`) — guests get a friendly "make an account" greeting and a sign-up prompt in place of the chat composer; the daily briefing, proactive suggestions, and `sendChat()` all early-return. This avoids paid `/api/chat` calls with no JWT. The gate is a single `isGuest` prop — flipping AI on for guests later only requires giving them a valid token (e.g. an anonymous Supabase session), no data-layer changes.
+- **Paid / auth-only features degrade gracefully for guests** instead of throwing 401s — each shows a "sign up" message: code runner (`components/Snippets.tsx`, `/api/run`), live exchange rates (`components/Calculator.tsx`, `/api/exchange-rates`), Desk AI one-liner (`components/Desk.tsx`), and music uploads (`components/Music.tsx`). Avatar editing **works** for guests via a local data URL instead of the `avatars` storage bucket (`components/Profile.tsx`); vault reads/writes no-op.
+
+### Fixed
+
+- **Tyunnie referenced the wrong time of day in chat** (`components/TyunniePanel.tsx`) — the main chat system prompt (`buildSystemPrompt()`) only knew the date, not the time, so Tyun could mention a "morning walk" at 10pm. It now injects the current clock time and a `morning`/`afternoon`/`evening`/`night` band, with an explicit instruction to stay consistent with it. (The daily briefing already had the time; only normal chat was affected.)
+
+### Docs
+
+- **`docs/DEVNOTES.md`** — new "Guest / Demo Mode" section documenting the architecture, the `GUEST_ID` sentinel, the routing pattern, and how to enable AI for guests later.
+- **`README.md`** / **`.claude/CLAUDE.md`** — guest mode feature description and file-tree entry added.
+
+---
+
 ## [3.20.2] — 2026-06-03
 
 ### Fixed

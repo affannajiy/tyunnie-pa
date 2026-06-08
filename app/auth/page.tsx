@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { enterGuest } from "@/lib/guest";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -46,6 +47,13 @@ export default function AuthPage() {
     }
 
     setLoading(false);
+  }
+
+  // Guest preview — set the flag, then let the dashboard treat GUEST_ID as a
+  // logged-in user. No Supabase session is created; nothing is saved to an account.
+  function handleGuest() {
+    enterGuest();
+    router.push("/dashboard");
   }
 
   async function handleGoogleSignIn() {
@@ -287,6 +295,27 @@ export default function AuthPage() {
             >
               {mode === "login" ? "Sign up" : "Log in"}
             </button>
+          </p>
+
+          {/* Guest preview — explore without an account */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-[#e8e2d8] dark:bg-[#2a2620]" />
+            <span className="text-[10px] font-mono text-[#c5bdb0] dark:text-[#3a3530] uppercase tracking-widest">
+              just looking?
+            </span>
+            <div className="flex-1 h-px bg-[#e8e2d8] dark:bg-[#2a2620]" />
+          </div>
+          <button
+            type="button"
+            onClick={handleGuest}
+            className="w-full flex items-center justify-center gap-2 bg-transparent border border-dashed rounded-xl py-3 text-sm font-semibold transition-all hover:bg-[#faf8f5] dark:hover:bg-[#1a1815]"
+            style={{ borderColor: accentMid, color: accent }}
+          >
+            <span aria-hidden="true">🧡</span>
+            Explore as a guest
+          </button>
+          <p className="text-center text-[11px] text-[#c5bdb0] dark:text-[#4a4540] mt-2">
+            Sample data, no sign-up. Nothing is saved to an account.
           </p>
 
         </div>

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getProfile, upsertProfile, type Profile } from "@/lib/database";
 import { useRef } from "react";
 import { supabase, authHeader } from "@/lib/supabase";
+import { isGuest } from "@/lib/guest";
 import {
   getVaultEntries,
   addVaultEntry,
@@ -923,6 +924,17 @@ export default function Profile({
     );
     if (!blob) return;
 
+    // Guest mode: keep the avatar local (data URL) — no storage bucket access.
+    if (isGuest()) {
+      const url = canvas.toDataURL("image/png");
+      setAvatarUrl(url);
+      setShowCropModal(false);
+      setCropSrc(null);
+      const updatedProfile = await upsertProfile(userId, { avatar_url: url });
+      if (updatedProfile) onSave(updatedProfile);
+      return;
+    }
+
     const path = `avatars/${userId}.png`;
     const { error } = await supabase.storage
       .from("avatars")
@@ -942,7 +954,9 @@ export default function Profile({
   }
 
   async function handleDeleteAvatar() {
-    await supabase.storage.from("avatars").remove([`avatars/${userId}.png`]);
+    if (!isGuest()) {
+      await supabase.storage.from("avatars").remove([`avatars/${userId}.png`]);
+    }
     setAvatarUrl(null);
     const updatedProfile = await upsertProfile(userId, { avatar_url: null }); // ← same
     if (updatedProfile) onSave(updatedProfile);

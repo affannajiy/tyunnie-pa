@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.20.2-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.21.0-f97316?style=flat-square)
 
 ---
 
@@ -89,6 +89,13 @@ All modes follow the app's light/dark theme and chosen accent colour.
 - Display name, avatar, city, occupation, interests, locale, currency
 - Full accent color picker (spectrum canvas, hue slider, hex/RGB/HSL inputs)
 - **Password Vault** — AES-GCM 256-bit encrypted, PIN-protected, auto-locks after 30s
+
+### Guest Mode
+
+- **No-login preview** — an "Explore as a guest" button on the login screen opens the full app with realistic sample data (tasks, drafts, projects, snippets, finance, sticky notes, memories), no sign-up required
+- **Edit freely** — guest changes persist in the browser (`localStorage`) only, never to an account; a "Reset demo" button restores the seed data
+- **Graceful gating** — paid/auth-only features (AI chat, code runner, live exchange rates, music upload) show a friendly "sign up to unlock" state instead of errors; everything else is fully interactive
+- A real login always takes over from a guest session
 
 ### Keyboard Shortcuts & Command Palette
 

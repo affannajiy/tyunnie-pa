@@ -1,4 +1,14 @@
 import { supabase } from "./supabase";
+import { guest, isGuest, GUEST_ID } from "./guest";
+
+// ── Guest / demo routing ─────────────────────────────────────────────────────
+// When the app is in guest mode every CRUD function below short-circuits to the
+// localStorage-backed store in `lib/guest.ts` instead of hitting Supabase:
+//   • userId-based reads/writes branch on `userId === GUEST_ID`
+//   • id-only mutations (no userId in scope) branch on `isGuest()`
+// Auth-only resources (vault, music uploads) return empty/null for guests.
+// This keeps every panel working unchanged without a real session. See guest.ts.
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════
 //  TYPES
@@ -122,7 +132,7 @@ export type Memory = {
 // ══════════════════════════════════════════════
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  if (userId === "demo-user") return null;
+  if (userId === GUEST_ID) return guest.getProfile();
   const { data } = await supabase
     .from("profiles")
     .select("*")
@@ -135,7 +145,7 @@ export async function upsertProfile(
   userId: string,
   profile: Partial<Profile>,
 ): Promise<Profile | null> {
-  if (userId === "demo-user") return null;
+  if (userId === GUEST_ID) return guest.upsertProfile(profile);
   const { data, error } = await supabase
     .from("profiles")
     .upsert({ id: userId, ...profile, updated_at: new Date().toISOString() })
@@ -151,7 +161,7 @@ export async function upsertProfile(
 
 // Get all todos — pending ones first, then done ones
 export async function getTodos(userId: string): Promise<Todo[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return guest.getTodos();
   const { data, error } = await supabase
     .from("todos")
     .select("*")
@@ -168,6 +178,7 @@ export async function addTodo(
   userId: string,
   todo: { text: string; tag: string; due: string | null },
 ): Promise<Todo | null> {
+  if (userId === GUEST_ID) return guest.addTodo(todo);
   const { data, error } = await supabase
     .from("todos")
     .insert({ ...todo, user_id: userId, done: false })
@@ -180,6 +191,7 @@ export async function addTodo(
 
 // Toggle a task between done and not done
 export async function toggleTodo(id: string, done: boolean): Promise<void> {
+  if (isGuest()) return guest.toggleTodo(id, done);
   const { error } = await supabase.from("todos").update({ done }).eq("id", id);
 
   if (error) console.error("toggleTodo error:", error);
@@ -191,12 +203,14 @@ export async function updateTodo(
   updates: { text?: string; tag?: string; due?: string | null },
 ): Promise<void> {
   if (!id) return;
+  if (isGuest()) return guest.updateTodo(id, updates);
   const { error } = await supabase.from("todos").update(updates).eq("id", id);
   if (error) console.error("updateTodo error:", error);
 }
 
 // Delete a task
 export async function deleteTodo(id: string): Promise<void> {
+  if (isGuest()) return guest.deleteTodo(id);
   const { error } = await supabase.from("todos").delete().eq("id", id);
 
   if (error) console.error("deleteTodo error:", error);
@@ -208,7 +222,7 @@ export async function deleteTodo(id: string): Promise<void> {
 
 // Get all drafts, newest first
 export async function getDrafts(userId: string): Promise<Draft[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return guest.getDrafts();
   const { data, error } = await supabase
     .from("drafts")
     .select("*")
@@ -224,6 +238,7 @@ export async function addDraft(
   userId: string,
   draft: { title: string; body: string },
 ): Promise<Draft | null> {
+  if (userId === GUEST_ID) return guest.addDraft(draft);
   const { data, error } = await supabase
     .from("drafts")
     .insert({ ...draft, user_id: userId })
@@ -239,6 +254,7 @@ export async function updateDraft(
   id: string,
   updates: { title?: string; body?: string },
 ): Promise<void> {
+  if (isGuest()) return guest.updateDraft(id, updates);
   const { error } = await supabase.from("drafts").update(updates).eq("id", id);
 
   if (error) console.error("updateDraft error:", error);
@@ -246,6 +262,7 @@ export async function updateDraft(
 
 // Delete a draft
 export async function deleteDraft(id: string): Promise<void> {
+  if (isGuest()) return guest.deleteDraft(id);
   const { error } = await supabase.from("drafts").delete().eq("id", id);
 
   if (error) console.error("deleteDraft error:", error);
@@ -257,7 +274,7 @@ export async function deleteDraft(id: string): Promise<void> {
 
 // Get all projects, newest first
 export async function getProjects(userId: string): Promise<Project[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return guest.getProjects();
   const { data, error } = await supabase
     .from("projects")
     .select("*")
@@ -280,6 +297,7 @@ export async function addProject(
     description: string;
   },
 ): Promise<Project | null> {
+  if (userId === GUEST_ID) return guest.addProject({ ...project, status: project.status as Project["status"] });
   const { data, error } = await supabase
     .from("projects")
     .insert({ ...project, user_id: userId })
@@ -295,6 +313,7 @@ export async function updateProject(
   id: string,
   updates: Partial<Omit<Project, "id" | "user_id" | "created_at">>,
 ): Promise<void> {
+  if (isGuest()) return guest.updateProject(id, updates);
   const { error } = await supabase
     .from("projects")
     .update(updates)
@@ -305,6 +324,7 @@ export async function updateProject(
 
 // Delete a project
 export async function deleteProject(id: string): Promise<void> {
+  if (isGuest()) return guest.deleteProject(id);
   const { error } = await supabase.from("projects").delete().eq("id", id);
 
   if (error) console.error("deleteProject error:", error);
@@ -316,7 +336,7 @@ export async function deleteProject(id: string): Promise<void> {
 
 // Get all snips, newest first
 export async function getSnips(userId: string): Promise<Snip[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return guest.getSnips();
   const { data, error } = await supabase
     .from("snips")
     .select("*")
@@ -332,6 +352,7 @@ export async function addSnip(
   userId: string,
   snip: { name: string; language: string; code: string },
 ): Promise<Snip | null> {
+  if (userId === GUEST_ID) return guest.addSnip(snip);
   const { data, error } = await supabase
     .from("snips")
     .insert({ ...snip, user_id: userId })
@@ -347,6 +368,7 @@ export async function updateSnip(
   id: string,
   updates: { name?: string; language?: string; code?: string },
 ): Promise<void> {
+  if (isGuest()) return guest.updateSnip(id, updates);
   const { error } = await supabase.from("snips").update(updates).eq("id", id);
 
   if (error) console.error("updateSnip error:", error);
@@ -354,6 +376,7 @@ export async function updateSnip(
 
 // Delete a snip
 export async function deleteSnip(id: string): Promise<void> {
+  if (isGuest()) return guest.deleteSnip(id);
   const { error } = await supabase.from("snips").delete().eq("id", id);
 
   if (error) console.error("deleteSnip error:", error);
@@ -367,7 +390,7 @@ export async function deleteSnip(id: string): Promise<void> {
 export async function getFinanceEntries(
   userId: string,
 ): Promise<FinanceEntry[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return guest.getFinance();
   // Only fetch last 12 months — enough for 6-month charts + carry-over
   const since = new Date();
   since.setMonth(since.getMonth() - 12);
@@ -394,6 +417,7 @@ export async function addFinanceEntry(
     account?: string;
   },
 ): Promise<FinanceEntry | null> {
+  if (userId === GUEST_ID) return guest.addFinance(entry);
   const payload = {
     ...entry,
     account: entry.account ?? "Wallet",
@@ -411,6 +435,7 @@ export async function addFinanceEntry(
 
 // Delete a finance entry
 export async function deleteFinanceEntry(id: string): Promise<void> {
+  if (isGuest()) return guest.deleteFinance(id);
   const { error } = await supabase.from("finance").delete().eq("id", id);
 
   if (error) console.error("deleteFinanceEntry error:", error);
@@ -421,6 +446,7 @@ export async function deleteFinanceEntriesByMonth(
   year: number,
   month: number, // 1-12
 ): Promise<void> {
+  if (userId === GUEST_ID) return guest.deleteFinanceByMonth(year, month);
   const start = `${year}-${String(month).padStart(2, "0")}-01`;
   const end = `${year}-${String(month).padStart(2, "0")}-31`;
 
@@ -460,7 +486,7 @@ export async function getFinanceSummary(
 // ══════════════════════════════════════════════
 
 export async function getVaultEntries(userId: string): Promise<VaultEntry[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return [];
   const { data, error } = await supabase
     .from("vault")
     .select("*")
@@ -474,6 +500,7 @@ export async function addVaultEntry(
   userId: string,
   entry: { name: string; encrypted_data: string; iv: string; salt: string },
 ): Promise<VaultEntry | null> {
+  if (userId === GUEST_ID) return null;
   const { data, error } = await supabase
     .from("vault")
     .insert({ ...entry, user_id: userId })
@@ -497,7 +524,7 @@ export async function updateVaultEntry(
 }
 
 export async function getVaultMeta(userId: string): Promise<VaultMeta | null> {
-  if (userId === "demo-user") return null;
+  if (userId === GUEST_ID) return null;
   const { data } = await supabase
     .from("vault_meta")
     .select("*")
@@ -510,11 +537,12 @@ export async function setVaultMeta(
   userId: string,
   meta: { pin_verifier: string; pin_iv: string; pin_salt: string },
 ): Promise<void> {
+  if (userId === GUEST_ID) return;
   await supabase.from("vault_meta").upsert({ user_id: userId, ...meta });
 }
 
 export async function getStickyNotes(userId: string): Promise<StickyNote[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return guest.getStickyNotes();
   const { data } = await supabase
     .from("sticky_notes")
     .select("*")
@@ -528,7 +556,7 @@ export async function createStickyNote(
   x: number,
   y: number,
 ): Promise<StickyNote | null> {
-  if (userId === "demo-user") return null;
+  if (userId === GUEST_ID) return guest.createStickyNote(x, y);
   const { data } = await supabase
     .from("sticky_notes")
     .insert({
@@ -551,14 +579,17 @@ export async function updateStickyNote(
     Pick<StickyNote, "content" | "x" | "y" | "width" | "height" | "color">
   >,
 ): Promise<void> {
+  if (isGuest()) return guest.updateStickyNote(id, patch);
   await supabase.from("sticky_notes").update(patch).eq("id", id);
 }
 
 export async function deleteStickyNote(id: string): Promise<void> {
+  if (isGuest()) return guest.deleteStickyNote(id);
   await supabase.from("sticky_notes").delete().eq("id", id);
 }
 
 export async function completeTodo(id: string): Promise<void> {
+  if (isGuest()) return guest.toggleTodo(id, true);
   await supabase.from("todos").update({ done: true }).eq("id", id);
 }
 
@@ -567,6 +598,7 @@ export async function updateProjectProgress(
   progress: number,
   status?: string,
 ): Promise<void> {
+  if (isGuest()) return guest.updateProject(id, status ? { progress, status: status as Project["status"] } : { progress });
   const patch: Record<string, unknown> = { progress };
   if (status) patch.status = status;
   await supabase.from("projects").update(patch).eq("id", id);
@@ -576,7 +608,7 @@ export async function updateProjectProgress(
 //  MEMORY
 // ══════════════════════════════════════════════
 export async function getMemories(userId: string): Promise<Memory[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return guest.getMemories();
   const { data } = await supabase
     .from("memories")
     .select("*")
@@ -590,11 +622,12 @@ export async function addMemory(
   userId: string,
   content: string,
 ): Promise<void> {
-  if (userId === "demo-user") return;
+  if (userId === GUEST_ID) return guest.addMemory(content);
   await supabase.from("memories").insert({ user_id: userId, content });
 }
 
 export async function deleteMemory(id: string): Promise<void> {
+  if (isGuest()) return guest.deleteMemory(id);
   await supabase.from("memories").delete().eq("id", id);
 }
 
@@ -614,7 +647,7 @@ export type MusicTrack = {
 };
 
 export async function getMusicTracks(userId: string): Promise<MusicTrack[]> {
-  if (userId === "demo-user") return [];
+  if (userId === GUEST_ID) return [];
   const { data, error } = await supabase
     .from("music_tracks")
     .select("*")
@@ -635,7 +668,7 @@ export async function addMusicTrack(
     position?: number;
   },
 ): Promise<MusicTrack | null> {
-  if (userId === "demo-user") return null;
+  if (userId === GUEST_ID) return null;
   const { data, error } = await supabase
     .from("music_tracks")
     .insert({ ...track, user_id: userId, position: track.position ?? 0 })

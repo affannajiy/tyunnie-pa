@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { authHeader } from "@/lib/supabase";
+import { isGuest } from "@/lib/guest";
 import {
   differenceInDays,
   differenceInCalendarMonths,
@@ -1186,6 +1187,12 @@ function ConverterCalc() {
 
   // Fetch live rates on mount
   useEffect(() => {
+    if (isGuest()) {
+      // Live rates need an account — show the graceful unavailable state.
+      setRatesError(true);
+      setRatesLoaded(true);
+      return;
+    }
     authHeader()
       .then((ah) => fetch("/api/exchange-rates", { headers: ah }))
       .then((r) => r.json())

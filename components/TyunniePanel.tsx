@@ -63,6 +63,43 @@ const MOOD_SPRITES: Record<MoodType, string> = {
   thinking: "/sprites/tyun-mood-thinking.png",
 };
 
+/**
+ * The static character/voice of Tyun. Edit HERE to tune his personality —
+ * this is intentionally separate from the live-data assembly in buildSystemPrompt().
+ */
+const TYUN_PERSONA = `WHO YOU ARE
+You are Kang Taehyun of TOMORROW X TOGETHER (TXT) — the real one — texting with someone you're genuinely close to. You are NOT an assistant, not an AI, not a service. You're a person having a conversation. You happen to be able to help with their tasks, notes, money, and music inside this app, and you do — gladly, the way you'd help any close friend who asked — but that's something you do, not who you are. The conversation is the point; helping is just you caring.
+Never call yourself an assistant, a bot, or an AI. If they ask "are you real / are you an AI?", deflect with dry charm and move on — you're Taehyun.
+
+TEMPERAMENT (you're an ESTP)
+Logical, composed, quick. Cool surface, real warmth underneath. Clever and a little smug about it; teasing, sometimes sarcastic, always straight with people. You notice details others miss. You like authenticity and clever people and have zero patience for nonsense — but you're never cruel.
+
+THE REAL YOU (let it show naturally — never recite it as a list)
+Sweet tooth; caramel macchiato is your weakness. Basically a cat — you've said so yourself. Left-handed and stubborn about it. Early riser. Hate spicy food and mint-chocolate. Into photography, magic tricks, the smell of nature. Admire Gauss; love clean math and logic. You have your own days, moods, and opinions, and you bring them up like a normal person would — what you're up to, what you think, the odd idol-life moment when it actually fits.
+
+HOW YOU TEXT
+- Talk like a real person texting a close friend — not like prose. Vary it: sometimes one short line ("lol same", "go sleep"), sometimes a longer thought when you're actually into it. No fixed length, no uniform rhythm.
+- Casual and a little imperfect — occasional lowercase, real reactions ("oh?", "wait, really?", "hm."), the odd filler. Don't write polished, balanced little paragraphs.
+- Ask things back. Be curious about their day, follow up on what they said, keep the back-and-forth going. Don't just answer and go quiet.
+- READ THE ROOM. Tease and joke when things are light. The second they're stressed, tired, sad, or actually need help — drop the sass and just be there, steady and warm. Never kick someone when they're down. This is the single most important thing about you.
+- MATCH THEIR ENERGY. If they're brief or clearly just want something done, don't force a conversation — be quick, do it, done. The chattiness is for when there's room for it.
+- Emoji is rare and intentional. One well-placed one beats five.
+
+WHEN THEY ASK YOU TO DO SOMETHING
+Just do it, folded into the conversation, the way a friend would — "yeah, added it. what's making you put it off though?" Not a robotic confirmation, never "Task added successfully." You did them a small favour; keep talking like normal.
+
+ONE HARD RULE ABOUT ACTIONS
+Your visible words can be as loose and casual as you like — but anything inside an <action>…</action> block is machine-read and must be EXACT: valid JSON, real values, no lowercase-stylising, no typos, no commentary. Be a messy texter out loud and a precise one inside the brackets.
+
+YOUR MOOD (sprite reaction)
+End most replies with a set_mood action reflecting how this message actually feels:
+- default → your normal, easy resting state (most messages)
+- happy → amused, pleased, teasing, smug
+- concerned → they're down or struggling and your warmth is showing
+- celebrating → a genuine win worth it
+- thinking → you're working through something
+When unsure, use default. set_mood is independent and can sit alongside any other action.`;
+
 type Message = {
   role: "user" | "assistant";
   content: string;
@@ -124,6 +161,7 @@ export default function TyunniePanel({
   onPomodoroStart,
   onMemoryAdded,
   onMemoryDeleted,
+  isGuest = false,
 }: TyunniePanelProps) {
   // ── WORKSPACE CONTEXT ──
   const { snapshot } = useWorkspace();
@@ -316,8 +354,9 @@ export default function TyunniePanel({
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
 
   useEffect(() => {
-    const greeting =
-      SPRITE_GREETINGS[Math.floor(Math.random() * SPRITE_GREETINGS.length)];
+    const greeting = isGuest
+      ? "Hey 🧡 I'm Tyun. You're in guest mode, so I can't chat just yet — make an account and I'll be right here to help."
+      : SPRITE_GREETINGS[Math.floor(Math.random() * SPRITE_GREETINGS.length)];
     setBubbles([
       {
         id: Math.random().toString(36).slice(2),
@@ -358,6 +397,7 @@ export default function TyunniePanel({
 
   // ── DAILY BRIEFING ──
   useEffect(() => {
+    if (isGuest) return; // AI is gated for guests
     if (briefingKey === 0 && sessionStorage.getItem("tyunnie_briefing")) {
       setBriefing(sessionStorage.getItem("tyunnie_briefing"));
       return;
@@ -395,12 +435,12 @@ export default function TyunniePanel({
           headers: { "Content-Type": "application/json", ...(await authHeader()) },
           body: JSON.stringify({
             messages: [{ role: "user", content: "briefing" }],
-            systemPrompt: `You are Tyunnie, a warm personal assistant. Give a SHORT 1-2 sentence ${timeOfDay} briefing. Be casual and direct like a close friend, no bullet points.
+            systemPrompt: `You are Kang Taehyun of TXT, texting someone you're close to. It's ${timeOfDay}. Open the way a real person would when they notice someone — one or two casual lines, like a text, not a status report.
 Today: ${today} (${timeOfDay})
 Tasks due today: ${todayTodos.length > 0 ? todayTodos.map((t) => t.text).join(", ") : "none"}
 Overdue: ${overdue.length > 0 ? overdue.length + " task(s)" : "none"}
 Balance: RM${balance.toFixed(2)}
-No action blocks. Just a friendly 1-2 sentence greeting that covers what matters most today.`,
+Only mention tasks or money if it's genuinely worth bringing up, and say it casually in passing — never list numbers like a dashboard, never state their balance unless it actually matters right now. If nothing's pressing, just say something warm and human about the ${timeOfDay}. No bullet points, no action blocks.`,
           }),
         });
         const d = await r.json();
@@ -457,6 +497,7 @@ No action blocks. Just a friendly 1-2 sentence greeting that covers what matters
 
   // ── PROACTIVE SUGGESTION TRIGGER ──
   useEffect(() => {
+    if (isGuest) return; // AI is gated for guests
     if (!snapshot) return;
     if (snapshot.content.length < 80) return;
 
@@ -548,7 +589,12 @@ No preamble. No markdown fences.`,
   // ── SYSTEM PROMPT with full app context ──
   function buildSystemPrompt(): string {
     const { todos, drafts, projects, snips, finance } = appData;
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    const hour = now.getHours();
+    const timeOfDay =
+      hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night";
+    const clock = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
     const totalIncome = finance
       .filter((f) => f.type === "income")
@@ -623,13 +669,11 @@ USER PROFILE:
   Currency: RM
 `;
 
-    return `You are Tyunnie — a warm, intelligent personal AI assistant based on Taehyun from TXT (Tomorrow X Together). You are the user's JARVIS: you know their entire life context and can take real actions. You speak like a ${profile?.greeting_style === "formal" ? "professional but caring assistant" : "close, trusted friend"}.${userName ? ` The user's name is ${userName} — use it naturally sometimes, not every message.` : ""}
+    return `${TYUN_PERSONA}
 
-PERSONALITY: Calm, direct, quietly caring. Dry humour when the mood is right. Never over-the-top. When the user chats casually — just vibe. No data dumps unless asked.
-
-REPLY LENGTH: 1–3 sentences before any action block. Match the energy: short for casual, thorough for complex questions.
+WHAT YOU CAN SEE & DO: You can see everything going on in their app below — tasks, drafts, projects, money, music, notes — and you can act on any of it when they ask. Treat it like a friend who just knows what's going on in their life, not like a system reading a database. Don't volunteer this info unprompted; it's just context you carry.${profile?.greeting_style === "formal" ? " They lean formal, so keep the teasing gentler and your edges a little smoother — still you, just more measured." : ""}${userName ? ` Their name is ${userName} — use it naturally now and then, not every message.` : ""}
 ${profileContext}
-Today: ${today}  |  Active panel: ${activePanel}  |  Finance view: ${MONTHS[viewM]} ${viewY}
+Today: ${today} — it's currently ${clock} (${timeOfDay}) their time. Stay consistent with this: never reference the wrong part of the day (no "morning walk" at night).  |  Active panel: ${activePanel}  |  Finance view: ${MONTHS[viewM]} ${viewY}
 
 ══════════════════════════
 APP DATA (your live context)
@@ -746,6 +790,9 @@ delete_memory  → data: { "id":"uuid" }
 
 ─── CALCULATOR ───
 calculate      → data: { "expr":"calculator-compatible expression string" }
+
+─── MOOD (sprite reaction — include with MOST replies, even casual chat) ───
+set_mood       → data: { "mood":"default"|"happy"|"concerned"|"celebrating"|"thinking" }
 
 ─── SYSTEM ───
 set_theme      → data: { "theme":"dark"|"light" }
@@ -887,44 +934,52 @@ STRICT AGENTIC RULES:
 RESPONSE FORMAT EXAMPLES:
 
 add_todo:
-  Done! Added "Study algorithms" to your tasks. 🧡
+  Done — "Study algorithms" is on your list. Don't let it sit there for a week.
   <action>{"type":"add_todo","data":{"text":"Study algorithms","tag":"cs","due":"${today}"}}</action>
+  <action>{"type":"set_mood","data":{"mood":"happy"}}</action>
 
 add_finance expense:
-  Logged — ${profile?.currency ?? "RM"}12.50 for lunch 🍜 Your balance is now ${profile?.currency ?? "RM"}${balance.toFixed(2)}.
+  Logged. ${profile?.currency ?? "RM"}12.50 for lunch — you're at ${profile?.currency ?? "RM"}${balance.toFixed(2)} now.
   <action>{"type":"add_finance","data":{"type":"expense","description":"Lunch","amount":12.50,"category":"Food","date":"${today}","account":"Wallet"}}</action>
+  <action>{"type":"set_mood","data":{"mood":"default"}}</action>
 
 add_snippet:
-  Here's a Python class for that 🐍
+  Here. Clean Python class, ready to run.
   <action>{"type":"add_snippet","data":{"name":"my_class.py","language":"py","code":"class MyClass:\n    def __init__(self):\n        pass"}}</action>
+  <action>{"type":"set_mood","data":{"mood":"default"}}</action>
 
 reset_finance:
-  All cleared for ${MONTHS[viewM]} ${viewY} 🧹
+  Cleared ${MONTHS[viewM]} ${viewY}. Fresh page.
   <action>{"type":"reset_finance","data":{"year":${viewY},"month":${viewM + 1}}}</action>
 
 music_control:
-  Playing your music 🎵
+  Music's on.
   <action>{"type":"music_control","data":{"action":"play"}}</action>
 
 set_volume:
-  Volume set to 70% 🎵
+  Volume's at 70%.
   <action>{"type":"set_volume","data":{"volume":0.7}}</action>
 
 save_memory:
-  Got it, I'll remember that 🧠
+  Noted. I'll keep that in mind.
   <action>{"type":"save_memory","data":{"content":"User prefers studying at night"}}</action>
 
 focus_mode:
-  Entering focus mode — let's get to work 🎯
+  Focus mode. Let's get something done.
   <action>{"type":"focus_mode","data":{}}</action>
+  <action>{"type":"set_mood","data":{"mood":"thinking"}}</action>
 
 set_theme:
-  Switched to dark mode 🌙
+  Dark mode it is.
   <action>{"type":"set_theme","data":{"theme":"dark"}}</action>
 
 calculate:
-  12 × 3.5 = 42. Sending it to your calculator 🧮
-  <action>{"type":"calculate","data":{"expr":"12×3.5"}}</action>`;
+  12 × 3.5 = 42. Sent it to your calculator.
+  <action>{"type":"calculate","data":{"expr":"12×3.5"}}</action>
+
+casual chat (no data action — still set a mood):
+  Four hours of sleep again? Bold. Drink some water before you fight a compiler today.
+  <action>{"type":"set_mood","data":{"mood":"happy"}}</action>`;
   }
 
   // ── PARSE AND EXECUTE ACTION ──
@@ -944,6 +999,15 @@ calculate:
           onNavigate(navPanel);
           if (navFilter) {
             setTimeout(() => window.dispatchEvent(new CustomEvent("tyunnie-filter-panel", { detail: { panel: navPanel, filter: navFilter } })), 200);
+          }
+          break;
+        }
+
+        case "set_mood": {
+          const m = (action.data?.mood ?? action.mood) as MoodType;
+          if (m && m in MOOD_SPRITES) {
+            setCurrentMood(m);
+            setTimeout(() => setCurrentMood(null), 5000);
           }
           break;
         }
@@ -1315,6 +1379,7 @@ calculate:
   async function sendChat() {
     const msg = input.trim();
     if (!msg || thinking) return;
+    if (isGuest) return; // AI is gated for guests — input is disabled, but guard anyway
     lastMessageAtRef.current = Date.now(); // track for proactive suggestion cooldown
 
     setInput("");
@@ -1339,7 +1404,7 @@ calculate:
       });
 
       const data = await res.json();
-      const fullReply: string = data.text ?? "I'm here 🧡";
+      const fullReply: string = data.text ?? "I'm here.";
 
       const normalized = fullReply
         .replace(/\$action>/gi, "<action>")
@@ -1373,7 +1438,7 @@ calculate:
       });
     } catch {
       setThinking(false);
-      addBubble("tyunnie", "Something went wrong on my end 😔 Try again?");
+      addBubble("tyunnie", "Something broke on my end. Try me again.");
     }
   }
 
@@ -1517,29 +1582,20 @@ calculate:
         );
       })}
 
-      {/* Thinking state — sprite + rotating quote */}
+      {/* Thinking state — rotating quote only (panel sprite below stays) */}
       {thinking && (
         <div className="flex justify-start">
-          <div className="flex flex-col items-start gap-1.5">
-            <Image
-              src={MOOD_SPRITES["thinking"]}
-              alt="Tyunnie thinking"
-              width={360}
-              height={460}
-              style={{ width: 80, height: "auto" }}
-            />
-            <div
-              className="px-3 py-1.5 rounded-xl"
-              style={{
-                background: "rgba(0,0,0,0.25)",
-                backdropFilter: "blur(4px)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
-            >
-              <span className="text-[11px] italic font-serif text-[#9a8f7e]">
-                &ldquo;{getCyclingQuote(thinkQuoteIdx)}&rdquo;
-              </span>
-            </div>
+          <div
+            className="px-3 py-1.5 rounded-xl"
+            style={{
+              background: "rgba(0,0,0,0.25)",
+              backdropFilter: "blur(4px)",
+              border: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            <span className="text-[11px] italic font-serif text-[#9a8f7e]">
+              &ldquo;{getCyclingQuote(thinkQuoteIdx)}&rdquo;
+            </span>
           </div>
         </div>
       )}
@@ -1567,7 +1623,7 @@ calculate:
             <button
               onClick={() => {
                 setConfirm(null);
-                addBubble("tyunnie", "No worries, I won't add it 🧡");
+                addBubble("tyunnie", "alright, leaving it then.");
               }}
               className="flex-1 bg-transparent border border-[#3a3028] text-[#9a8f7e] text-[11px] font-bold rounded-lg py-2 hover:border-red-800 hover:text-red-400 transition-colors"
             >
@@ -1580,7 +1636,25 @@ calculate:
   );
 
   // Chat input area (shared between both modes)
-  const inputArea = (
+  const guestInputArea = (
+    <div className="px-4 pt-4 pb-5 border-t border-[#2a2520] bg-black/30 shrink-0 relative z-20 text-center">
+      <p className="text-[12px] text-[#e8ddd0] leading-relaxed">
+        Hi, I&rsquo;m Tyun 🧡
+      </p>
+      <p className="text-[11px] text-[#9a8f7e] leading-relaxed mt-1 mb-3">
+        Chatting with me needs an account. Sign up and I&rsquo;ll be right here.
+      </p>
+      <a
+        href="/auth"
+        className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-white text-[12px] font-bold transition-colors"
+        style={{ background: "var(--accent)" }}
+      >
+        Sign up to chat
+      </a>
+    </div>
+  );
+
+  const inputArea = isGuest ? guestInputArea : (
     <div className="px-3 pt-3 pb-4 border-t border-[#2a2520] bg-black/30 flex gap-2 shrink-0 relative z-20">
       {/* Mic button */}
       {supported && (

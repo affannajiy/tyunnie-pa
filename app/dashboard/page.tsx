@@ -29,6 +29,7 @@ import type { StickyNote } from "@/lib/database";
 import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
 import { WorkspaceProvider } from "@/lib/WorkspaceContext";
 import { isMac } from "@/lib/platform";
+import { isGuest, exitGuest, resetGuestData, GUEST_ID } from "@/lib/guest";
 
 const skeletonQuote = getRandomQuote();
 
@@ -358,13 +359,21 @@ export default function Home() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
-      if (error || !data.user) {
-        supabase.auth.signOut();
-        router.push("/auth");
-      } else {
+      // A real session always wins — clean up any stale guest flag.
+      if (!error && data.user) {
+        if (isGuest()) exitGuest();
         setUser(data.user);
         setAuthLoading(false); // ← this must run
+        return;
       }
+      // No real session: fall back to guest preview if the flag is set.
+      if (isGuest()) {
+        setUser({ id: GUEST_ID } as User);
+        setAuthLoading(false);
+        return;
+      }
+      supabase.auth.signOut();
+      router.push("/auth");
     });
 
     const {
@@ -639,6 +648,11 @@ export default function Home() {
 
   // ── SIGN OUT ──
   async function handleSignOut() {
+    if (user?.id === GUEST_ID) {
+      exitGuest();
+      router.push("/auth");
+      return;
+    }
     await supabase.auth.signOut();
     router.push("/auth");
   }
@@ -860,6 +874,8 @@ export default function Home() {
 
   if (!user) return null;
 
+  const guestMode = user.id === GUEST_ID;
+
   // ── MAIN APP ──
   return (
     <WorkspaceProvider>
@@ -887,6 +903,42 @@ export default function Home() {
 
         {/* Main content */}
         <div className="relative flex flex-col overflow-hidden min-w-0 flex-1">
+          {/* Guest preview banner */}
+          {guestMode && (
+            <div
+              className="shrink-0 flex items-center gap-2 px-4 md:px-7 py-2 text-[11px] md:text-xs border-b"
+              style={{
+                background: "rgba(var(--accent-rgb), 0.10)",
+                borderColor: "rgba(var(--accent-rgb), 0.20)",
+                color: "var(--accent)",
+              }}
+            >
+              <span aria-hidden="true">🧡</span>
+              <span className="font-semibold">Guest preview</span>
+              <span className="hidden sm:inline text-[#9a8f7e] dark:text-[#8a8070]">
+                — changes save only in this browser.
+              </span>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    resetGuestData();
+                    window.location.reload();
+                  }}
+                  className="px-2.5 py-1 rounded-lg font-semibold border transition-all hover:bg-white/40 dark:hover:bg-black/20"
+                  style={{ borderColor: "rgba(var(--accent-rgb), 0.35)" }}
+                >
+                  Reset demo
+                </button>
+                <button
+                  onClick={() => router.push("/auth")}
+                  className="px-2.5 py-1 rounded-lg font-bold text-white transition-all"
+                  style={{ background: "var(--accent)" }}
+                >
+                  Sign up to save
+                </button>
+              </div>
+            </div>
+          )}
           {/* Topbar */}
           <div className="h-14 bg-white dark:bg-[#1a1814] border-b border-[#e8e2d8] dark:border-[#2a2520] flex items-center px-4 md:px-7 shrink-0 relative">
             {/* Left — Tyunnie brand (click → desk) */}
@@ -1214,6 +1266,7 @@ export default function Home() {
           await deleteMemory(id);
           setMemories((prev) => prev.filter((m) => m.id !== id));
         }}
+        isGuest={guestMode}
       />
       {/* Floating mini player — appears when playing music outside the Music panel */}
       <MiniPlayer

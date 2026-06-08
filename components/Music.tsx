@@ -6,6 +6,7 @@ import { useMusicContext } from "@/lib/MusicContext";
 import { useRef, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { addMusicTrack } from "@/lib/database";
+import { isGuest } from "@/lib/guest";
 
 type UploadState = "idle" | "uploading" | "done" | "error";
 
@@ -91,6 +92,11 @@ export default function Music() {
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!audioFile || !title.trim() || !artist.trim()) return;
+    if (isGuest()) {
+      setUploadError("Uploads need an account — sign up to add your own tracks.");
+      setUploadState("error");
+      return;
+    }
 
     setUploadState("uploading");
     setUploadError("");

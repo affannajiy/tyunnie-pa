@@ -10,6 +10,7 @@ import {
   type Snip,
 } from "@/lib/database";
 import { authHeader } from "@/lib/supabase";
+import { isGuest } from "@/lib/guest";
 import { useWorkspace } from "@/lib/WorkspaceContext";
 
 type Props = {
@@ -193,6 +194,11 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
 
   async function runCode() {
     if (!code.trim()) return;
+    if (isGuest()) {
+      setShowTerminal(true);
+      setOutput("Running code needs an account — sign up to use the live runner.");
+      return;
+    }
     setRunning(true);
     setShowTerminal(true);
     setOutput("Running...");

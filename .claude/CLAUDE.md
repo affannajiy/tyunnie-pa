@@ -1,6 +1,6 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.20.2.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.21.0.
 
 See [DEPLOYMENT.md](../docs/DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](../docs/DATABASE.md) for schema and SQL.
 
@@ -55,7 +55,8 @@ components/
     └── Solitaire.tsx        Klondike, full move validation
 
 lib/
-├── database.ts             All Supabase queries — types + CRUD for todos, drafts, projects, snips, finance, vault, sticky notes, memories
+├── database.ts             All Supabase queries — types + CRUD for todos, drafts, projects, snips, finance, vault, sticky notes, memories; routes through guest store when userId === GUEST_ID / isGuest()
+├── guest.ts                Guest/demo mode — flag, sentinel GUEST_ID ("demo-user"), localStorage-backed sample-data store + CRUD (no DB writes)
 ├── supabase.ts             Supabase client singleton + authHeader() helper
 ├── tyunniePanelTypes.ts    Shared TyunniePanelProps type (used by dashboard/page.tsx for dynamic() typing)
 ├── crypto.ts               AES-GCM 256-bit + PBKDF2 (100k iterations) — vault encryption, PIN verifier
@@ -115,6 +116,15 @@ lib/
 ### Supabase Auth
 - Corrupted session after failed Google OAuth → clear `sb-*` keys from localStorage + IndexedDB
 - Auth timeout guard in `dashboard/page.tsx` redirects to `/auth` after 15s
+
+### Guest / Demo Mode (`lib/guest.ts`)
+- No-login preview: `enterGuest()` (from auth page "Explore as a guest") sets `localStorage['tyunnie_guest']="1"` and routes the app to `/dashboard`
+- Sentinel id `GUEST_ID = "demo-user"` — dashboard sets a synthetic `user = { id: GUEST_ID }` when `isGuest()` and no real session. **A real Supabase session always wins** (and clears the guest flag via `exitGuest()`)
+- Data lives in `localStorage['tyunnie_guest_data']` (seeded sample tasks/drafts/projects/snips/finance/sticky/memories/profile), never the DB. "Reset demo" button calls `resetGuestData()`
+- `lib/database.ts` routes through the guest store: reads/writes that take a `userId` branch on `userId === GUEST_ID`; id-only mutations (toggleTodo, deleteDraft, etc.) branch on `isGuest()`
+- **Paid/auth-gated endpoints are disabled for guests** (cost + no JWT): AI chat (`/api/chat` — TyunniePanel briefing, proactive, sendChat, Desk one-liner), code runner (`/api/run`), exchange rates (`/api/exchange-rates`). Each shows a friendly "sign up" state instead of a 401. To enable AI for guests later, give them a valid token (e.g. anonymous Supabase session) — the data layer needs no further change
+- Storage writes guarded inline: Music upload no-ops; Profile avatar uses a local data URL instead of the `avatars` bucket; vault writes no-op (`getVaultEntries`/`getVaultMeta` return empty/null for `GUEST_ID`)
+- `<TyunniePanel isGuest>` prop gates the chat composer (replaced by a sign-up prompt)
 
 ### Groq / AI Actions
 - Strip trailing garbage before parsing action JSON: `.trim().replace(/[^}]*$/, "").trim()`

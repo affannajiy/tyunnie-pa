@@ -73,4 +73,6 @@ export type TyunniePanelProps = {
   onPomodoroStart?: (task: string) => void;
   onMemoryAdded?: (content: string) => void;
   onMemoryDeleted?: (id: string) => void;
+  /** Guest preview — gates the AI chat behind a sign-up prompt. */
+  isGuest?: boolean;
 };

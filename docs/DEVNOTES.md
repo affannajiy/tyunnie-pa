@@ -57,6 +57,44 @@ If they're entered as one combined string it silently fails.
 
 ---
 
+## Guest / Demo Mode
+
+### How it works
+
+Guest mode (`lib/guest.ts`) is a no-login preview of the whole app. The auth page's **"Explore as a guest"** button calls `enterGuest()`, which sets `localStorage['tyunnie_guest'] = "1"` and routes to `/dashboard`. The dashboard then constructs a synthetic `user = { id: GUEST_ID }` (where `GUEST_ID === "demo-user"`) so every panel renders as if logged in.
+
+Sample data lives in `localStorage['tyunnie_guest_data']` — never the database. It's seeded once (rich, date-anchored to "now" so charts and due dates look alive) and a guest's edits persist across refresh. "Reset demo" calls `resetGuestData()`.
+
+### A real session always wins
+
+The dashboard auth effect checks `supabase.auth.getUser()` first. If there's a real user, it calls `exitGuest()` to clear any stale guest flag before setting the real user. Only when there is **no** real session does it fall back to the guest branch. So logging in always overrides a leftover guest flag — you can't get "stuck" as a guest.
+
+### The routing trick (why panels need no changes)
+
+`lib/database.ts` is the single CRUD module. Each function short-circuits to the `guest` store in guest mode:
+
+- **userId-based** reads/writes (e.g. `getTodos(userId)`) branch on `userId === GUEST_ID`
+- **id-only** mutations (e.g. `toggleTodo(id)`, no userId in scope) branch on `isGuest()`
+
+Because the routing is entirely inside `database.ts`, the panels call the same functions and never know they're talking to localStorage.
+
+### Paid / auth-only features are disabled for guests
+
+Guests have no Supabase JWT, so any endpoint behind `verifyAuth()` would 401. Rather than show errors, each gated feature degrades to a friendly "sign up" message:
+
+- **AI chat** (`/api/chat`) — `TyunniePanel` takes an `isGuest` prop; the briefing, proactive suggestions, and `sendChat()` early-return, and the composer is replaced by a sign-up prompt. Also gated: the Desk one-liner.
+- **Code runner** (`/api/run`) — `Snippets.tsx` shows a message instead of executing.
+- **Exchange rates** (`/api/exchange-rates`) — `Calculator.tsx` shows the graceful "unavailable" state.
+- **Music upload** — `Music.tsx` no-ops with a sign-up error.
+- **Vault** — reads/writes return empty/null (`database.ts`).
+- **Avatar** — actually works for guests, stored as a local data URL instead of the `avatars` storage bucket (`Profile.tsx`).
+
+### Enabling AI for guests later
+
+The AI gate is one `isGuest` boolean. To let guests chat, give them a valid token — the cleanest path is an **anonymous Supabase session** (`supabase.auth.signInAnonymously()`) on `enterGuest()`. The data layer needs no further change; just stop early-returning in `TyunniePanel` and the Desk one-liner. Watch the cost: every guest would then hit the paid chat endpoint.
+
+---
+
 ## Web Speech API (Voice Input)
 
 ### Never use explicit Speech API types in TypeScript

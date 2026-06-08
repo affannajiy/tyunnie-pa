@@ -6,6 +6,7 @@ import { useAccentColor } from "@/lib/useAccentColor";
 import type { Profile, Todo, Project, FinanceEntry } from "@/lib/database";
 import type { Panel } from "@/components/Sidebar";
 import { authHeader } from "@/lib/supabase";
+import { isGuest } from "@/lib/guest";
 import DeskWidgets from "@/components/DeskWidgets";
 
 type Props = {
@@ -56,6 +57,12 @@ export default function Desk({
     const cached = sessionStorage.getItem("desk_oneliner");
     if (cached) {
       setOneliner(cached);
+      return;
+    }
+
+    // Guests don't have AI access — show a warm static line, skip the call.
+    if (isGuest()) {
+      setOneliner("Make today one worth remembering.");
       return;
     }
 
