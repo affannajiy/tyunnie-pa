@@ -382,7 +382,8 @@ export default function DeskWidgets({
     try {
       const { lat, lon } = JSON.parse(stored);
       fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`,
+        { signal: AbortSignal.timeout(5_000) }
       )
         .then((r) => r.json())
         .then((d) => {
@@ -395,7 +396,8 @@ export default function DeskWidgets({
             code === 0 ? "☀️" : code <= 3 ? "⛅" : code <= 48 ? "🌫️" :
             code <= 67 ? "🌧️" : code <= 77 ? "❄️" : code <= 82 ? "🌦️" : "⛈️";
           setWeather({ temp, condition, icon });
-        });
+        })
+        .catch(() => {}); // weather widget is optional — silently skip on failure
     } catch {}
   }, []);
 
@@ -1060,7 +1062,7 @@ export default function DeskWidgets({
       {/* Templates modal */}
       {showTemplates && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          className="fixed inset-0 z-60 flex items-center justify-center px-4"
           onClick={() => setShowTemplates(false)}
         >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" />
@@ -1069,7 +1071,7 @@ export default function DeskWidgets({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e2d8] dark:border-[#2a2520]">
-              <span className="font-serif italic text-[var(--accent)] text-sm">Layout Templates</span>
+              <span className="font-serif italic text-(--accent) text-sm">Layout Templates</span>
               <button
                 onClick={() => setShowTemplates(false)}
                 className="text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors text-sm"

@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.21.1] — 2026-06-10
+
+Pre-public-launch security hardening pass — full audit by the `tyun-network-and-security` agent before sharing the Vercel link. Full findings + backup plans in [docs/SECURITY.md](SECURITY.md).
+
+### Security
+
+- **Vault emails can no longer be sent to arbitrary addresses** (`app/api/vault-notify/route.ts`) — the recipient is now always the verified JWT's own email; the client-supplied `email` field is ignored. Previously any signed-up account could use the route as a Tyunnie-branded mail relay. Also adds a per-user rate limit alongside the per-IP one.
+- **Per-user daily quotas on paid endpoints** — `/api/chat` (300/day) and `/api/run` (100/day), keyed on the verified user id, bounding LLM token-cost and JDoodle credit abuse from any single account. `lib/apiAuth.ts` gains `getAuthUser()` which returns the verified Supabase user (the old boolean `verifyAuth()` remains as a wrapper).
+- **OTP hardening** — vault OTPs are now generated with `crypto.randomInt` (CSPRNG, was `Math.random()`) and compared with `crypto.timingSafeEqual` (was `===`). `CRON_SECRET` on `/api/daily-quote` is also constant-time compared.
+- **Upstream timeouts** — JDoodle fetch gets `AbortSignal.timeout(15s)`; weather fetches in `Weather.tsx` and `DeskWidgets.tsx` get 5s timeouts (+ a missing `.catch` on the Desk widget).
+- **`X-XSS-Protection` set to `0`** (`next.config.ts`) — the legacy browser filter introduced its own vulnerabilities; CSP is the real defence.
+
+### Fixed
+
+- **`/api/daily-quote` masked DB outages** — a profiles-fetch failure returned `ok: true, sent: 0`; it now returns 500 so Vercel cron monitoring flags it.
+- **Stale `api.groq.com` preconnect removed** (`app/layout.tsx`) — the client never calls Groq directly (and CSP would block it).
+- **`.gitignore`** — removed a UTF-16-encoded garbage line.
+
+### Docs
+
+- **`docs/SECURITY.md`** (new) — security posture, full 2026-06-10 audit log (13 findings, severities, statuses), known limitations, backup/kill-switch plans, and re-audit procedure.
+- **`.claude/agents/tyun-network-and-security.md`** — refreshed to match reality: Gemini 2.0 Flash as primary chat model, `getAuthUser()` pattern, two-tier rate limiting, accurate vault/OTP crypto description, updated checklists.
+
+---
+
 ## [3.21.0] — 2026-06-08
 
 ### Added

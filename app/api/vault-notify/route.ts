@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { randomInt, timingSafeEqual } from "crypto";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
-import { verifyAuth } from "@/lib/apiAuth";
+import { getAuthUser } from "@/lib/apiAuth";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const MAX_EMAIL_LEN = 254;
-const MAX_OTP_LEN   = 10;
+const MAX_OTP_LEN = 10;
+
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
 
 // OTP store — expires after 10 minutes, max 5 verify attempts before lockout
 const otpStore = new Map<string, { otp: string; expires: number; attempts: number }>();
@@ -14,23 +20,23 @@ const otpStore = new Map<string, { otp: string; expires: number; attempts: numbe
 export async function POST(req: NextRequest) {
   // ── Auth ──
   const auth = req.headers.get("authorization");
-  if (!(await verifyAuth(auth))) {
+  const user = await getAuthUser(auth);
+  if (!user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Emails only ever go to the verified account owner — never a
+  // client-supplied address (prevents using this route as a mail relay)
+  const email = user.email;
 
-  // ── Rate limit: 5 requests / 10 minutes per IP ──
-  const key = `vault:${clientKey(req)}`;
-  if (!rateLimit(key, 5, 10 * 60_000)) {
+  // ── Rate limit: 5 requests / 10 minutes per IP, and per user ──
+  if (
+    !rateLimit(`vault:${clientKey(req)}`, 5, 10 * 60_000) ||
+    !rateLimit(`vault:u:${user.id}`, 5, 10 * 60_000)
+  ) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 
-  const { email, type, otp: submittedOtp } = await req.json();
-
-  // ── Input validation ──
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!email || typeof email !== "string" || email.length > MAX_EMAIL_LEN || !EMAIL_RE.test(email)) {
-    return NextResponse.json({ error: "Invalid email" }, { status: 400 });
-  }
+  const { type, otp: submittedOtp } = await req.json();
   const ALLOWED_TYPES = new Set(["verify", "pin_change_request", "setup", "changed"]);
   if (!type || !ALLOWED_TYPES.has(type)) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
         { status: 429 },
       );
     }
-    if (record.otp !== submittedOtp) {
+    if (!safeEqual(record.otp, submittedOtp)) {
       record.attempts += 1;
       return NextResponse.json({ error: "Wrong code." }, { status: 400 });
     }
@@ -73,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   // ── SEND OTP ──
   if (type === "pin_change_request") {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
     otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000, attempts: 0 });
 
     await resend.emails.send({

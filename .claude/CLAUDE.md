@@ -1,8 +1,8 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.21.0.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.21.1.
 
-See [DEPLOYMENT.md](../docs/DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](../docs/DATABASE.md) for schema and SQL.
+See [DEPLOYMENT.md](../docs/DEPLOYMENT.md) for env vars and Vercel setup. See [DATABASE.md](../docs/DATABASE.md) for schema and SQL. See [SECURITY.md](../docs/SECURITY.md) for security posture, audit log, and backup plans.
 
 ---
 
@@ -60,7 +60,7 @@ lib/
 ├── supabase.ts             Supabase client singleton + authHeader() helper
 ├── tyunniePanelTypes.ts    Shared TyunniePanelProps type (used by dashboard/page.tsx for dynamic() typing)
 ├── crypto.ts               AES-GCM 256-bit + PBKDF2 (100k iterations) — vault encryption, PIN verifier
-├── apiAuth.ts              verifyAuth(header) — server-side Supabase JWT validation for API routes
+├── apiAuth.ts              getAuthUser(header) → verified Supabase User | null (use for email binding / per-user quotas); verifyAuth(header) boolean wrapper
 ├── rateLimit.ts            In-memory rate limiter — rateLimit(key, limit, windowMs)
 ├── platform.ts             Shared `isMac()` + `modKey()` utilities — used by CommandPalette and ShortcutHelp; import from here, never define locally
 ├── MusicContext.tsx         React Context — player state (tracks, playback, shuffle, repeat, skip, Web Audio analyser); persists volume/track/position to localStorage
@@ -184,7 +184,7 @@ lib/
 | AI personality | Taehyun from TXT — calm, caring, dry humor, poetic |
 | Daily quote emails | Vercel cron `0 0 * * *` (midnight UTC = 8am MYT) → `/api/daily-quote` → Groq → Resend; all cron schedules are UTC |
 | Code execution | `/api/run` proxies to JDoodle API |
-| API security | Auth via `verifyAuth()` (JWT), rate limiting via `rateLimit()`, XSS via `sanitizeHtml()`; `authHeader()` uses `refreshSession()` (not `getSession()`) to prevent stale revoked tokens |
+| API security | Auth via `getAuthUser()`/`verifyAuth()` (JWT); two-tier rate limiting (per-IP burst + per-user daily quota on paid routes: chat 300/day, run 100/day); vault emails bound to JWT email only; OTP via `crypto.randomInt` + `timingSafeEqual`; XSS via `sanitizeHtml()`; `authHeader()` uses `refreshSession()` (not `getSession()`) to prevent stale revoked tokens. Full posture: `docs/SECURITY.md` |
 | Shared prop types | Heavy components use `lib/tyunniePanelTypes.ts` — avoids Next.js plugin type inference issues |
 
 ---

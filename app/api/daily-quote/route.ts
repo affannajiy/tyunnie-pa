@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import Groq from "groq-sdk";
+import { timingSafeEqual } from "crypto";
 
 function escapeHtml(str: string): string {
   return str
@@ -17,7 +18,10 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 // Verify cron secret so random people can't spam this endpoint
 function verifyCronSecret(req: NextRequest) {
   const auth = req.headers.get("authorization");
-  return auth === `Bearer ${process.env.CRON_SECRET}`;
+  if (!auth || !process.env.CRON_SECRET) return false;
+  const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET}`);
+  const provided = Buffer.from(auth);
+  return expected.length === provided.length && timingSafeEqual(expected, provided);
 }
 
 export async function GET(req: NextRequest) {
@@ -42,7 +46,8 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("[daily-quote] failed to fetch profiles", error);
-      return NextResponse.json({ ok: true, sent: 0 });
+      // 500 so Vercel cron monitoring flags the failure instead of masking it
+      return NextResponse.json({ error: "Failed to fetch recipients" }, { status: 500 });
     }
 
     // Early-exit when nobody opted in — skip Groq + Resend entirely

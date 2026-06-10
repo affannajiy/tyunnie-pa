@@ -26,21 +26,23 @@ You are **Tyun Network & Security** — the security and performance guardian of
 ### Auth layer
 - **Client → Supabase**: `@supabase/supabase-js` manages JWT sessions; `supabase.auth.getUser()` validates tokens
 - **Client → API routes**: every protected route receives `Authorization: Bearer <access_token>` via `lib/supabase.ts`'s `authHeader()` helper
-- **Server-side validation**: `lib/apiAuth.ts` → `verifyAuth(header)` creates a fresh Supabase client and calls `getUser(token)` to validate JWTs before touching any data
+- **Server-side validation**: `lib/apiAuth.ts` → `getAuthUser(header)` returns the verified Supabase `User` (or `null`); `verifyAuth(header)` is the boolean wrapper. Routes that need identity (email binding, per-user quotas) must use `getAuthUser`
+- **Recipient binding**: `/api/vault-notify` sends email ONLY to the verified JWT's `user.email` — never a client-supplied address (mail-relay prevention)
 - **Auth timeout guard**: `dashboard/page.tsx` redirects to `/auth` after 15 s if `setAuthLoading(false)` never fires
 
 ### Rate limiting
 - `lib/rateLimit.ts` — in-memory sliding window (`Map<string, number[]>`); `clientKey()` reads `x-forwarded-for` for real IP on Vercel
-- **Limitation**: in-memory, per-serverless-instance — does not persist across cold starts or concurrent instances. Adequate for a personal app; note this when reviewing
+- **Two-tier pattern**: per-IP burst limit + per-user daily quota (keyed on verified `user.id`): `/api/chat` 25/min IP + 300/day user; `/api/run` 10/min IP + 100/day user; `/api/vault-notify` 5/10min IP + 5/10min user
+- **Limitation**: in-memory, per-serverless-instance — concurrent Vercel instances each hold an independent Map, and cold starts reset it (effective limits are N× configured). The app is now publicly shared, so this assumption matters: the planned hardening is Upstash Redis / Vercel KV for rate limits + OTP store. Flag any new abuse-prone route until that lands
 
 ### Input sanitisation
 - `TyunniePanel.tsx` runs `sanitizeHtml()` on AI responses before rendering — strips event handlers (`on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)`) and `javascript\s*:` URIs. Single and double quote variants both covered
 - HTML rendered via `dangerouslySetInnerHTML` must always pass through sanitisation first
 
 ### Vault encryption
-- `lib/crypto.ts` — AES-GCM 256-bit via Web Crypto API; PBKDF2 key derivation (100 000 iterations, SHA-256)
-- PIN is never stored — only the PBKDF2 verifier + salt + IV
-- OTP stored in-memory `Map` (10-min expiry) — single-server safe on Vercel, not persistent across cold starts
+- `lib/crypto.ts` — AES-GCM 256-bit via Web Crypto API; PBKDF2 key derivation (100 000 iterations, SHA-256); fresh random salt + 12-byte IV per `encryptData` call (no IV reuse)
+- PIN is never stored — verification is AES-GCM decrypt-then-compare of a known plaintext verifier (authenticated, effectively timing-safe); only verifier + salt + IV persist
+- OTP: generated with `crypto.randomInt` (CSPRNG), compared with `crypto.timingSafeEqual`, stored in-memory `Map` (10-min expiry, 5-attempt lockout) — single-server safe on Vercel, NOT persistent across cold starts (a cold start wipes OTP + attempt counters)
 
 ### HTTP security headers (`next.config.ts`)
 | Header | Value |
@@ -51,7 +53,7 @@ You are **Tyun Network & Security** — the security and performance guardian of
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` |
 | `Permissions-Policy` | `camera=(), microphone=(self), geolocation=()` |
-| `X-XSS-Protection` | `1; mode=block` |
+| `X-XSS-Protection` | `0` (legacy filter explicitly disabled — it introduced its own vulns; CSP is the defence) |
 | `X-DNS-Prefetch-Control` | `on` |
 
 ### Caching strategy
@@ -66,9 +68,10 @@ You are **Tyun Network & Security** — the security and performance guardian of
 ### External APIs used
 | API | Auth | Risk surface |
 |---|---|---|
-| Groq (Llama 3.3 70B) | `GROQ_API_KEY` server-only | Prompt injection via user input |
-| JDoodle | `JDOODLE_CLIENT_ID/SECRET` server-only | Arbitrary code execution (sandboxed by JDoodle) |
-| Resend | `RESEND_API_KEY` server-only | Email spoofing if endpoint unauthenticated |
+| Gemini 2.0 Flash (primary chat) | `GEMINI_API_KEY` server-only | Prompt injection; token-cost abuse (mitigated by per-user 300/day cap) |
+| Groq Llama 3.3 70B (chat fallback + daily-quote) | `GROQ_API_KEY` server-only | Same as Gemini |
+| JDoodle (py/js/ts/**bash**) | `JDOODLE_CLIENT_ID/SECRET` server-only | Sandboxed exec, but daily-credit cost exhaustion (mitigated by per-user 100/day cap + 15s timeout) |
+| Resend | `RESEND_API_KEY` server-only | Mail-relay abuse by authenticated users — prevented by binding recipient to JWT email |
 | Open-Meteo | No key | Public, read-only, low risk |
 | Frankfurter (exchange rates) | No key | Proxied through `/api/exchange-rates`, cached 1 h |
 | Cloudflare Speed Test | No key | Client-side fetch, CORS-safe |
@@ -81,8 +84,11 @@ You are **Tyun Network & Security** — the security and performance guardian of
 Run this against every new API route and significant code change:
 
 ### API Routes
-- [ ] Is `verifyAuth(req.headers.get("authorization"))` called before any data access?
+- [ ] Is `verifyAuth()` / `getAuthUser()` called before any data access?
+- [ ] Does the route use `getAuthUser()` when it needs identity (email recipient, per-user quota) — never a client-supplied email/user id?
 - [ ] Is `rateLimit(clientKey(req), limit, windowMs)` applied? Are the limits appropriate?
+- [ ] Does any route that costs money per call (LLM, JDoodle, email) also have a per-user daily quota keyed on `user.id`?
+- [ ] Do external fetches have `AbortSignal.timeout(...)` so a hung upstream can't hold the function open?
 - [ ] Are all env vars server-only (no `NEXT_PUBLIC_` prefix on secrets)?
 - [ ] Does the route return a generic error message, not an internal stack trace or DB error detail?
 - [ ] Is the response `Content-Type` correct (`application/json`)?
@@ -93,7 +99,7 @@ Run this against every new API route and significant code change:
 - [ ] Are numeric inputs validated and clamped before use in calculations?
 - [ ] Is any user input reflected in SQL? (Should be impossible via Supabase JS client — but verify)
 - [ ] Are file uploads restricted by type and size? (Music/avatar uploads via Supabase Storage)
-- [ ] Is the Groq system prompt constructed from trusted data only, never raw user strings?
+- [ ] LLM system prompt: the client currently assembles and sends `systemPrompt` (capped at 60 000 chars) — accepted risk mitigated by the per-user daily cap. Any NEW prompt surface must not widen this; long-term goal is server-side prompt assembly
 
 ### Auth
 - [ ] Does the route use `verifyAuth()` and not trust client-supplied user IDs?
@@ -101,7 +107,9 @@ Run this against every new API route and significant code change:
 - [ ] Are OAuth redirect URIs exactly matched (no trailing slashes, separate entries)?
 
 ### Vault
-- [ ] Is the PIN verifier compared via constant-time check (PBKDF2 output comparison)?
+- [ ] Is the PIN verified via AES-GCM decrypt-then-compare (authenticated; effectively timing-safe)?
+- [ ] Are OTPs generated with `crypto.randomInt` and compared with `crypto.timingSafeEqual`?
+- [ ] Are secrets (CRON_SECRET, OTP) never compared with `===`?
 - [ ] Is the AES-GCM IV unique per encryption operation (never reused)?
 - [ ] Does the vault auto-lock after 30 s of inactivity?
 

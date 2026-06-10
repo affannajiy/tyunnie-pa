@@ -53,6 +53,7 @@ export default function Weather() {
     try {
       const res = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`,
+        { signal: AbortSignal.timeout(5_000) },
       );
       const json = await res.json();
       setData({
@@ -74,6 +75,7 @@ export default function Weather() {
     try {
       const res = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(input.trim())}&count=1`,
+        { signal: AbortSignal.timeout(5_000) },
       );
       const json = await res.json();
       if (!json.results?.length) {

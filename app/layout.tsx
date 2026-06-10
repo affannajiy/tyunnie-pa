@@ -54,8 +54,6 @@ export default function RootLayout({
             <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
           </>
         )}
-        {/* Preconnect to Groq for faster first AI response */}
-        <link rel="preconnect" href="https://api.groq.com" />
         {/* Preconnect to Open-Meteo for faster weather fetch */}
         <link rel="preconnect" href="https://api.open-meteo.com" />
       </head>

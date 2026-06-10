@@ -406,3 +406,18 @@ Hobby plan has a ±few-minute execution window — this is normal and unavoidabl
 - **Major (X.0.0)** — significant architectural changes, landing page overhaul, major feature removal
 
 Version is tracked in `package.json` and mirrored in the README badge.
+
+---
+
+## Security
+
+### Pre-public-launch hardening (2026-06-10, v3.21.1)
+
+Before sharing the Vercel link publicly, a full security audit was run (see `docs/SECURITY.md` for the complete findings table and backup plans). Key gotchas worth remembering:
+
+- **Never take an email recipient from the request body.** `/api/vault-notify` used to — any signed-up account could send Tyunnie-branded emails to any address. Use `getAuthUser()` from `lib/apiAuth.ts` and send to `user.email` only.
+- **Per-IP rate limits are not enough on paid endpoints.** Anyone can sign up, so cost-bearing routes (LLM chat, JDoodle run) also need a per-user daily quota keyed on the verified `user.id`. Pattern: two `rateLimit()` calls — `route:${clientKey(req)}` burst + `route:u:${user.id}` daily.
+- **The in-memory rate limiter resets on every cold start and is per-instance.** Effective limits under concurrent Vercel instances are N× configured. The planned fix is Upstash Redis / Vercel KV for both the limiter and the vault OTP store — do this before the user base grows.
+- **OTPs / secrets:** generate with `crypto.randomInt`, compare with `crypto.timingSafeEqual`. Never `Math.random()` or `===`.
+- **Every server-side `fetch` to an external API needs `AbortSignal.timeout(...)`** — a hung upstream otherwise holds the serverless function open for the full Vercel timeout.
+- **Kill switches** if abuse appears post-launch: disable Supabase signups, pull the AI/JDoodle env vars and redeploy, or password-protect the deployment in Vercel. Details in SECURITY.md.

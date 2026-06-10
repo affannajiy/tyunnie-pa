@@ -31,8 +31,9 @@ const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   // Restrict browser feature access — allow microphone for speech input only
   { key: 'Permissions-Policy',      value: 'camera=(), microphone=(self), geolocation=()' },
-  // Legacy XSS filter for older browsers
-  { key: 'X-XSS-Protection',        value: '1; mode=block' },
+  // Explicitly disable the legacy XSS auditor — it introduced its own
+  // vulnerabilities (modern guidance is '0'; CSP is the real defence)
+  { key: 'X-XSS-Protection',        value: '0' },
   // DNS prefetch control
   { key: 'X-DNS-Prefetch-Control',  value: 'on' },
 ]

@@ -1,7 +1,7 @@
 // app/api/run/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
-import { verifyAuth } from "@/lib/apiAuth";
+import { getAuthUser } from "@/lib/apiAuth";
 
 const LANG_MAP: Record<string, { language: string; versionIndex: string }> = {
   py:    { language: "python3",    versionIndex: "4" },
@@ -17,14 +17,19 @@ const ALLOWED_LANGS  = new Set(Object.keys(LANG_MAP));
 export async function POST(req: NextRequest) {
   // ── Auth ──
   const auth = req.headers.get("authorization");
-  if (!(await verifyAuth(auth))) {
+  const user = await getAuthUser(auth);
+  if (!user) {
     return NextResponse.json({ output: "Unauthorized" }, { status: 401 });
   }
 
-  // ── Rate limit: 10 executions / minute per IP ──
-  const key = `run:${clientKey(req)}`;
-  if (!rateLimit(key, 10, 60_000)) {
+  // ── Rate limit: 10 executions / minute per IP + 100 / day per user ──
+  // JDoodle has a daily credit quota; the per-user cap stops one account
+  // from exhausting it.
+  if (!rateLimit(`run:${clientKey(req)}`, 10, 60_000)) {
     return NextResponse.json({ output: "Rate limit exceeded — try again in a minute." }, { status: 429 });
+  }
+  if (!rateLimit(`run:u:${user.id}`, 100, 24 * 60 * 60_000)) {
+    return NextResponse.json({ output: "Daily execution limit reached — try again tomorrow." }, { status: 429 });
   }
 
   try {
@@ -44,6 +49,7 @@ export async function POST(req: NextRequest) {
     const lang = LANG_MAP[language] ?? LANG_MAP["other"];
     const res = await fetch("https://api.jdoodle.com/v1/execute", {
       method: "POST",
+      signal: AbortSignal.timeout(15_000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         script: code,

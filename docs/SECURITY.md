@@ -1,0 +1,72 @@
+# Security — Tyunnie PA
+
+Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link).
+
+---
+
+## Current Defences
+
+| Layer | Implementation |
+|---|---|
+| API auth | Every non-cron route validates the Supabase JWT via `lib/apiAuth.ts` — `getAuthUser()` returns the verified user; `verifyAuth()` is the boolean wrapper |
+| Recipient binding | `/api/vault-notify` emails ONLY the verified JWT's `user.email` — the client cannot choose the recipient (mail-relay prevention) |
+| Rate limiting | Two-tier: per-IP burst + per-user daily quota (`lib/rateLimit.ts`). Chat: 25/min IP + 300/day user. Run: 10/min IP + 100/day user. Vault: 5/10min IP + per-user |
+| OTP | `crypto.randomInt` (CSPRNG), `crypto.timingSafeEqual` comparison, 10-min expiry, 5-attempt lockout, one-time use |
+| Cron | `/api/daily-quote` guarded by `CRON_SECRET` Bearer token, constant-time compared |
+| Vault crypto | AES-GCM 256-bit (Web Crypto), PBKDF2 100k iterations; fresh salt + 12-byte IV per encryption; PIN never stored (decrypt-then-compare verifier) |
+| XSS | `sanitizeHtml()` on all AI output before `dangerouslySetInnerHTML` (tag allowlist `b|strong|em|i|code|br`, strips event handlers + `javascript:` URIs) |
+| Headers | CSP (`default-src 'self'` + explicit `connect-src`), HSTS preload, `nosniff`, `frame-ancestors 'self'`, `X-XSS-Protection: 0`, `poweredByHeader: false` |
+| Secrets | All API keys server-only (no `NEXT_PUBLIC_` on secrets); service role key used only in `app/api/daily-quote`; `.env*` gitignored and untracked |
+| Upstream timeouts | JDoodle fetch `AbortSignal.timeout(15s)`; client weather fetches 5s timeouts with fallbacks |
+| Guest mode | No JWT → all paid endpoints reject guests server-side, not just in UI |
+
+---
+
+## Audit Log — 2026-06-10 (pre-launch)
+
+Findings and resolutions:
+
+| # | Severity | Issue | Status |
+|---|---|---|---|
+| 1 | 🟠 High | `/api/vault-notify` sent emails to an arbitrary client-supplied address (phishing/spam relay for any signed-up user) | ✅ Fixed — recipient bound to verified JWT email |
+| 2 | 🟠 High | `/api/chat` was an open LLM proxy (client-controlled 60k-char systemPrompt, only per-IP limit) | ✅ Mitigated — per-user 300/day quota added; server-side prompt assembly is the long-term plan |
+| 3 | 🟠 High | In-memory rate limiter is per-serverless-instance, resets on cold start | ⚠️ Open — see Backup Plans |
+| 4 | 🟡 Medium | OTP generated with `Math.random()` | ✅ Fixed — `crypto.randomInt` |
+| 5 | 🟡 Medium | OTP / CRON_SECRET compared with `===` (timing) | ✅ Fixed — `crypto.timingSafeEqual` |
+| 6 | 🟡 Medium | `/api/run` cost amplification vs JDoodle daily credits; no upstream timeout | ✅ Fixed — per-user 100/day quota + 15s `AbortSignal.timeout` |
+| 7 | 🟡 Medium | CSP allows `unsafe-inline` + `unsafe-eval` in `script-src` | ⚠️ Accepted — required by Next.js inline scripts + Calculator `new Function()`; see Backup Plans |
+| 8 | 🟡 Medium | Weather fetches (Weather.tsx, DeskWidgets.tsx) had no timeout/catch | ✅ Fixed — 5s timeouts + catch |
+| 9 | 🟡 Medium | `/api/daily-quote` returned `ok:true` on DB failure (masked outages from cron monitoring) | ✅ Fixed — returns 500 |
+| 10 | 🟢 Low | `x-forwarded-for` trusted as rate-limit key | ✅ Accepted on Vercel (platform-set header); per-user quotas reduce reliance |
+| 11 | 🟢 Low | `X-XSS-Protection: 1; mode=block` (legacy filter has own vulns) | ✅ Fixed — set to `0` |
+| 12 | 🟢 Low | Stale `api.groq.com` preconnect (client never calls Groq) | ✅ Fixed — removed |
+| 13 | 🟢 Low | UTF-16 garbage line in `.gitignore` | ✅ Fixed |
+
+Verified clean: no service-role key client-side, no secrets in git, all `dangerouslySetInnerHTML` sanitized, no IV reuse in vault crypto, guest mode enforced server-side, CSP `connect-src` covers all client origins, prompt-injection blast radius confined to the requesting user's own session.
+
+---
+
+## Known Limitations & Backup Plans
+
+1. **In-memory rate limiting / OTP store (highest priority)** — concurrent Vercel instances each hold an independent limiter Map; cold starts wipe limits, OTPs, and attempt counters. Effective limits are N× configured under load.
+   **Plan:** migrate `lib/rateLimit.ts` and the vault OTP store to **Upstash Redis (or Vercel KV)**. The per-user quotas added in this pass make abuse slower but not impossible. Do this before the user base grows beyond friends.
+   **Stopgap if abused:** rotate `GROQ_API_KEY` / `GEMINI_API_KEY` / JDoodle credentials, disable signup in Supabase Auth settings, or temporarily set the per-user caps lower.
+
+2. **Client-assembled LLM system prompt** — `/api/chat` accepts `systemPrompt` from the client (needed because the prompt embeds the user's own data, which lives client-side). Bounded by the 60k cap + per-user quota.
+   **Plan:** move prompt assembly server-side (fetch the user's data via the verified JWT inside the route).
+
+3. **CSP `unsafe-eval`** — required by the Calculator's `new Function()` evaluator.
+   **Plan:** replace with a shunting-yard expression parser, then drop `unsafe-eval` from `script-src`.
+
+4. **Resend `onboarding@resend.dev` sender** — fine for testing; verify a real domain in Resend before relying on vault emails (recipients other than the account owner are no longer possible, but deliverability suffers on the shared sender).
+
+5. **Kill switches if something goes wrong post-launch:**
+   - Supabase → Auth → disable new signups (stops new abusers instantly)
+   - Vercel → Environment Variables → remove `JDOODLE_*` / `GEMINI_API_KEY` / `GROQ_API_KEY` and redeploy (paid endpoints fail gracefully with generic errors)
+   - Vercel → Deployment Protection → password-protect the deployment to take the app private without taking it down
+
+---
+
+## Re-audit Procedure
+
+Run the `tyun-network-and-security` agent (`.claude/agents/tyun-network-and-security.md`) — "Full pre-deploy security pass" — before any deploy that adds an API route, a new external origin, or any email/LLM/code-execution surface. Update this file's audit log with the date and findings.

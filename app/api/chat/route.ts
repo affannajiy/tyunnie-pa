@@ -6,7 +6,7 @@ import {
 import Groq from "groq-sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
-import { verifyAuth } from "@/lib/apiAuth";
+import { getAuthUser } from "@/lib/apiAuth";
 
 // ── Clients ──
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
@@ -100,14 +100,18 @@ async function callGroq(
 export async function POST(req: NextRequest) {
   // ── Auth ──
   const auth = req.headers.get("authorization");
-  if (!(await verifyAuth(auth))) {
+  const user = await getAuthUser(auth);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ── Rate limit: 25 req / minute per IP ──
-  const key = `chat:${clientKey(req)}`;
-  if (!rateLimit(key, 25, 60_000)) {
+  // ── Rate limit: 25 req / minute per IP + 300 req / day per user ──
+  // The per-user daily cap bounds token-cost abuse from any single account.
+  if (!rateLimit(`chat:${clientKey(req)}`, 25, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+  if (!rateLimit(`chat:u:${user.id}`, 300, 24 * 60 * 60_000)) {
+    return NextResponse.json({ error: "Daily chat limit reached. Come back tomorrow 🧡" }, { status: 429 });
   }
 
   try {
