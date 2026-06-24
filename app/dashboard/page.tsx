@@ -14,6 +14,8 @@ import Sidebar, { type Panel } from "@/components/Sidebar";
 import { MusicProvider, useMusicContext } from "@/lib/MusicContext";
 import CommandPalette from "@/components/CommandPalette";
 import ShortcutHelp from "@/components/ShortcutHelp";
+import UpdateAnnouncement from "@/components/UpdateAnnouncement";
+import TyunBirthday from "@/components/TyunBirthday";
 import { getProfile, type Profile as ProfileType } from "@/lib/database";
 import {
   getStickyNotes,
@@ -192,6 +194,7 @@ export default function Home() {
 
   // ── PROFILE ──
   const [profile, setProfile] = useState<ProfileType | null>(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   // ── PANEL ──
   const [activePanel, setActivePanel] = useState<Panel>(() => {
@@ -605,6 +608,27 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
 
+    // Stale-while-revalidate: paint last-known data from localStorage instantly,
+    // then refresh from Supabase below. Skip for guests (already localStorage-backed).
+    const cacheKey = `tyunnie_data_cache_${user.id}`;
+    if (user.id !== GUEST_ID) {
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const c = JSON.parse(cached);
+          if (c.todos) setTodos(c.todos);
+          if (c.drafts) setDrafts(c.drafts);
+          if (c.projects) setProjects(c.projects);
+          if (c.snips) setSnips(c.snips);
+          if (c.finance) setFinance(c.finance);
+          if (c.stickyNotes) setStickyNotes(c.stickyNotes);
+          if (c.memories) setMemories(c.memories);
+        }
+      } catch {
+        /* ignore corrupt cache */
+      }
+    }
+
     async function loadAll() {
       const [td, dr, pr, sn, fi, stickies, mems, prof] = await Promise.all([
         getTodos(user!.id),
@@ -642,6 +666,26 @@ export default function Home() {
       setFinance(fi);
       setStickyNotes(stickies);
       setMemories(mems);
+
+      // Refresh the instant-render cache for next visit.
+      if (user!.id !== GUEST_ID) {
+        try {
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              todos: td,
+              drafts: dr,
+              projects: pr,
+              snips: sn,
+              finance: fi,
+              stickyNotes: stickies,
+              memories: mems,
+            }),
+          );
+        } catch {
+          /* quota / serialization — non-fatal */
+        }
+      }
     }
     loadAll();
   }, [user]);
@@ -1011,50 +1055,89 @@ export default function Home() {
                 })}
               </span>
 
-              {/* Profile avatar — desktop + mobile */}
-              <button
-                onClick={() => setActivePanel("profile")}
-                title="Profile"
-                className="flex items-center justify-center rounded-full transition-all duration-150 shrink-0"
-                style={{
-                  width: 34,
-                  height: 34,
-                  boxShadow:
-                    activePanel === "profile"
-                      ? `0 0 0 2px var(--accent), 0 0 10px rgba(var(--accent-rgb), 0.35)`
-                      : `0 0 0 2px rgba(var(--accent-rgb), 0.2)`,
-                }}
-              >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="avatar"
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="w-full h-full rounded-full flex items-center justify-center text-[11px] font-bold"
-                    style={{
-                      background:
-                        activePanel === "profile"
-                          ? "var(--accent)"
-                          : "rgba(var(--accent-rgb), 0.12)",
-                      color:
-                        activePanel === "profile" ? "#fff" : "var(--accent)",
-                    }}
-                  >
-                    {userName
-                      ? userName
-                          .trim()
-                          .split(" ")
-                          .map((w) => w[0])
-                          .slice(0, 2)
-                          .join("")
-                          .toUpperCase()
-                      : "ME"}
-                  </div>
+              {/* Profile avatar — opens a small Profile / About dropdown */}
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setProfileMenuOpen((o) => !o)}
+                  title="Account"
+                  aria-haspopup="menu"
+                  aria-expanded={profileMenuOpen}
+                  className="flex items-center justify-center rounded-full transition-all duration-150"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    boxShadow:
+                      activePanel === "profile" || profileMenuOpen
+                        ? `0 0 0 2px var(--accent), 0 0 10px rgba(var(--accent-rgb), 0.35)`
+                        : `0 0 0 2px rgba(var(--accent-rgb), 0.2)`,
+                  }}
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="avatar"
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-full h-full rounded-full flex items-center justify-center text-[11px] font-bold"
+                      style={{
+                        background:
+                          activePanel === "profile"
+                            ? "var(--accent)"
+                            : "rgba(var(--accent-rgb), 0.12)",
+                        color:
+                          activePanel === "profile" ? "#fff" : "var(--accent)",
+                      }}
+                    >
+                      {userName
+                        ? userName
+                            .trim()
+                            .split(" ")
+                            .map((w) => w[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase()
+                        : "ME"}
+                    </div>
+                  )}
+                </button>
+
+                {profileMenuOpen && (
+                  <>
+                    {/* click-away backdrop */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setProfileMenuOpen(false)}
+                    />
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-[42px] z-50 w-40 rounded-xl bg-white dark:bg-[#1a1815] border border-[#e8e2d8] dark:border-[#2a2620] shadow-xl py-1.5 overflow-hidden"
+                    >
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          setActivePanel("profile");
+                          setProfileMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-[#111010] dark:text-[#f5f0e8] hover:bg-[#faf8f5] dark:hover:bg-[#211e1a] transition-colors"
+                      >
+                        Profile
+                      </button>
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          router.push("/about");
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-[#111010] dark:text-[#f5f0e8] hover:bg-[#faf8f5] dark:hover:bg-[#211e1a] transition-colors"
+                      >
+                        About
+                      </button>
+                    </div>
+                  </>
                 )}
-              </button>
+              </div>
             </div>
           </div>
 
@@ -1298,6 +1381,12 @@ export default function Home() {
         open={showShortcuts}
         onClose={() => setShowShortcuts(false)}
       />
+
+      {/* ── "SITE UPDATED" ONE-TIME ANNOUNCEMENT ── */}
+      {!guestMode && <UpdateAnnouncement />}
+
+      {/* ── TAEHYUN'S BIRTHDAY (Feb 5) — everyone, once/year ── */}
+      <TyunBirthday />
 
       {focusMode && (
         <FocusMode

@@ -43,8 +43,12 @@ export default function Weather() {
   useEffect(() => {
     const saved = localStorage.getItem("tyunnie_city");
     if (saved) {
-      const parsed = JSON.parse(saved);
-      fetchWeather(parsed.lat, parsed.lon, parsed.city);
+      try {
+        const parsed = JSON.parse(saved);
+        fetchWeather(parsed.lat, parsed.lon, parsed.city);
+      } catch {
+        /* corrupt city blob — ignore, user can re-set it in Profile */
+      }
     }
   }, []);
 

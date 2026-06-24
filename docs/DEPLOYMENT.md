@@ -12,7 +12,8 @@ Set these in Vercel → Project → Settings → Environment Variables (or in `.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anon key |
-| `GROQ_API_KEY` | Server only | Groq LLM API |
+| `GEMINI_API_KEY` | Server only | Gemini 2.0 Flash — **primary** LLM for `/api/chat` |
+| `GROQ_API_KEY` | Server only | Groq llama-3.3-70b — `/api/chat` **fallback** + the **only** LLM for `/api/daily-quote` |
 | `JDOODLE_CLIENT_ID` | Server only | JDoodle code execution |
 | `JDOODLE_CLIENT_SECRET` | Server only | JDoodle code execution |
 | `RESEND_API_KEY` | Server only | Email via Resend |
@@ -30,7 +31,9 @@ Set these in Vercel → Project → Settings → Environment Variables (or in `.
 
 ### Cron Job
 
-The daily quote email runs via Vercel Cron. It's already declared in `vercel.json` with schedule `0 0 * * *` (midnight UTC = 8:00am MYT). **All Vercel cron expressions are UTC** — MYT is UTC+8, so `0 0 * * *` fires at 8am MYT and `0 1 * * *` would fire at 9am MYT. The Hobby plan has a ±few-minute execution window, which is normal. Make sure `CRON_SECRET` and `RESEND_API_KEY` are set in production.
+The daily quote email runs via Vercel Cron. It's already declared in `vercel.json` with schedule `0 0 * * *` (midnight UTC = 8:00am MYT). **All Vercel cron expressions are UTC** — MYT is UTC+8, so `0 0 * * *` fires at 8am MYT and `0 1 * * *` would fire at 9am MYT. The Hobby plan has a ±few-minute execution window, which is normal. Make sure `CRON_SECRET`, `RESEND_API_KEY`, and `GROQ_API_KEY` are set in production (the daily quote is Groq-only).
+
+> **LLM keys:** only `/api/chat` does the Gemini→Groq fallback (Gemini 2.0 Flash first, Groq on any error/timeout — set both for chat resilience). `/api/daily-quote` uses **Groq alone**, so `GROQ_API_KEY` is mandatory for the morning email; `GEMINI_API_KEY` is not.
 
 ---
 

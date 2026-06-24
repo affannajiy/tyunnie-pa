@@ -1,6 +1,6 @@
 # Security — Tyunnie PA
 
-Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link).
+Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link). Last robustness pass: **2026-06-24** (v3.22.0 — rate-limiter memory hardening, changelog cache fix, crash-guard sweep).
 
 ---
 
@@ -10,7 +10,8 @@ Security posture, audit history, known limitations, and backup plans. Last full 
 |---|---|
 | API auth | Every non-cron route validates the Supabase JWT via `lib/apiAuth.ts` — `getAuthUser()` returns the verified user; `verifyAuth()` is the boolean wrapper |
 | Recipient binding | `/api/vault-notify` emails ONLY the verified JWT's `user.email` — the client cannot choose the recipient (mail-relay prevention) |
-| Rate limiting | Two-tier: per-IP burst + per-user daily quota (`lib/rateLimit.ts`). Chat: 25/min IP + 300/day user. Run: 10/min IP + 100/day user. Vault: 5/10min IP + per-user |
+| Rate limiting | Two-tier: per-IP burst + per-user daily quota (`lib/rateLimit.ts`). Chat: 25/min IP + 300/day user. Run: 10/min IP + 100/day user. Vault: 5/10min IP + per-user. Idle keys are pruned per-call + a 5-min global sweep (tracks widest active window) so the Map can't grow unbounded on a long-lived instance |
+| LLM resilience | `/api/chat` calls Gemini 2.0 Flash first, falls back to Groq llama-3.3-70b on any error/timeout (missing both keys fails gracefully — generic error, no crash). `/api/daily-quote` is Groq-only |
 | OTP | `crypto.randomInt` (CSPRNG), `crypto.timingSafeEqual` comparison, 10-min expiry, 5-attempt lockout, one-time use |
 | Cron | `/api/daily-quote` guarded by `CRON_SECRET` Bearer token, constant-time compared |
 | Vault crypto | AES-GCM 256-bit (Web Crypto), PBKDF2 100k iterations; fresh salt + 12-byte IV per encryption; PIN never stored (decrypt-then-compare verifier) |
@@ -46,9 +47,24 @@ Verified clean: no service-role key client-side, no secrets in git, all `dangero
 
 ---
 
+## Robustness Pass — 2026-06-24 (v3.22.0)
+
+Whole-codebase reliability sweep (no commit; bundled into the next release):
+
+| # | Severity | Issue | Status |
+|---|---|---|---|
+| 1 | 🟡 Medium | `lib/rateLimit.ts` Map never deleted idle keys → slow unbounded growth across distinct IPs/users on a long-lived instance | ✅ Fixed — per-key delete-when-empty + 5-min global sweep keyed on widest active window |
+| 2 | 🟡 Medium | `/about` "What's changed" rendered empty — `Cache-Control: max-age=3600` served pre-Highlights JSON from the browser cache after a deploy | ✅ Fixed — `public, max-age=0, s-maxage=3600, must-revalidate` + `cache:"no-store"` on both client fetches (about page + UpdateAnnouncement) |
+| 3 | 🟡 Medium | `Weather.tsx` `JSON.parse(localStorage["tyunnie_city"])` was unguarded — a corrupt blob throws in a mount effect → trips `app/error.tsx` (white-screen panel) | ✅ Fixed — wrapped in try/catch |
+| 4 | 🟢 Low | Doc drift — chat described as Groq-only; actual flow is Gemini-primary + Groq-fallback | ✅ Fixed — CLAUDE.md + docs corrected |
+
+Verified clean: all 13 `JSON.parse(localStorage…)` sites guarded after #3; event listeners balanced (add/remove pairs, `{once:true}` self-removers excluded); API routes (`chat`, `run`, `daily-quote`) always return a response with full try/catch + `AbortSignal.timeout`; both `npm run build` runs green.
+
+---
+
 ## Known Limitations & Backup Plans
 
-1. **In-memory rate limiting / OTP store (highest priority)** — concurrent Vercel instances each hold an independent limiter Map; cold starts wipe limits, OTPs, and attempt counters. Effective limits are N× configured under load.
+1. **In-memory rate limiting / OTP store (highest priority)** — concurrent Vercel instances each hold an independent limiter Map; cold starts wipe limits, OTPs, and attempt counters. Effective limits are N× configured under load. (Memory growth within a single instance is now bounded by the idle-key sweep added in 3.22.0 — but the cross-instance correctness gap remains.)
    **Plan:** migrate `lib/rateLimit.ts` and the vault OTP store to **Upstash Redis (or Vercel KV)**. The per-user quotas added in this pass make abuse slower but not impossible. Do this before the user base grows beyond friends.
    **Stopgap if abused:** rotate `GROQ_API_KEY` / `GEMINI_API_KEY` / JDoodle credentials, disable signup in Supabase Auth settings, or temporarily set the per-user caps lower.
 

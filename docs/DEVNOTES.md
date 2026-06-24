@@ -155,6 +155,26 @@ Keys in use:
 
 Both regenerate on new tab or hard refresh, which is the correct behavior.
 
+### `/api/changelog` browser cache masked a deploy (empty "What's changed")
+
+The route is CDN-cached 1h (`s-maxage=3600`) but the **browser** must revalidate, or a deploy that changes `docs/CHANGELOG.md` (e.g. adds a `### Highlights` block) is hidden behind a stale client copy — the symptom is `/about` showing "No notes yet." and no update popup.
+
+Two-part fix, keep both:
+
+- Response header: `Cache-Control: public, max-age=0, s-maxage=3600, must-revalidate` (CDN caches, browser revalidates).
+- Client fetches pass `cache: "no-store"` — in `app/about/page.tsx` **and** `components/UpdateAnnouncement.tsx`.
+
+If notes still look stale after a deploy, hard-refresh once (Ctrl+Shift+R) to drop the already-cached copy.
+
+### Every `JSON.parse(localStorage…)` in a mount effect MUST be try/caught
+
+A corrupt blob throws synchronously inside the effect → React unwinds → `app/error.tsx` trips → the whole panel white-screens. This bit `Weather.tsx` (`tyunnie_city`). All 13 parse sites are now guarded; keep the rule for any new one:
+
+```ts
+try { const v = JSON.parse(localStorage.getItem(key)!); /* use v */ }
+catch { /* corrupt — ignore, let the user re-set it */ }
+```
+
 ---
 
 ## Audio / Music
@@ -211,9 +231,9 @@ if (userId === "demo-user") return [];
 
 If you add a new database function, add this guard or the demo page will spam errors.
 
-### `DEMO_FINANCE` array needs account fields
+### Guest seed data must match the live types
 
-If the `FinanceEntry` type is updated with new required fields (e.g. `account`), the `DEMO_FINANCE` array in `app/demo/page.tsx` must be updated too or TypeScript will error.
+Guest/demo data is seeded in `lib/guest.ts` `seed()` (not the old `app/demo/page.tsx`, which is gone). If a row type like `FinanceEntry` gains a new required field, update the corresponding array inside `seed()` or TypeScript will error on build. `resetGuestData()` reseeds; data lives in `localStorage['tyunnie_guest_data']`.
 
 ---
 
@@ -288,9 +308,9 @@ key = { pomodoroTask }; // resets to "default" when task clears
 
 ## Tyunnie Action System
 
-### Trailing garbage in Groq JSON output
+### Trailing garbage in LLM JSON output
 
-Groq occasionally appends `%`, spaces, or newlines after the closing `}` of the action JSON. Strip before parsing:
+Chat runs Gemini 2.0 Flash primary with a Groq llama-3.3-70b fallback (`app/api/chat/route.ts`). Either model occasionally appends `%`, spaces, or newlines after the closing `}` of the action JSON. Strip before parsing:
 
 ```ts
 JSON.parse(
@@ -340,7 +360,8 @@ Required in `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-GROQ_API_KEY=
+GEMINI_API_KEY=          # /api/chat primary LLM (Gemini 2.0 Flash)
+GROQ_API_KEY=            # /api/chat fallback + /api/daily-quote sole LLM (llama-3.3-70b)
 JDOODLE_CLIENT_ID=
 JDOODLE_CLIENT_SECRET=
 RESEND_API_KEY=
@@ -367,6 +388,15 @@ NEXT_PUBLIC_APP_URL=            # Google Calendar integration — removed in 3.0
 ### `sanitizeHtml` uses `\b` word boundary before `on\w+`
 
 `TyunniePanel.tsx` strips event handler attributes from HTML using `\bon\w+` (word boundary), not `\son\w+` (space prefix). The space-prefix form fails when an attribute appears immediately after the tag name or after a quote with no intervening space — a valid HTML parser accepts `<img/onload=x>` and `<img\tonload=x>`. The word boundary catches all variants without needing to enumerate whitespace characters.
+
+### `lib/rateLimit.ts` prunes idle keys — don't reintroduce unbounded growth
+
+The limiter `Map` would otherwise keep an entry for every distinct IP/user ever seen, growing slowly forever on a long-lived instance. Two-layer prune (3.22.0):
+
+- **Per-call:** when a key's timestamps all age out of its window, the key is deleted instead of left as an empty array.
+- **Global sweep:** at most once every 5 min, walk the Map and drop any key fully aged out of `maxWindowMs` (the widest active window — so 24h daily-quota keys aren't swept early).
+
+Memory is bounded by *active* clients in the last window, not all clients ever. This is still per-instance and resets on cold start; the real fix is Upstash/Vercel KV (see SECURITY.md). Don't "simplify" the prune away.
 
 ### `/api/exchange-rates` requires auth — Calculator must send `authHeader()`
 

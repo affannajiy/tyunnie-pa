@@ -5,6 +5,53 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.22.0] — 2026-06-24
+
+### Highlights
+
+**New**
+
+- **An About page** — a little story behind Tyunnie and a simple list of what's new each update. Find it under your account menu (top-right avatar).
+- **Update notes** — a quick "what's new" pop-up after each update, shown just once.
+- **Taehyun's birthday** — on February 5th a special greeting welcomes you in, Taehyun's morning email turns into a birthday note, and he might just mention it in chat (in his own low-key way).
+
+**Improved**
+
+- **Daily email quotes** — Tyunnie now sends a wider variety of quotes, each with more personality, instead of repeating the same few formats.
+
+**Fixed**
+
+- **The "What's changed" list now always shows** — update notes no longer come up empty after a fresh update.
+- **Steadier weather widget** — a bad saved-city value can no longer blank out the dashboard.
+
+### Added
+
+- **Public About page** (`app/about/page.tsx`, route `/about`) — a fan-project story page ("a planner, with Taehyun at your side") with a full, styled changelog rendered below. Works logged-out; the login page and in-app account menu both link to it.
+- **Live changelog from `docs/CHANGELOG.md`** — `app/api/changelog/route.ts` reads the markdown on the server and `lib/changelog.ts` parses it into structured version entries (version, date, intro, sections, bold lead-ins). The About page and the update announcement both consume this single source — no duplicated release notes.
+- **"Site Updated" one-time announcement** (`components/UpdateAnnouncement.tsx`) — after a new deploy, returning users see a one-shot modal listing the latest version's headline changes (the bold lead-ins of the newest CHANGELOG entry), with a "See all" link to `/about`. Dismissal is per-browser via `localStorage['tyunnie_last_seen_version']`; brand-new visitors are silently marked caught-up so they don't get greeted with a changelog. Hidden for guests.
+- **Version badge on the auth page** — a small `v{APP_VERSION}` in the bottom-right of the login screen, linking to `/about`.
+- **Browser auto-open on `npm run dev`** (`scripts/dev.mjs`) — the dev server now opens `http://localhost:3000` in the default browser once it's ready. Cross-platform, zero new dependencies. `npm run dev:noopen` keeps the old behaviour.
+
+### Changed
+
+- **Account menu replaces the direct Profile button** (`app/dashboard/page.tsx`) — the header avatar now opens a small dropdown with **Profile** and **About** instead of jumping straight to the Profile panel.
+- **Single runtime version source** (`lib/version.ts`) — `APP_VERSION` reads straight from `package.json`, so the login footer and the announcement update themselves on a version bump with no extra place to edit.
+- **Daily-quote email persona + variety overhaul** (`app/api/daily-quote/route.ts`, `lib/tyunPersona.ts`) — the morning note now shares the rich Tyunnie chat persona via a single `TYUN_CORE` core, picks from a 35-topic seed pool and 8 tones per send, and writes its own dynamic subject line. Kills the old "A thought / Get up / Don't make it weird" repetition.
+- **Expanded Taehyun persona + birthday (Feb 5)** (`lib/tyunPersona.ts`, `components/TyunniePanel.tsx`, `components/TyunBirthday.tsx`, `app/api/daily-quote/route.ts`, `app/dashboard/page.tsx`) — `TYUN_CORE` gains a curated layer of real facts (cat Hobak, fandom "Solomon", 🐿️, caramel macchiato, magic tricks, Gauss, Inception/Schindler's List, Jungkook & J-Hope, left-handed, Feb 5 / Aquarius / Gangnam) while keeping the "never recite as a list" guard. New `TYUN_BIRTHDAY` + `isTyunBirthday()` drive three surfaces on Feb 5: a once-a-year `TyunBirthday` modal (everyone incl. guests, dismissal keyed per year), a birthday-angle override on the daily email, and a low-key prompt line so he may mention it himself in chat.
+
+### Fixed
+
+- **`scripts/dev.mjs` `DEP0190` warning** — the browser-open spawn now passes one shell string instead of `shell: true` + separate args, silencing Node's deprecation warning.
+- **`/about` "What's changed" rendered empty** (`app/api/changelog/route.ts`, `app/about/page.tsx`, `components/UpdateAnnouncement.tsx`) — the `Cache-Control` header let the browser cache a pre-Highlights copy of the changelog JSON, so a deploy that added Highlights was masked. Now `public, max-age=0, s-maxage=3600, must-revalidate` (CDN caches, browser revalidates) and both client fetches pass `cache: "no-store"`.
+- **Weather widget could white-screen the dashboard** (`components/Weather.tsx`) — an unguarded `JSON.parse(localStorage['tyunnie_city'])` in the mount effect threw on a corrupt blob, tripping the error boundary. Now wrapped in try/catch (all 13 `JSON.parse(localStorage…)` sites audited and guarded).
+
+### Security
+
+- **npm audit** — cleared both high-severity advisories (`ws`, `brace-expansion`). Two moderate build-time `postcss` advisories remain, deferred to a future clean `next` upgrade (the only current fix, `npm audit fix --force`, downgrades `next` and breaks the app).
+- **Rate-limiter memory bounded** (`lib/rateLimit.ts`) — the in-memory `Map` now drops idle keys per-call plus a 5-min global sweep keyed on the widest active window, so it can't grow unbounded across distinct IPs/users on a long-lived instance. (Still per-instance — the cross-instance fix remains Upstash/Vercel KV; see [SECURITY.md](SECURITY.md).)
+
+---
+
 ## [3.21.1] — 2026-06-10
 
 Pre-public-launch security hardening pass — full audit by the `tyun-network-and-security` agent before sharing the Vercel link. Full findings + backup plans in [docs/SECURITY.md](SECURITY.md).

@@ -4,8 +4,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { enterGuest } from "@/lib/guest";
+import { APP_VERSION } from "@/lib/version";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -113,6 +115,14 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex bg-[#faf8f5] dark:bg-[#0e0d0b]">
+
+      {/* Version badge — links to the About page / changelog */}
+      <Link
+        href="/about"
+        className="fixed bottom-3 right-4 z-50 text-[10px] font-mono text-[#c5bdb0] dark:text-[#4a4540] hover:opacity-70 transition-opacity"
+      >
+        v{APP_VERSION}
+      </Link>
 
       {/* ── LEFT PANEL — branding ── */}
       <div
