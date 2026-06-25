@@ -499,9 +499,9 @@ export default function Tetris() {
         </div>
       </div>
 
-      <div className="flex gap-4 items-start">
-        {/* Left panel */}
-        <div className="flex flex-col gap-3 w-20">
+      <div className="flex flex-wrap md:flex-nowrap justify-center gap-4 items-start">
+        {/* Left panel — drops below the board on mobile (order-2), flanks it on desktop (order-1) */}
+        <div className="order-2 md:order-1 flex flex-col gap-3 w-20">
           {/* Hold */}
           <div className="bg-white border border-[#f0ece8] rounded-2xl p-3 flex flex-col items-center gap-2">
             <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880]">
@@ -538,9 +538,9 @@ export default function Tetris() {
           </div>
         </div>
 
-        {/* Board */}
+        {/* Board — first on mobile (order-1), centre on desktop (order-2) */}
         <div
-          className="relative border-2 border-[#e8e2d8] rounded-xl overflow-hidden"
+          className="order-1 md:order-2 relative border-2 border-[#e8e2d8] rounded-xl overflow-hidden"
           style={{
             width: COLS * CELL_SIZE,
             height: ROWS * CELL_SIZE,
@@ -654,8 +654,8 @@ export default function Tetris() {
           )}
         </div>
 
-        {/* Right panel */}
-        <div className="flex flex-col gap-3 w-20">
+        {/* Right panel — drops below the board on mobile (order-3) */}
+        <div className="order-3 flex flex-col gap-3 w-20">
           {/* Next */}
           <div className="bg-white border border-[#f0ece8] rounded-2xl p-3 flex flex-col items-center gap-2">
             <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880]">

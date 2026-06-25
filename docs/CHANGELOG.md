@@ -5,6 +5,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.22.1] — 2026-06-25
+
+### Highlights
+
+**Improved**
+
+- **Faster loading** — Taehyun's artwork now downloads in a lighter format and starts loading sooner, so the dashboard paints quicker (especially on desktop).
+- **Steadier page** — the layout no longer jiggles as the hero image and fonts settle in.
+
+**Fixed**
+
+- **Mobile polish across the app** — the login version moved to the top-right, the About page scrolls properly, Finance numbers are cleaner and centered, Solitaire cards keep their shape on phones, Tetris side panels stack below the board, Chess has its "Back to Games" button, the chat sits where it should, and Focus mode is centered.
+- **Log out moved** — it now lives in the top-right avatar menu, under About.
+
+### Changed
+
+- **Image optimization enabled** (`next.config.ts`) — added an `images` block serving AVIF/WebP with sprite-sized breakpoints (`imageSizes: [110,200,256,384]`) and a 31-day CDN cache (`minimumCacheTTL`). The 560×720 hero PNG was the desktop LCP element; AVIF cuts its payload substantially.
+- **Above-the-fold sprite preloads** (`app/layout.tsx`) — `tyun-mood-default.png` (loading screen) and `tyun-hero.png` (Desk LCP) are preloaded with `fetchPriority="high"` so they fetch in parallel with the auth round-trip instead of after it.
+- **Serif font set to `display: "optional"`** (`app/layout.tsx`) — the large italic Instrument Serif greeting was a visible swap-in CLS source; `optional` uses the metric-adjusted fallback when the web font isn't ready, removing the shift.
+- **About page top spacing** (`app/about/page.tsx`) — trimmed the oversized top padding (`py-14` → `pt-6 pb-14`, back-link `mb-10` → `mb-6`).
+- **Project housekeeping** — added a real `LICENSE` file (MIT), `CONTRIBUTING.md`, and GitHub issue/PR templates.
+
+### Fixed
+
+- **Hero image layout shift** (`components/Desk.tsx`) — reserved an explicit `257px` height on the desktop hero wrapper so its box no longer reflows on image decode (CLS).
+- **Mobile UI pass** — login version badge → top-right (`app/auth/page.tsx`); About page given its own scroll container (`app/about/page.tsx`); Finance month-nav split into a title row with flanking arrows + a centered actions row, summary numbers centered/responsive with a smaller "RM" (`components/Finance.tsx`); Solitaire card height now tracks measured column width via `ResizeObserver` (`components/games/Solitaire.tsx`); Tetris side panels stack below the board on mobile via `flex-wrap` + `order` (`components/games/Tetris.tsx`); Chess gained the standard "Back to Games" wrapper (`components/Games.tsx`, `components/games/Chess.tsx`); chat bubbles bottom-anchor on mobile (`components/TyunniePanel.tsx`); Focus mode centered with a scroll-safe `m-auto` block (`components/FocusMode.tsx`).
+
+### Changed (UI)
+
+- **Log out relocated** (`app/dashboard/page.tsx`, `components/Sidebar.tsx`) — moved out of the sidebar dock and mobile tab bar into the header avatar dropdown (under About); shows "Exit demo" for guests.
+
+---
+
 ## [3.22.0] — 2026-06-24
 
 ### Highlights

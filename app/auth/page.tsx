@@ -119,7 +119,7 @@ export default function AuthPage() {
       {/* Version badge — links to the About page / changelog */}
       <Link
         href="/about"
-        className="fixed bottom-3 right-4 z-50 text-[10px] font-mono text-[#c5bdb0] dark:text-[#4a4540] hover:opacity-70 transition-opacity"
+        className="fixed top-3 right-4 z-50 text-[10px] font-mono text-[#c5bdb0] dark:text-[#4a4540] hover:opacity-70 transition-opacity"
       >
         v{APP_VERSION}
       </Link>

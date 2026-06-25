@@ -48,6 +48,15 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['recharts', 'date-fns'],
   },
 
+  // Image optimization — serve AVIF/WebP instead of raw PNGs (the 560×720 hero
+  // sprite is the desktop LCP element). imageSizes cover the sprite's rendered
+  // widths (hero 200px, mobile 110px) at 1x/2x; long CDN cache for static art.
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    imageSizes: [110, 200, 256, 384],
+    minimumCacheTTL: 2678400, // 31 days
+  },
+
   async headers() {
     const isProd = process.env.NODE_ENV === 'production'
     return [

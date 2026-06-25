@@ -323,19 +323,27 @@ export default function Finance({
     <div>
       {/* Month navigation */}
       <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5 mb-5">
-        <div className="grid grid-cols-3 items-center">
-          <div className="flex items-center">
-            <button
-              onClick={() => navMonth(-1)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e2d8] bg-[#f3f0ea] hover:border-[#f97316] hover:text-[#f97316] transition-colors text-lg"
-            >
-              ‹
-            </button>
-          </div>
-          <h2 className="font-serif italic text-xl text-[#111010] text-center">
+        {/* Title row — arrows always flank the month name */}
+        <div className="flex items-center justify-between gap-3">
+          <button
+            onClick={() => navMonth(-1)}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e2d8] bg-[#f3f0ea] hover:border-[#f97316] hover:text-[#f97316] transition-colors text-lg"
+          >
+            ‹
+          </button>
+          <h2 className="flex-1 font-serif italic text-xl text-[#111010] text-center truncate">
             {MONTHS[viewMonth]} {viewYear}
           </h2>
-          <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => navMonth(1)}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e2d8] bg-[#f3f0ea] hover:border-[#f97316] hover:text-[#f97316] transition-colors text-lg"
+          >
+            ›
+          </button>
+        </div>
+        {/* Actions — wrap to their own row below so they never crowd the title */}
+        {(!isCurrentMonth() || monthEntries.length > 0) && (
+          <div className="flex items-center justify-center gap-2 mt-3">
             {!isCurrentMonth() && (
               <button
                 onClick={jumpToToday}
@@ -353,43 +361,40 @@ export default function Finance({
                 {resetting ? "Resetting..." : "Reset Month"}
               </button>
             )}
-            <button
-              onClick={() => navMonth(1)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e2d8] bg-[#f3f0ea] hover:border-[#f97316] hover:text-[#f97316] transition-colors text-lg"
-            >
-              ›
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4 mb-5">
-        <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-2">
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
+        <div className="bg-white border border-[#e8e2d8] rounded-2xl p-3 sm:p-5 text-center">
+          <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-2">
             Income
           </div>
-          <div className="font-serif italic text-3xl text-[#16a34a]">
-            RM {monthIncome.toFixed(2)}
+          <div className="font-serif italic text-lg sm:text-2xl md:text-3xl text-[#16a34a] tabular-nums break-words">
+            <span className="text-[0.6em] not-italic opacity-70 mr-0.5">RM</span>
+            {monthIncome.toFixed(2)}
           </div>
         </div>
-        <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-2">
+        <div className="bg-white border border-[#e8e2d8] rounded-2xl p-3 sm:p-5 text-center">
+          <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-2">
             Expenses
           </div>
-          <div className="font-serif italic text-3xl text-red-500">
-            RM {monthExpenses.toFixed(2)}
+          <div className="font-serif italic text-lg sm:text-2xl md:text-3xl text-red-500 tabular-nums break-words">
+            <span className="text-[0.6em] not-italic opacity-70 mr-0.5">RM</span>
+            {monthExpenses.toFixed(2)}
           </div>
         </div>
-        <div className="bg-[#f97316] border border-[#f97316] rounded-2xl p-5">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-white/70 font-mono mb-2">
+        <div className="bg-[#f97316] border border-[#f97316] rounded-2xl p-3 sm:p-5 text-center">
+          <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white/70 font-mono mb-2">
             Balance
           </div>
-          <div className="font-serif italic text-3xl text-white">
-            RM {runningBalance.toFixed(2)}
+          <div className="font-serif italic text-lg sm:text-2xl md:text-3xl text-white tabular-nums break-words">
+            <span className="text-[0.6em] not-italic opacity-70 mr-0.5">RM</span>
+            {runningBalance.toFixed(2)}
           </div>
           {carriedBalance !== 0 && (
-            <div className="text-[10px] text-white/60 font-mono mt-1">
+            <div className="text-[9px] sm:text-[10px] text-white/60 font-mono mt-1">
               {carriedBalance >= 0 ? "+" : ""}RM {carriedBalance.toFixed(2)}{" "}
               carried · RM {monthBalance.toFixed(2)} this month
             </div>

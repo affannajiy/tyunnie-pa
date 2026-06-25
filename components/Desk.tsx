@@ -194,7 +194,7 @@ Just one sentence, no quotes, no action blocks.`,
             }}
           />
         </div>
-        <div className="shrink-0 hidden md:block relative z-10 self-end">
+        <div className="shrink-0 hidden md:block relative z-10 self-end" style={{ height: 257 }}>
           <Image
             src="/sprites/tyun-hero.png"
             alt="Tyunnie"

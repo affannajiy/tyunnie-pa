@@ -571,9 +571,9 @@ function getBotMove(
 }
 
 // ── COMPONENT ──
-type Props = { onBack?: () => void };
-
-export default function Chess({ onBack }: Props) {
+// Note: the "← Back to Games" button is provided by the Games.tsx wrapper,
+// consistent with every other game, so Chess takes no onBack prop.
+export default function Chess() {
   const [screen, setScreen] = useState<"setup" | "game">("setup");
   const [gameMode, setGameMode] = useState<GameMode>("vs-bot");
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");

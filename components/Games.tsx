@@ -160,7 +160,13 @@ export default function Games() {
   if (activeGame === "chess") {
     return (
       <div>
-        <Chess onBack={() => setActiveGame(null)} />
+        <button
+          onClick={() => setActiveGame(null)}
+          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+        >
+          ← Back to Games
+        </button>
+        <Chess />
       </div>
     );
   }

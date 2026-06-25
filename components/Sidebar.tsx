@@ -23,7 +23,6 @@ export type Panel =
 type Props = {
   active: Panel;
   onChange: (panel: Panel) => void;
-  onSignOut: () => void;
   tyunnieOpen?: boolean;
   onTyunnieToggle?: () => void;
   onNewSticky?: () => void;
@@ -48,16 +47,15 @@ function dockScale(idx: number, hoveredIdx: number | null): number {
   return 1;
 }
 
-// Dock item indices: 0-3 = NAV_ITEMS, 4 = Tyun, 5 = Sticky, 6 = FocusMode, 7 = Logout
+// Dock item indices: 0-3 = NAV_ITEMS, 4 = Tyun, 5 = Sticky, 6 = FocusMode
+// (Logout now lives in the header avatar menu, not the dock.)
 const TYUN_IDX   = NAV_ITEMS.length;      // 4
 const STICKY_IDX = NAV_ITEMS.length + 1; // 5
 const FOCUS_IDX  = NAV_ITEMS.length + 2; // 6
-const LOGOUT_IDX = NAV_ITEMS.length + 3; // 7
 
 export default function Sidebar({
   active,
   onChange,
-  onSignOut,
   tyunnieOpen = false,
   onTyunnieToggle,
   onNewSticky,
@@ -298,51 +296,7 @@ export default function Sidebar({
           <div className="w-1 h-1 mt-1" />
         </div>
 
-        {/* Divider before logout */}
-        <div className="w-px h-5 bg-white/10 mx-1 self-center shrink-0" />
-
-        {/* Logout */}
-        <div
-          className="relative flex flex-col items-center"
-          onMouseEnter={() => setHoveredIdx(LOGOUT_IDX)}
-          onMouseLeave={() => setHoveredIdx(null)}
-        >
-          {/* Tooltip */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap pointer-events-none select-none transition-all duration-150"
-            style={{
-              bottom: "calc(100% + 10px)",
-              background: "rgba(28,25,23,0.92)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              opacity: hoveredIdx === LOGOUT_IDX ? 1 : 0,
-              transform: `translateX(-50%) translateY(${hoveredIdx === LOGOUT_IDX ? 0 : 4}px)`,
-            }}
-          >
-            Sign out
-          </div>
-
-          <button
-            onClick={onSignOut}
-            title="Sign out"
-            className="flex items-center justify-center rounded-[13px] cursor-pointer border-none outline-none transition-colors duration-100"
-            style={{
-              width: 44,
-              height: 44,
-              transform: `scale(${dockScale(LOGOUT_IDX, hoveredIdx)})`,
-              transformOrigin: "bottom center",
-              transition:
-                "transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s ease",
-              background: "transparent",
-              color:
-                hoveredIdx === LOGOUT_IDX
-                  ? "rgb(239,68,68)"
-                  : "rgba(255,255,255,0.35)",
-            }}
-          >
-            <span className="text-lg">↩</span>
-          </button>
-          <div className="w-1 h-1 mt-1" />
-        </div>
+        {/* Logout moved to the header avatar menu (Profile ▸ Log out) */}
       </div>
 
       {/* ── MOBILE: compact bottom tab bar ── */}
@@ -459,18 +413,7 @@ export default function Sidebar({
           <div className="w-1.5 h-1.5" />
         </button>
 
-        {/* Logout */}
-        <button
-          onClick={onSignOut}
-          className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
-          style={{ color: "rgba(255,255,255,0.3)", transition: "color 0.15s ease" }}
-          onTouchStart={(e) => (e.currentTarget.style.color = "rgb(239,68,68)")}
-          onTouchEnd={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
-        >
-          <span className="text-[22px]" style={{ display: "block" }}>↩</span>
-          <span className="text-[9px] font-bold uppercase tracking-wide font-mono opacity-55">Out</span>
-          <div className="w-1.5 h-1.5" />
-        </button>
+        {/* Logout moved to the header avatar menu (Profile ▸ Log out) */}
       </div>
     </>
   );

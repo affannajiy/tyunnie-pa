@@ -1,7 +1,7 @@
 // components/games/Solitaire.tsx
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 type Suit = "♠" | "♥" | "♦" | "♣";
 type Color = "black" | "red";
@@ -322,12 +322,31 @@ export default function Solitaire() {
     ri >= selected.cardIndex;
 
   const { tableau, stock, waste, foundation } = state;
-  const CARD_H = 100;
-  const FACEDOWN_OFFSET = 16;
-  const FACEUP_OFFSET = 26;
+  // Card height tracks the measured column width so cards keep a card-like
+  // aspect ratio on narrow phones (7 columns get very thin otherwise) while
+  // capping at the original 100px on wide screens. Stacking offsets scale with it.
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [cardH, setCardH] = useState(100);
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const measure = () => {
+      // 7 columns, 6 gaps of 4px (gap-1)
+      const cardW = (el.clientWidth - 6 * 4) / 7;
+      setCardH(Math.round(Math.min(100, Math.max(56, cardW * 1.5))));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const CARD_H = cardH;
+  const FACEDOWN_OFFSET = Math.round(cardH * 0.16);
+  const FACEUP_OFFSET = Math.round(cardH * 0.26);
 
   return (
-    <div className="max-w-2xl mx-auto select-none">
+    <div ref={boardRef} className="max-w-2xl mx-auto select-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="font-mono text-xs text-[#9a8f7e]">{moves} moves</span>

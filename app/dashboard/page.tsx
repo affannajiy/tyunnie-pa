@@ -928,7 +928,6 @@ export default function Home() {
         <Sidebar
           active={activePanel}
           onChange={(panel) => setActivePanel(panel)}
-          onSignOut={handleSignOut}
           tyunnieOpen={tyunnieOpen}
           onTyunnieToggle={() => setTyunnieOpen((v) => !v)}
           hiddenPanels={hiddenPanels}
@@ -1133,6 +1132,17 @@ export default function Home() {
                         className="w-full text-left px-4 py-2 text-sm text-[#111010] dark:text-[#f5f0e8] hover:bg-[#faf8f5] dark:hover:bg-[#211e1a] transition-colors"
                       >
                         About
+                      </button>
+                      <div className="my-1 border-t border-[#e8e2d8] dark:border-[#2a2620]" />
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          handleSignOut();
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-[#2a1a1a] transition-colors"
+                      >
+                        {user?.id === GUEST_ID ? "Exit demo" : "Log out"}
                       </button>
                     </div>
                   </>

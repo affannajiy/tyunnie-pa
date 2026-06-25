@@ -10,7 +10,10 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
   style: ["normal", "italic"],
   variable: "--font-serif",
-  display: "swap",
+  // "optional" over "swap": the above-the-fold 5xl italic serif greeting was a
+  // visible CLS source on swap-in. "optional" uses the metric-adjusted fallback
+  // when the web font isn't ready in time, eliminating the layout shift.
+  display: "optional",
 });
 
 const nunito = Nunito({
@@ -56,6 +59,10 @@ export default function RootLayout({
         )}
         {/* Preconnect to Open-Meteo for faster weather fetch */}
         <link rel="preconnect" href="https://api.open-meteo.com" />
+        {/* Preload above-the-fold sprites: the loading-screen sprite paints
+            first on every desktop visit, the hero is the /dashboard LCP. */}
+        <link rel="preload" as="image" href="/sprites/tyun-mood-default.png" fetchPriority="high" />
+        <link rel="preload" as="image" href="/sprites/tyun-hero.png" fetchPriority="high" />
       </head>
       <body className="font-sans antialiased">
         <script

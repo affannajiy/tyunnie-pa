@@ -252,7 +252,10 @@ export default function FocusMode({
       </div>
 
       {/* ── MAIN ── */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 relative z-10 px-6 overflow-y-auto">
+      {/* Scroll container; inner m-auto block stays centred but remains reachable
+          when content is taller than the viewport (justify-center would clip the top). */}
+      <div className="flex-1 flex flex-col relative z-10 px-6 py-6 overflow-y-auto">
+        <div className="m-auto w-full flex flex-col items-center gap-6">
         {/* Task selector */}
         <div className="w-full max-w-md">
           {linkedTodo ? (
@@ -476,6 +479,7 @@ export default function FocusMode({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Sticky notes float above everything */}

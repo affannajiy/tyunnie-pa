@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Live demo
+    url: https://tyunnie-pa.vercel.app
+    about: Try the app before filing an issue.
+  - name: Security vulnerability
+    url: https://github.com/affannajiy/tyunnie-pa/security/advisories/new
+    about: Report security issues privately, not as a public issue.

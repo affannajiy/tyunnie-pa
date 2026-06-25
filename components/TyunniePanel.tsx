@@ -1544,7 +1544,7 @@ casual chat (no data action — still set a mood):
         scrollbarColor: "#2a2520 transparent",
       }}
     >
-      <div className="h-10 md:flex-1" />
+      <div className="flex-1" />
       {bubbles.map((b, index) => {
         const distanceFromBottom = bubbles.length - 1 - index;
         const opacity =

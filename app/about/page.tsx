@@ -25,12 +25,12 @@ export default function AboutPage() {
   const accent = `rgb(${accentRgb})`;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] dark:bg-[#0e0d0b] text-[#111010] dark:text-[#f5f0e8]">
-      <div className="max-w-2xl mx-auto px-6 py-14">
+    <div className="h-[100dvh] overflow-y-auto bg-[#faf8f5] dark:bg-[#0e0d0b] text-[#111010] dark:text-[#f5f0e8]">
+      <div className="max-w-2xl mx-auto px-6 pt-6 pb-14">
         {/* ── Back link ── */}
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-[#9a8f7e] dark:text-[#6a6050] hover:opacity-70 transition-opacity mb-10"
+          className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-[#9a8f7e] dark:text-[#6a6050] hover:opacity-70 transition-opacity mb-6"
         >
           ← Back to app
         </Link>
