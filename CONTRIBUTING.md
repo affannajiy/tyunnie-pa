@@ -5,6 +5,9 @@ tribute to Taehyun of TOMORROW X TOGETHER — it isn't affiliated with TXT or HY
 It's primarily maintained by [@affannajiy](https://github.com/affannajiy), but
 issues, ideas, and pull requests are welcome.
 
+By participating, you agree to abide by our
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Getting started
 
 ```bash
@@ -40,5 +43,4 @@ expected, and your browser/OS for UI bugs.
 ## Security
 
 Please **do not** open public issues for security vulnerabilities — see
-[SECURITY.md](.github/SECURITY.md) (or [docs/SECURITY.md](docs/SECURITY.md)) for
-how to report privately.
+[SECURITY.md](SECURITY.md) for how to report privately.

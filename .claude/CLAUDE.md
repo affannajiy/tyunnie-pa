@@ -2,7 +2,7 @@
 
 Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.22.0.
 
-Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../docs/DATABASE.md) (schema/SQL) · [SECURITY.md](../docs/SECURITY.md) (posture/audit). Full file-tree + verbose notes live in git history of this file (pre-3.22 versions) if needed.
+Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../docs/DATABASE.md) (schema/SQL) · [SECURITY.md](../SECURITY.md) (posture/audit). Full file-tree + verbose notes live in git history of this file (pre-3.22 versions) if needed.
 
 ---
 
@@ -86,7 +86,7 @@ Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../do
 
 ---
 
-## Security (full: docs/SECURITY.md)
+## Security (full: SECURITY.md)
 - Auth via `getAuthUser()`/`verifyAuth()` (JWT). Two-tier rate limit: per-IP burst + per-user daily quota (chat 300/day, run 100/day). **In-memory limiter is the top scaling limitation — move to Upstash/Vercel KV before real traffic.**
 - Vault emails bound to JWT email only. OTP `crypto.randomInt` + `timingSafeEqual`; `CRON_SECRET` constant-time. XSS via `sanitizeHtml()`. `/api/changelog` intentionally public. Service-role key server-only.
 

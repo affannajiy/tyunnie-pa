@@ -243,7 +243,7 @@ All project documentation lives in [`docs/`](./docs/):
 - [DATABASE.md](./docs/DATABASE.md) — schema, SQL setup, RLS policies
 - [DEPLOYMENT.md](./docs/DEPLOYMENT.md) — env vars, Vercel setup, OAuth
 - [DEVNOTES.md](./docs/DEVNOTES.md) — developer gotchas and non-obvious decisions
-- [SECURITY.md](./docs/SECURITY.md) — security posture, audit log, backup plans
+- [SECURITY.md](./SECURITY.md) — security posture, audit log, backup plans
 
 ---
 
