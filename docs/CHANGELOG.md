@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.22.2] — 2026-06-26
+
+### Highlights
+
+**Improved**
+
+- **A friendlier demo** — the guest preview now greets you with a birthday set, a couple of Taehyun-flavored notes, and a nudge to sign up if it sticks.
+
+### Added
+
+- **Code of Conduct** (`CODE_OF_CONDUCT.md`) — Contributor Covenant 2.1 at the repo root, linked from `CONTRIBUTING.md`. Enforcement contact set.
+
+### Changed
+
+- **`SECURITY.md` moved to the repo root** (from `docs/`) so GitHub surfaces it as the project's security policy; all live doc links updated (`README.md`, `CONTRIBUTING.md`, `.claude/CLAUDE.md`, `docs/DEVNOTES.md`). Historical CHANGELOG references left as-is.
+- **Guest demo seed refresh** (`lib/guest.ts`) — the guest profile now seeds `birth_day`/`birth_month` so the birthday greeting is demoable; sample memories/sticky notes updated to match the richer Taehyun persona (caramel macchiato, low-key vibe, 🐿️ sign-up nudge). `daily_quote_email` stays off (no email for guests).
+
+---
+
 ## [3.22.1] — 2026-06-25
 
 ### Highlights
