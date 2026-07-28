@@ -17,6 +17,38 @@ type Props = {
   refreshKey?: number
 }
 
+// Bucket a timestamp into a Malaysia-time (UTC+8, no DST) calendar day key so
+// the streak counts "days you wrote" in the user's own day, not UTC's.
+function mytDayKey(iso: string): string {
+  const shifted = new Date(new Date(iso).getTime() + 8 * 3600 * 1000)
+  return shifted.toISOString().split('T')[0]
+}
+function mytDayKeyAgo(days: number): string {
+  return mytDayKey(new Date(Date.now() - days * 86400000).toISOString())
+}
+
+// Current writing streak (consecutive days ending today, or yesterday as grace)
+// plus how many of the last 7 days had any writing activity.
+function computeStreak(drafts: Draft[]): { streak: number; thisWeek: number } {
+  const active = new Set<string>()
+  for (const d of drafts) {
+    if (d.created_at) active.add(mytDayKey(d.created_at))
+    if (d.updated_at) active.add(mytDayKey(d.updated_at))
+  }
+  let start = active.has(mytDayKeyAgo(0)) ? 0 : active.has(mytDayKeyAgo(1)) ? 1 : -1
+  let streak = 0
+  if (start >= 0) {
+    while (active.has(mytDayKeyAgo(start))) {
+      streak++
+      start++
+    }
+  }
+  const thisWeek = Array.from({ length: 7 }, (_, i) => i).filter((i) =>
+    active.has(mytDayKeyAgo(i)),
+  ).length
+  return { streak, thisWeek }
+}
+
 export default function Writing({ userId, onAction, refreshKey }: Props) {
   const { setSnapshot } = useWorkspace()
   const [drafts, setDrafts]       = useState<Draft[]>([])
@@ -49,7 +81,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
     window.addEventListener('tyunnie-new-draft', handler)
     return () => window.removeEventListener('tyunnie-new-draft', handler)
   // openNew is stable (no deps change it), safe to run once
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [])
 
   // ── AGENTIC FILTER LISTENER ──
@@ -85,6 +117,8 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
   // ── DERIVED ──
   const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0
   const charCount = body.length
+
+  const { streak, thisWeek } = computeStreak(drafts)
 
   const filtered = drafts.filter(d =>
     d.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -226,7 +260,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
             <button
               onClick={handleSave}
               disabled={saving || !body.trim()}
-              className="bg-[#f97316] text-white font-bold rounded-lg px-4 py-1.5 text-[11px] tracking-wide hover:bg-[#c2500f] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="bg-(--accent) text-white font-bold rounded-lg px-4 py-1.5 text-[11px] tracking-wide hover:bg-[#c2500f] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save ✦'}
             </button>
@@ -279,11 +313,11 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search drafts..."
-              className="flex-1 bg-white border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+              className="flex-1 bg-white border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
             />
             <button
               onClick={openNew}
-              className="bg-[#f97316] text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px shrink-0"
+              className="bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px shrink-0"
             >
               + New Draft
             </button>
@@ -291,16 +325,16 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
 
           {/* Stats strip */}
           {!loading && drafts.length > 0 && (
-            <div className="flex gap-3 mb-5">
-              <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              <div className="bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
                   Drafts
                 </div>
-                <div className="font-serif italic text-3xl text-[#f97316]">
+                <div className="font-serif italic text-3xl text-(--accent)">
                   {drafts.length}
                 </div>
               </div>
-              <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
+              <div className="bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
                   Total Words
                 </div>
@@ -308,7 +342,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                   {drafts.reduce((sum, d) => sum + getWordCount(d.body ?? ''), 0).toLocaleString()}
                 </div>
               </div>
-              <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
+              <div className="bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
                   Avg Length
                 </div>
@@ -318,6 +352,20 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                     : 0
                   }
                   <span className="text-base text-[#9a8f7e] ml-1">wds</span>
+                </div>
+              </div>
+              <div className="bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
+                  Streak
+                </div>
+                <div className="font-serif italic text-3xl text-[#111010]">
+                  🔥 {streak}
+                  <span className="text-base text-[#9a8f7e] ml-1">
+                    {streak === 1 ? 'day' : 'days'}
+                  </span>
+                </div>
+                <div className="text-[9px] font-mono text-[#c5bdb0] mt-1">
+                  {thisWeek} {thisWeek === 1 ? 'day' : 'days'} this week
                 </div>
               </div>
             </div>
@@ -352,9 +400,10 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                   {/* Delete button */}
                   <button
                     onClick={e => { e.stopPropagation(); handleDelete(draft.id, draft.title) }}
-                    className="absolute top-3 right-3 text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100"
+                    aria-label={`Delete draft ${draft.title}`}
+                    className="absolute top-3 right-3 text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   >
-                    ✕
+                    <span aria-hidden="true">✕</span>
                   </button>
 
                   {/* Title */}

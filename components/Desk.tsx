@@ -52,9 +52,25 @@ export default function Desk({
   const accentRgb = useAccentColor();
   const [oneliner, setOneliner] = useState<string | null>(null);
 
-  // AI one-liner — sessionStorage cached
+  // AI one-liner — sessionStorage cached.
+  //
+  // The cache key carries the name AND the date, because the cached value is
+  // generated *text* with both baked into it. Keyed on nothing, a rename left
+  // the old name showing in the line while the greeting above updated live —
+  // and a session left open past midnight showed yesterday's line against
+  // yesterday's task counts. Keying makes a rename simply miss and regenerate,
+  // with no invalidation plumbing to forget on some future code path.
+  //
+  // It also fixes a race: if the profile row resolves after this mounts, the
+  // name is "" — that line now caches under the empty-name key and is never
+  // served to a named user, instead of being frozen in for the whole session.
+  const activeName = profile?.display_name ?? userName ?? "";
+
   useEffect(() => {
-    const cached = sessionStorage.getItem("desk_oneliner");
+    const today = new Date().toISOString().split("T")[0];
+    const cacheKey = `desk_oneliner:${activeName}:${today}`;
+
+    const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       setOneliner(cached);
       return;
@@ -66,7 +82,6 @@ export default function Desk({
       return;
     }
 
-    const today = new Date().toISOString().split("T")[0];
     const pendingCount = todos.filter((t) => !t.done).length;
     const overdueCount = todos.filter(
       (t) => !t.done && t.due && t.due < today,
@@ -90,7 +105,7 @@ export default function Desk({
         body: JSON.stringify({
           messages: [{ role: "user", content: "desk oneliner" }],
           systemPrompt: `You are Tyunnie, warm AI assistant based on Taehyun from TXT. Write ONE short motivational sentence (max 12 words) for the user's day. Be warm, casual, personal. No emojis at start.
-Pending tasks: ${pendingCount}, Overdue: ${overdueCount}, Balance: RM${balance.toFixed(2)}, Name: ${profile?.display_name ?? userName ?? ""}
+Pending tasks: ${pendingCount}, Overdue: ${overdueCount}, Balance: RM${balance.toFixed(2)}, Name: ${activeName}
 Just one sentence, no quotes, no action blocks.`,
         }),
       })
@@ -99,13 +114,13 @@ Just one sentence, no quotes, no action blocks.`,
           clearTimeout(timeoutId);
           const text = d.text?.trim() ?? null;
           setOneliner(text ?? "Make today one worth remembering.");
-          if (text) sessionStorage.setItem("desk_oneliner", text);
+          if (text) sessionStorage.setItem(cacheKey, text);
         })
         .catch(() => {
           setOneliner("Make today one worth remembering.");
         }),
     );
-  }, []);
+  }, [activeName]);
 
   return (
     <div className="min-h-screen pb-24">

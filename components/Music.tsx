@@ -7,6 +7,7 @@ import { useRef, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { addMusicTrack } from "@/lib/database";
 import { isGuest } from "@/lib/guest";
+import { useAccentColor } from "@/lib/useAccentColor";
 
 type UploadState = "idle" | "uploading" | "done" | "error";
 
@@ -43,6 +44,8 @@ export default function Music() {
 
   const coverRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  // Live accent — re-renders on tyunnie-accent-changed (Auto-Theme, picker).
+  const accentRgb = useAccentColor();
 
   // ── View: queue or manage ──
   const [view, setView] = useState<"queue" | "manage">("queue");
@@ -60,8 +63,14 @@ export default function Music() {
 
   // ── Audio glow — DOM ref, not state ──
   useEffect(() => {
-    const rgb = getComputedStyle(document.documentElement)
-      .getPropertyValue("--accent-rgb").trim() || "249,115,22";
+    // accentRgb comes from useAccentColor() and is in this effect's deps, so an
+    // accent change (every track, with Auto-Theme on) tears the loop down and
+    // restarts it with the new colour. Reading the CSS var here without that
+    // dep captured it once at mount: the rAF loop then repainted the stale
+    // colour 60x/sec AND, because it writes an inline style every frame, it
+    // permanently clobbered the rgba(var(--accent-rgb),…) fallback in the JSX,
+    // so the element could never recover on its own.
+    const rgb = accentRgb;
 
     if (!isPlaying || !analyser?.current) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -86,7 +95,7 @@ export default function Music() {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [isPlaying, analyser]);
+  }, [isPlaying, analyser, accentRgb]);
 
   // ── Upload handler ──
   async function handleUpload(e: React.FormEvent) {
@@ -104,7 +113,7 @@ export default function Music() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error("You need to be signed in to upload.");
 
       const ts = Date.now();
       const safeTitle = title.trim().replace(/[^a-z0-9]/gi, "-").toLowerCase();
@@ -115,7 +124,15 @@ export default function Music() {
       const { error: audioErr } = await supabase.storage
         .from("music-audio")
         .upload(audioPath, audioFile, { upsert: false });
-      if (audioErr) throw new Error(`Audio upload failed: ${audioErr.message}`);
+      // §9: never surface the raw Supabase Storage message ("new row violates
+      // row-level security policy", "The resource already exists"). Log it for
+      // us, show the user a consequence and a next step.
+      if (audioErr) {
+        console.error("[music] audio upload failed", audioErr);
+        throw new Error(
+          "Couldn't upload that track. Check the file and your connection, then try again.",
+        );
+      }
       setUploadPct(60);
 
       const { data: { publicUrl: fileUrl } } = supabase.storage
@@ -166,7 +183,9 @@ export default function Music() {
       }, 2000);
     } catch (err) {
       setUploadState("error");
-      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      setUploadError(
+        err instanceof Error ? err.message : "Couldn't upload that track.",
+      );
       setUploadPct(0);
     }
   }
@@ -208,7 +227,7 @@ export default function Music() {
           {tracks.length === 0 ? (
             <div className="text-[#9a8f7e] text-sm">
               <p className="mb-1">No tracks yet.</p>
-              <p className="text-[10px] font-mono text-[#f97316]">
+              <p className="text-[10px] font-mono text-(--accent)">
                 Use the + button to add your first song.
               </p>
             </div>
@@ -251,7 +270,7 @@ export default function Music() {
           <button
             onClick={toggleShuffle}
             title="Shuffle"
-            className={`text-lg transition-all ${shuffle ? "text-[#f97316]" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
+            className={`text-lg transition-all ${shuffle ? "text-(--accent)" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
           >
             ⇄
           </button>
@@ -264,20 +283,20 @@ export default function Music() {
           </button>
           <button
             onClick={prevTrack}
-            className="w-9 h-9 flex items-center justify-center text-white hover:text-[#f97316] transition-colors text-xl"
+            className="w-9 h-9 flex items-center justify-center text-white hover:text-(--accent) transition-colors text-xl"
           >
             ⏮
           </button>
           <button
             onClick={togglePlay}
-            className="w-14 h-14 rounded-full bg-[#f97316] flex items-center justify-center text-white text-2xl hover:bg-[#c2500f] transition-all hover:scale-105 active:scale-95"
+            className="w-14 h-14 rounded-full bg-(--accent) flex items-center justify-center text-white text-2xl hover:bg-[#c2500f] transition-all hover:scale-105 active:scale-95"
             style={{ boxShadow: "0 4px 20px rgba(var(--accent-rgb),0.4)" }}
           >
             {isPlaying ? "⏸" : "▶"}
           </button>
           <button
             onClick={nextTrack}
-            className="w-9 h-9 flex items-center justify-center text-white hover:text-[#f97316] transition-colors text-xl"
+            className="w-9 h-9 flex items-center justify-center text-white hover:text-(--accent) transition-colors text-xl"
           >
             ⏭
           </button>
@@ -291,7 +310,7 @@ export default function Music() {
           <button
             onClick={cycleRepeat}
             title={`Repeat: ${repeat}`}
-            className={`text-lg transition-all ${repeat !== "none" ? "text-[#f97316]" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
+            className={`text-lg transition-all ${repeat !== "none" ? "text-(--accent)" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
           >
             {repeat === "one" ? "↺¹" : "↺"}
           </button>
@@ -300,7 +319,7 @@ export default function Music() {
         <div className="flex items-center gap-3 w-full max-w-xs">
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-sm w-5"
+            className="text-[#9a8f7e] hover:text-(--accent) transition-colors text-sm w-5"
           >
             {isMuted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
           </button>
@@ -336,12 +355,12 @@ export default function Music() {
           {view === "manage" ? (
             <button
               onClick={() => setView("queue")}
-              className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono flex items-center gap-1"
+              className="text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono flex items-center gap-1"
             >
               ← Queue
             </button>
           ) : (
-            <span className="font-serif italic text-[#f97316] text-sm">
+            <span className="font-serif italic text-(--accent) text-sm">
               Queue
             </span>
           )}
@@ -356,8 +375,8 @@ export default function Music() {
             title={view === "queue" ? "Add track" : "Back to queue"}
             className={`px-2.5 py-1 rounded-lg flex items-center gap-1 text-xs font-semibold transition-all ${
               view === "manage"
-                ? "bg-[#f97316]/20 text-[#f97316]"
-                : "bg-[#f97316]/15 text-[#f97316] hover:bg-[#f97316]/25"
+                ? "bg-(--accent)/20 text-(--accent)"
+                : "bg-(--accent)/15 text-(--accent) hover:bg-(--accent)/25"
             }`}
           >
             {view === "manage" ? "✕ close" : "+ add"}
@@ -373,7 +392,7 @@ export default function Music() {
                 <p className="text-sm font-mono">No tracks yet.</p>
                 <button
                   onClick={() => setView("manage")}
-                  className="mt-3 text-xs text-[#f97316] hover:underline font-mono"
+                  className="mt-3 text-xs text-(--accent) hover:underline font-mono"
                 >
                   + Add your first track
                 </button>
@@ -387,7 +406,7 @@ export default function Music() {
                   onClick={() => playTrack(i)}
                   className={`flex items-center gap-4 px-4 py-3 rounded-xl text-left transition-all group ${
                     i === currentIndex
-                      ? "bg-[#f97316]/15 border border-[#f97316]/30"
+                      ? "bg-(--accent)/15 border border-(--accent)/30"
                       : "hover:bg-[#1a1410] border border-transparent"
                   }`}
                 >
@@ -397,7 +416,7 @@ export default function Music() {
                         {[0, 1, 2].map((bar) => (
                           <div
                             key={bar}
-                            className="w-1 bg-[#f97316] rounded-full"
+                            className="w-1 bg-(--accent) rounded-full"
                             style={{
                               height: `${40 + bar * 20}%`,
                               animation: "barBounce 0.8s ease-in-out infinite",
@@ -427,14 +446,14 @@ export default function Music() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div
-                      className={`text-sm font-semibold truncate ${i === currentIndex ? "text-[#f97316]" : "text-white"}`}
+                      className={`text-sm font-semibold truncate ${i === currentIndex ? "text-(--accent)" : "text-white"}`}
                     >
                       {track.title}
                     </div>
                     <div className="text-[11px] text-[#9a8f7e] font-mono truncate">
                       {track.artist}
                       {track.isUserTrack && (
-                        <span className="ml-2 text-[#f97316]/50">↑</span>
+                        <span className="ml-2 text-(--accent)/50">↑</span>
                       )}
                     </div>
                   </div>
@@ -449,7 +468,7 @@ export default function Music() {
           <div className="flex flex-col gap-6">
             {/* Upload form */}
             <form onSubmit={handleUpload} className="flex flex-col gap-4">
-              <p className="font-serif italic text-[#f97316] text-sm">
+              <p className="font-serif italic text-(--accent) text-sm">
                 Add a track
               </p>
 
@@ -460,7 +479,7 @@ export default function Music() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg bg-[#1a1410] border border-[#2a2520] text-white text-sm placeholder-[#4a4038] focus:outline-none focus:border-[#f97316]/50 transition-colors"
+                  className="w-full px-3 py-2 rounded-lg bg-[#1a1410] border border-[#2a2520] text-white text-sm placeholder-[#4a4038] focus:outline-none focus:border-(--accent)/50 transition-colors"
                 />
                 <input
                   type="text"
@@ -468,19 +487,19 @@ export default function Music() {
                   value={artist}
                   onChange={(e) => setArtist(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg bg-[#1a1410] border border-[#2a2520] text-white text-sm placeholder-[#4a4038] focus:outline-none focus:border-[#f97316]/50 transition-colors"
+                  className="w-full px-3 py-2 rounded-lg bg-[#1a1410] border border-[#2a2520] text-white text-sm placeholder-[#4a4038] focus:outline-none focus:border-(--accent)/50 transition-colors"
                 />
 
                 {/* Audio file */}
                 <label className="flex flex-col gap-1 cursor-pointer group">
                   <span className="text-[10px] font-mono text-[#9a8f7e]">
-                    Audio file <span className="text-[#f97316]">*</span>
+                    Audio file <span className="text-(--accent)">*</span>
                   </span>
                   <div
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
                       audioFile
-                        ? "bg-[#f97316]/10 border-[#f97316]/30"
-                        : "bg-[#1a1410] border-[#2a2520] hover:border-[#f97316]/30"
+                        ? "bg-(--accent)/10 border-(--accent)/30"
+                        : "bg-[#1a1410] border-[#2a2520] hover:border-(--accent)/30"
                     }`}
                   >
                     <span className="text-base">🎵</span>
@@ -495,9 +514,10 @@ export default function Music() {
                           setAudioFile(null);
                           if (audioInputRef.current) audioInputRef.current.value = "";
                         }}
+                        aria-label="Clear selected audio file"
                         className="text-[#4a4038] hover:text-[#9a8f7e] text-xs shrink-0"
                       >
-                        ✕
+                        <span aria-hidden="true">✕</span>
                       </button>
                     )}
                   </div>
@@ -519,8 +539,8 @@ export default function Music() {
                   <div
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
                       coverFile
-                        ? "bg-[#f97316]/10 border-[#f97316]/30"
-                        : "bg-[#1a1410] border-[#2a2520] hover:border-[#f97316]/30"
+                        ? "bg-(--accent)/10 border-(--accent)/30"
+                        : "bg-[#1a1410] border-[#2a2520] hover:border-(--accent)/30"
                     }`}
                   >
                     <span className="text-base">🖼</span>
@@ -535,9 +555,10 @@ export default function Music() {
                           setCoverFile(null);
                           if (coverInputRef.current) coverInputRef.current.value = "";
                         }}
+                        aria-label="Clear selected cover image"
                         className="text-[#4a4038] hover:text-[#9a8f7e] text-xs shrink-0"
                       >
-                        ✕
+                        <span aria-hidden="true">✕</span>
                       </button>
                     )}
                   </div>
@@ -555,7 +576,7 @@ export default function Music() {
               {uploadState === "uploading" && (
                 <div className="w-full h-1 bg-[#2a2520] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#f97316] rounded-full transition-all duration-300"
+                    className="h-full bg-(--accent) rounded-full transition-all duration-300"
                     style={{ width: `${uploadPct}%` }}
                   />
                 </div>
@@ -574,7 +595,7 @@ export default function Music() {
               <button
                 type="submit"
                 disabled={uploadState === "uploading" || !audioFile || !title.trim() || !artist.trim()}
-                className="w-full py-2 rounded-xl bg-[#f97316] text-white text-sm font-semibold hover:bg-[#c2500f] transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                className="w-full py-2 rounded-xl bg-(--accent) text-white text-sm font-semibold hover:bg-[#c2500f] transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
               >
                 {uploadState === "uploading" ? "Uploading…" : "Upload Track"}
               </button>
@@ -623,14 +644,22 @@ export default function Music() {
                       </div>
                     </div>
                     <button
-                      onClick={() =>
-                        track.id &&
-                        deleteUserTrack(track.id, track.file, track.cover || null)
-                      }
+                      onClick={() => {
+                        if (!track.id) return;
+                        // Also removes the uploaded audio + cover from storage.
+                        if (
+                          !window.confirm(
+                            `Remove "${track.title}"? The uploaded file is deleted for good.`,
+                          )
+                        )
+                          return;
+                        deleteUserTrack(track.id, track.file, track.cover || null);
+                      }}
                       title="Remove track"
-                      className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#4a4038] hover:text-red-400 hover:bg-red-400/10 transition-all text-sm shrink-0"
+                      aria-label={`Remove track ${track.title ?? ""}`}
+                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#4a4038] hover:text-red-400 hover:bg-red-400/10 transition-all text-sm shrink-0"
                     >
-                      ✕
+                      <span aria-hidden="true">✕</span>
                     </button>
                   </div>
                 ))}

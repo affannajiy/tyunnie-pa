@@ -32,6 +32,7 @@ export type Draft = {
   title: string;
   body: string;
   created_at: string;
+  updated_at: string; // touched on every save — drives the writing streak
 };
 
 export type Project = {
@@ -64,6 +65,23 @@ export type FinanceEntry = {
   category: string;
   account: string;
   date: string; // "YYYY-MM-DD"
+  created_at: string;
+  recurring_id?: string | null; // set when auto-logged from a RecurringRule
+};
+
+// A monthly income/expense template. The client materialises these into real
+// `finance` rows via generateDueRecurring() on Finance mount (catch-up on load).
+export type RecurringRule = {
+  id: string;
+  user_id: string;
+  type: "income" | "expense";
+  description: string;
+  amount: number;
+  category: string;
+  account: string;
+  day_of_month: number; // 1–31, clamped to each month's last day
+  active: boolean;
+  last_generated: string | null; // "YYYY-MM" of the latest materialised month
   created_at: string;
 };
 
@@ -239,9 +257,10 @@ export async function addDraft(
   draft: { title: string; body: string },
 ): Promise<Draft | null> {
   if (userId === GUEST_ID) return guest.addDraft(draft);
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("drafts")
-    .insert({ ...draft, user_id: userId })
+    .insert({ ...draft, user_id: userId, updated_at: now })
     .select()
     .single();
 
@@ -255,7 +274,10 @@ export async function updateDraft(
   updates: { title?: string; body?: string },
 ): Promise<void> {
   if (isGuest()) return guest.updateDraft(id, updates);
-  const { error } = await supabase.from("drafts").update(updates).eq("id", id);
+  const { error } = await supabase
+    .from("drafts")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", id);
 
   if (error) console.error("updateDraft error:", error);
 }
@@ -415,6 +437,7 @@ export async function addFinanceEntry(
     category: string;
     date: string;
     account?: string;
+    recurring_id?: string | null;
   },
 ): Promise<FinanceEntry | null> {
   if (userId === GUEST_ID) return guest.addFinance(entry);
@@ -439,6 +462,153 @@ export async function deleteFinanceEntry(id: string): Promise<void> {
   const { error } = await supabase.from("finance").delete().eq("id", id);
 
   if (error) console.error("deleteFinanceEntry error:", error);
+}
+
+// ── RECURRING FINANCE RULES ──────────────────────────────────────────────────
+
+export async function getRecurringRules(
+  userId: string,
+): Promise<RecurringRule[]> {
+  if (userId === GUEST_ID) return guest.getRecurring();
+  const { data, error } = await supabase
+    .from("recurring_finance")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) console.error("getRecurringRules error:", error);
+  return data ?? [];
+}
+
+export async function addRecurringRule(
+  userId: string,
+  rule: {
+    type: "income" | "expense";
+    description: string;
+    amount: number;
+    category: string;
+    account?: string;
+    day_of_month: number;
+  },
+): Promise<RecurringRule | null> {
+  if (userId === GUEST_ID) return guest.addRecurring(rule);
+  const { data, error } = await supabase
+    .from("recurring_finance")
+    .insert({
+      ...rule,
+      account: rule.account ?? "Wallet",
+      active: true,
+      last_generated: null,
+      user_id: userId,
+    })
+    .select()
+    .single();
+
+  if (error) console.error("addRecurringRule error:", error);
+  return data ?? null;
+}
+
+export async function updateRecurringRule(
+  id: string,
+  updates: Partial<
+    Pick<RecurringRule, "active" | "last_generated" | "amount" | "day_of_month">
+  >,
+): Promise<void> {
+  if (isGuest()) return guest.updateRecurring(id, updates);
+  const { error } = await supabase
+    .from("recurring_finance")
+    .update(updates)
+    .eq("id", id);
+
+  if (error) console.error("updateRecurringRule error:", error);
+}
+
+export async function deleteRecurringRule(id: string): Promise<void> {
+  if (isGuest()) return guest.deleteRecurring(id);
+  const { error } = await supabase
+    .from("recurring_finance")
+    .delete()
+    .eq("id", id);
+
+  if (error) console.error("deleteRecurringRule error:", error);
+}
+
+// ── Catch-up engine ──────────────────────────────────────────────────────────
+// Runs on Finance mount. For each active rule, materialise a real `finance` row
+// for every month between its last generated month and now whose scheduled day
+// has already arrived. `last_generated` (a "YYYY-MM" high-water mark) is the
+// idempotency guard, so re-mounts never double-insert. Works for guests too:
+// every call below routes through the GUEST_ID/isGuest() branches.
+function lastDayOfMonth(y: number, m: number): number {
+  return new Date(y, m + 1, 0).getDate(); // m is 0-based; day 0 of next month
+}
+function monthKey(y: number, m: number): string {
+  return `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+export async function generateDueRecurring(userId: string): Promise<number> {
+  const rules = (await getRecurringRules(userId)).filter((r) => r.active);
+  if (rules.length === 0) return 0;
+
+  const today = new Date();
+  const curY = today.getFullYear();
+  const curM = today.getMonth();
+  let generated = 0;
+
+  for (const rule of rules) {
+    // First month to consider: the month AFTER last_generated, or the rule's
+    // creation month if it has never generated.
+    let y: number;
+    let m: number;
+    if (rule.last_generated) {
+      const [ly, lm] = rule.last_generated.split("-").map(Number);
+      y = ly;
+      m = lm; // lm is 1-based, so it's already the 0-based index of the next month
+      if (m > 11) {
+        m = 0;
+        y++;
+      }
+    } else {
+      const created = new Date(rule.created_at);
+      y = created.getFullYear();
+      m = created.getMonth();
+    }
+
+    let latest = rule.last_generated;
+
+    while (y < curY || (y === curY && m <= curM)) {
+      const day = Math.min(rule.day_of_month, lastDayOfMonth(y, m));
+      const occurrence = new Date(y, m, day);
+      // Only log once the scheduled day has actually arrived (no future-dating
+      // the current month before its day).
+      if (occurrence.getTime() <= today.getTime()) {
+        const entry = await addFinanceEntry(userId, {
+          type: rule.type,
+          description: rule.description,
+          amount: rule.amount,
+          category: rule.category,
+          account: rule.account,
+          date: `${monthKey(y, m)}-${String(day).padStart(2, "0")}`,
+          recurring_id: rule.id,
+        });
+        if (entry) {
+          generated++;
+          latest = monthKey(y, m);
+        }
+      }
+      m++;
+      if (m > 11) {
+        m = 0;
+        y++;
+      }
+    }
+
+    if (latest && latest !== rule.last_generated) {
+      await updateRecurringRule(rule.id, { last_generated: latest });
+    }
+  }
+
+  return generated;
 }
 
 export async function deleteFinanceEntriesByMonth(

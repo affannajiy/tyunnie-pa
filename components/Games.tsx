@@ -74,7 +74,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -82,7 +82,7 @@ export default function Games() {
           <span className="font-serif italic text-2xl text-[#111010]">
             Tic Tac Toe
           </span>
-          <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+          <span className="text-[9px] font-bold uppercase tracking-[2px] text-(--accent) bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
             vs Tyunnie
           </span>
         </div>
@@ -96,7 +96,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -104,7 +104,7 @@ export default function Games() {
           <span className="font-serif italic text-2xl text-[#111010]">
             Sudoku
           </span>
-          <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+          <span className="text-[9px] font-bold uppercase tracking-[2px] text-(--accent) bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
             3 mistakes allowed
           </span>
         </div>
@@ -118,7 +118,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -126,7 +126,7 @@ export default function Games() {
           <span className="font-serif italic text-2xl text-[#111010]">
             Minesweeper
           </span>
-          <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+          <span className="text-[9px] font-bold uppercase tracking-[2px] text-(--accent) bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
             Don't blow up
           </span>
         </div>
@@ -140,7 +140,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -148,7 +148,7 @@ export default function Games() {
           <span className="font-serif italic text-2xl text-[#111010]">
             Solitaire
           </span>
-          <span className="text-[9px] font-bold uppercase tracking-[2px] text-[#f97316] bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+          <span className="text-[9px] font-bold uppercase tracking-[2px] text-(--accent) bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
             Klondike
           </span>
         </div>
@@ -162,7 +162,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -176,7 +176,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -204,12 +204,12 @@ export default function Games() {
             disabled={!game.available}
             className={`text-left bg-white border rounded-2xl p-5 transition-all group ${
               game.available
-                ? "border-[#e8e2d8] hover:border-[#f97316] hover:-translate-y-1 hover:shadow-md cursor-pointer"
+                ? "border-[#e8e2d8] hover:border-(--accent) hover:-translate-y-1 hover:shadow-md cursor-pointer"
                 : "border-[#e8e2d8] opacity-50 cursor-not-allowed"
             }`}
           >
             <div className="text-3xl mb-3">{game.icon}</div>
-            <div className="font-bold text-[#111010] mb-1 group-hover:text-[#f97316] transition-colors">
+            <div className="font-bold text-[#111010] mb-1 group-hover:text-(--accent) transition-colors">
               {game.title}
             </div>
             <div className="text-xs text-[#9a8f7e]">{game.desc}</div>

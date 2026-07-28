@@ -20,6 +20,7 @@ import type {
   Project,
   Snip,
   FinanceEntry,
+  RecurringRule,
   StickyNote,
   Memory,
   Profile,
@@ -58,6 +59,7 @@ export type GuestData = {
   projects: Project[];
   snips: Snip[];
   finance: FinanceEntry[];
+  recurring: RecurringRule[];
   stickyNotes: StickyNote[];
   memories: Memory[];
   profile: Profile;
@@ -82,6 +84,10 @@ function monthOffset(months: number, day: number): string {
   return d.toISOString().split("T")[0];
 }
 const nowISO = () => new Date().toISOString();
+// Full ISO timestamp N days in the past — for seeding draft activity so the
+// demo writing streak reads as a real multi-day run.
+const daysAgoISO = (days: number) =>
+  new Date(Date.now() - days * 86400000).toISOString();
 
 function seed(): GuestData {
   return {
@@ -122,13 +128,15 @@ function seed(): GuestData {
         title: "On quiet mornings",
         body: "The city is softest before it wakes. I like the hour when the only sound is the kettle and my own thoughts catching up to me.\n\nThere's a kind of math to a good morning — small, exact, repeatable.",
         created_at: nowISO(),
+        updated_at: nowISO(), // touched today — keeps the demo streak alive
       },
       {
         id: uid(),
         user_id: GUEST_ID,
         title: "Project pitch — rough",
         body: "A personal assistant that actually feels personal. Not a dashboard you check, but a presence that checks on you.",
-        created_at: nowISO(),
+        created_at: daysAgoISO(1),
+        updated_at: daysAgoISO(1), // yesterday, so the streak reads 2 days
       },
     ],
     projects: [
@@ -166,6 +174,11 @@ function seed(): GuestData {
       { id: uid(), user_id: GUEST_ID, type: "income", description: "Part-time tutoring", amount: 800, category: "Salary", account: "Bank", date: monthOffset(-1, 2), created_at: nowISO() },
       { id: uid(), user_id: GUEST_ID, type: "expense", description: "Rent share", amount: 400, category: "Housing", account: "Bank", date: monthOffset(-1, 3), created_at: nowISO() },
       { id: uid(), user_id: GUEST_ID, type: "expense", description: "Concert ticket", amount: 180, category: "Entertainment", account: "Wallet", date: monthOffset(-1, 14), created_at: nowISO() },
+    ],
+    recurring: [
+      // One sample rule so the demo shows the recurring feature — day 1 so it
+      // has always "arrived" and auto-logs the current month on Finance mount.
+      { id: uid(), user_id: GUEST_ID, type: "expense", description: "Spotify Premium", amount: 16.9, category: "Entertainment", account: "Bank", day_of_month: 1, active: true, last_generated: null, created_at: nowISO() },
     ],
     stickyNotes: [
       { id: uid(), user_id: GUEST_ID, content: "Don't forget to breathe.\nYou're doing fine.", x: 140, y: 140, width: 220, height: 160, color: "yellow", created_at: nowISO() },
@@ -260,14 +273,14 @@ export const guest = {
   // drafts
   getDrafts: (): Draft[] => [...getGuestData().drafts],
   addDraft: (draft: { title: string; body: string }): Draft => {
-    const row: Draft = { id: uid(), user_id: GUEST_ID, title: draft.title, body: draft.body, created_at: nowISO() };
+    const row: Draft = { id: uid(), user_id: GUEST_ID, title: draft.title, body: draft.body, created_at: nowISO(), updated_at: nowISO() };
     mutate((d) => d.drafts.unshift(row));
     return row;
   },
   updateDraft: (id: string, patch: { title?: string; body?: string }): void =>
     mutate((d) => {
       const t = d.drafts.find((x) => x.id === id);
-      if (t) Object.assign(t, patch);
+      if (t) Object.assign(t, patch, { updated_at: nowISO() });
     }),
   deleteDraft: (id: string): void =>
     mutate((d) => {
@@ -310,7 +323,7 @@ export const guest = {
 
   // finance
   getFinance: (): FinanceEntry[] => [...getGuestData().finance],
-  addFinance: (e: { type: "income" | "expense"; description: string; amount: number; category: string; date: string; account?: string }): FinanceEntry => {
+  addFinance: (e: { type: "income" | "expense"; description: string; amount: number; category: string; date: string; account?: string; recurring_id?: string | null }): FinanceEntry => {
     const row: FinanceEntry = {
       id: uid(),
       user_id: GUEST_ID,
@@ -321,6 +334,7 @@ export const guest = {
       account: e.account ?? "Wallet",
       date: e.date,
       created_at: nowISO(),
+      recurring_id: e.recurring_id ?? null,
     };
     mutate((d) => d.finance.unshift(row));
     return row;
@@ -333,6 +347,38 @@ export const guest = {
     mutate((d) => {
       const prefix = `${year}-${String(month).padStart(2, "0")}`;
       d.finance = d.finance.filter((x) => !x.date.startsWith(prefix));
+    }),
+
+  // recurring finance rules
+  getRecurring: (): RecurringRule[] => [...(getGuestData().recurring ?? [])],
+  addRecurring: (r: { type: "income" | "expense"; description: string; amount: number; category: string; account?: string; day_of_month: number }): RecurringRule => {
+    const row: RecurringRule = {
+      id: uid(),
+      user_id: GUEST_ID,
+      type: r.type,
+      description: r.description,
+      amount: r.amount,
+      category: r.category,
+      account: r.account ?? "Wallet",
+      day_of_month: r.day_of_month,
+      active: true,
+      last_generated: null,
+      created_at: nowISO(),
+    };
+    mutate((d) => {
+      if (!d.recurring) d.recurring = [];
+      d.recurring.unshift(row);
+    });
+    return row;
+  },
+  updateRecurring: (id: string, patch: Partial<RecurringRule>): void =>
+    mutate((d) => {
+      const t = (d.recurring ?? []).find((x) => x.id === id);
+      if (t) Object.assign(t, patch);
+    }),
+  deleteRecurring: (id: string): void =>
+    mutate((d) => {
+      d.recurring = (d.recurring ?? []).filter((x) => x.id !== id);
     }),
 
   // sticky notes

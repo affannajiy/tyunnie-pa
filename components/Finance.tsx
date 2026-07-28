@@ -5,7 +5,13 @@ import {
   getFinanceEntries,
   addFinanceEntry,
   deleteFinanceEntry,
+  getRecurringRules,
+  addRecurringRule,
+  updateRecurringRule,
+  deleteRecurringRule,
+  generateDueRecurring,
   type FinanceEntry,
+  type RecurringRule,
 } from "@/lib/database";
 import {
   BarChart,
@@ -93,6 +99,7 @@ export default function Finance({
   onViewChange,
 }: Props) {
   const [allEntries, setAllEntries] = useState<FinanceEntry[]>([]);
+  const [rules, setRules] = useState<RecurringRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
   const [tab, setTab] = useState<TabMode>("tracker");
@@ -111,6 +118,8 @@ export default function Finance({
   const [category, setCategory] = useState("Food");
   const [account, setAccount] = useState("Wallet");
   const [date, setDate] = useState(today.toISOString().split("T")[0]);
+  const [repeat, setRepeat] = useState(false);
+  const [dayOfMonth, setDayOfMonth] = useState(today.getDate());
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
@@ -128,10 +137,22 @@ export default function Finance({
   }, []);
 
   useEffect(() => {
-    getFinanceEntries(userId).then((data) => {
-      setAllEntries(data);
+    let cancelled = false;
+    (async () => {
+      // Catch-up on load: materialise any recurring entries now due, THEN read.
+      await generateDueRecurring(userId);
+      const [entries, recurringRules] = await Promise.all([
+        getFinanceEntries(userId),
+        getRecurringRules(userId),
+      ]);
+      if (cancelled) return;
+      setAllEntries(entries);
+      setRules(recurringRules);
       setLoading(false);
-    });
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [userId, refreshKey]);
 
   // ── MONTH HELPERS ──
@@ -274,6 +295,36 @@ export default function Finance({
     const parsed = parseFloat(amount);
     if (!description.trim() || isNaN(parsed) || parsed <= 0) return;
     setSaving(true);
+
+    if (repeat) {
+      // Create a monthly rule, then materialise any occurrence already due.
+      const rule = await addRecurringRule(userId, {
+        type,
+        description: description.trim(),
+        amount: parsed,
+        category,
+        account,
+        day_of_month: dayOfMonth,
+      });
+      if (rule) {
+        await generateDueRecurring(userId);
+        const [entries, recurringRules] = await Promise.all([
+          getFinanceEntries(userId),
+          getRecurringRules(userId),
+        ]);
+        setAllEntries(entries);
+        setRules(recurringRules);
+        onAction(
+          `Recurring ${type} set — ${description.trim()} (RM${parsed.toFixed(2)}) on day ${dayOfMonth} each month ↻`,
+        );
+        setDesc("");
+        setAmount("");
+        setRepeat(false);
+      }
+      setSaving(false);
+      return;
+    }
+
     const newEntry = await addFinanceEntry(userId, {
       type,
       description: description.trim(),
@@ -296,7 +347,39 @@ export default function Finance({
     setSaving(false);
   }
 
+  async function togglePauseRule(rule: RecurringRule) {
+    const next = !rule.active;
+    setRules((prev) =>
+      prev.map((r) => (r.id === rule.id ? { ...r, active: next } : r)),
+    );
+    await updateRecurringRule(rule.id, { active: next });
+    // Resuming a paused rule may leave a gap to backfill.
+    if (next) {
+      await generateDueRecurring(userId);
+      const [entries, recurringRules] = await Promise.all([
+        getFinanceEntries(userId),
+        getRecurringRules(userId),
+      ]);
+      setAllEntries(entries);
+      setRules(recurringRules);
+    }
+  }
+
+  async function handleDeleteRule(rule: RecurringRule) {
+    const confirmed = window.confirm(
+      `Delete recurring "${rule.description}"? Entries already logged stay; no new ones will be added.`,
+    );
+    if (!confirmed) return;
+    setRules((prev) => prev.filter((r) => r.id !== rule.id));
+    await deleteRecurringRule(rule.id);
+    onAction(`Recurring "${rule.description}" removed.`);
+  }
+
   async function handleDelete(id: string, entry: FinanceEntry) {
+    const confirmed = window.confirm(
+      `Delete "${entry.description}" (${entry.type === "income" ? "+" : "-"}RM${entry.amount.toFixed(2)})? This can't be undone.`,
+    );
+    if (!confirmed) return;
     await deleteFinanceEntry(id);
     setAllEntries((prev) => prev.filter((e) => e.id !== id));
     onAction(`Removed "${entry.description}" from your finance tracker.`);
@@ -327,7 +410,7 @@ export default function Finance({
         <div className="flex items-center justify-between gap-3">
           <button
             onClick={() => navMonth(-1)}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e2d8] bg-[#f3f0ea] hover:border-[#f97316] hover:text-[#f97316] transition-colors text-lg"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e2d8] bg-[#f3f0ea] hover:border-(--accent) hover:text-(--accent) transition-colors text-lg"
           >
             ‹
           </button>
@@ -336,7 +419,7 @@ export default function Finance({
           </h2>
           <button
             onClick={() => navMonth(1)}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e2d8] bg-[#f3f0ea] hover:border-[#f97316] hover:text-[#f97316] transition-colors text-lg"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e2d8] bg-[#f3f0ea] hover:border-(--accent) hover:text-(--accent) transition-colors text-lg"
           >
             ›
           </button>
@@ -347,7 +430,7 @@ export default function Finance({
             {!isCurrentMonth() && (
               <button
                 onClick={jumpToToday}
-                className="px-3 py-1.5 rounded-lg border border-[#e8e2d8] text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-colors font-mono"
+                className="px-3 py-1.5 rounded-lg border border-[#e8e2d8] text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-colors font-mono"
               >
                 Today
               </button>
@@ -385,7 +468,7 @@ export default function Finance({
             {monthExpenses.toFixed(2)}
           </div>
         </div>
-        <div className="bg-[#f97316] border border-[#f97316] rounded-2xl p-3 sm:p-5 text-center">
+        <div className="bg-(--accent) border border-(--accent) rounded-2xl p-3 sm:p-5 text-center">
           <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white/70 font-mono mb-2">
             Balance
           </div>
@@ -433,8 +516,8 @@ export default function Finance({
           onClick={() => setTab("tracker")}
           className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
             tab === "tracker"
-              ? "bg-[#f97316] text-white"
-              : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+              ? "bg-(--accent) text-white"
+              : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
           }`}
         >
           Tracker
@@ -443,8 +526,8 @@ export default function Finance({
           onClick={() => setTab("analytics")}
           className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
             tab === "analytics"
-              ? "bg-[#f97316] text-white"
-              : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+              ? "bg-(--accent) text-white"
+              : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
           }`}
         >
           Analytics
@@ -457,7 +540,7 @@ export default function Finance({
           {/* Add entry form */}
           <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5 mb-5">
             <div className="flex items-center gap-3 mb-4">
-              <span className="font-serif italic text-[#f97316] text-sm">
+              <span className="font-serif italic text-(--accent) text-sm">
                 New Entry
               </span>
               <div className="flex-1 h-px bg-[#e8e2d8]" />
@@ -498,7 +581,7 @@ export default function Finance({
                     onChange={(e) => setDesc(e.target.value)}
                     placeholder="e.g. Lunch at mamak"
                     required
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
                 </div>
                 <div className="flex-1">
@@ -513,7 +596,7 @@ export default function Finance({
                     min="0"
                     step="0.01"
                     required
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
                 </div>
               </div>
@@ -525,7 +608,7 @@ export default function Finance({
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c}>
@@ -541,7 +624,7 @@ export default function Finance({
                   <select
                     value={account}
                     onChange={(e) => setAccount(e.target.value)}
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                   >
                     {ACCOUNTS.map((a) => (
                       <option key={a} value={a}>
@@ -558,21 +641,122 @@ export default function Finance({
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Repeat monthly toggle + day picker */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRepeat((v) => !v)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wide transition-all ${
+                      repeat
+                        ? "bg-(--accent) text-white"
+                        : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
+                    }`}
+                  >
+                    <span>↻</span> Repeat monthly
+                  </button>
+                  {repeat && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono text-[#9a8f7e]">
+                        on day
+                      </span>
+                      <select
+                        value={dayOfMonth}
+                        onChange={(e) => setDayOfMonth(Number(e.target.value))}
+                        className="bg-[#faf8f5] border border-[#e8e2d8] rounded-lg px-2 py-1.5 text-sm outline-none focus:border-(--accent) transition-colors"
+                      >
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
                 <button
                   type="submit"
                   disabled={saving || !description.trim() || !amount}
-                  className="bg-[#f97316] text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+                  className="bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  {saving ? "Saving..." : "Add Entry ✦"}
+                  {saving
+                    ? "Saving..."
+                    : repeat
+                      ? "Save Recurring ↻"
+                      : "Add Entry ✦"}
                 </button>
               </div>
+              {repeat && (
+                <p className="text-[10px] text-[#9a8f7e] font-mono mt-2">
+                  Auto-logs RM{amount || "0.00"} on day {dayOfMonth} every month
+                  (clamped to the last day for short months).
+                </p>
+              )}
             </form>
           </div>
+
+          {/* Recurring rules list */}
+          {rules.length > 0 && (
+            <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5 mb-5">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="font-serif italic text-(--accent) text-sm">
+                  Recurring ↻
+                </span>
+                <div className="flex-1 h-px bg-[#e8e2d8]" />
+                <span className="text-[10px] font-mono text-[#9a8f7e]">
+                  {rules.filter((r) => r.active).length} active
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {rules.map((rule) => (
+                  <div
+                    key={rule.id}
+                    className={`flex items-center gap-3 border border-[#e8e2d8] rounded-xl px-4 py-3 transition-colors group ${
+                      rule.active ? "" : "opacity-50"
+                    }`}
+                  >
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full shrink-0 ${rule.type === "income" ? "bg-[#16a34a]" : "bg-red-500"}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-[#111010] truncate">
+                        {rule.description}
+                      </div>
+                      <div className="text-[10px] text-[#9a8f7e] font-mono mt-0.5">
+                        {rule.category} · day {rule.day_of_month} ·{" "}
+                        {rule.account}
+                        {!rule.active && " · paused"}
+                      </div>
+                    </div>
+                    <div
+                      className={`font-serif italic text-base font-semibold shrink-0 ${rule.type === "income" ? "text-[#16a34a]" : "text-red-500"}`}
+                    >
+                      {rule.type === "income" ? "+" : "−"}RM{" "}
+                      {rule.amount.toFixed(2)}
+                    </div>
+                    <button
+                      onClick={() => togglePauseRule(rule)}
+                      className="text-[10px] font-bold uppercase tracking-wide text-[#9a8f7e] hover:text-(--accent) transition-colors shrink-0"
+                      title={rule.active ? "Pause" : "Resume"}
+                    >
+                      {rule.active ? "Pause" : "Resume"}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRule(rule)}
+                      aria-label={`Delete recurring ${rule.description}`}
+                      className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
+                    >
+                      <span aria-hidden="true">✕</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Filter + entry list */}
           <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
@@ -584,8 +768,8 @@ export default function Finance({
                   onClick={() => setFilter(f)}
                   className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${
                     filter === f
-                      ? "bg-[#f97316] text-white"
-                      : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+                      ? "bg-(--accent) text-white"
+                      : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
                   }`}
                 >
                   {f}
@@ -667,8 +851,16 @@ export default function Finance({
                       className={`w-2.5 h-2.5 rounded-full shrink-0 ${entry.type === "income" ? "bg-[#16a34a]" : "bg-red-500"}`}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-[#111010] truncate">
-                        {entry.description}
+                      <div className="text-sm font-semibold text-[#111010] truncate flex items-center gap-1.5">
+                        {entry.recurring_id && (
+                          <span
+                            className="text-(--accent) shrink-0"
+                            title="Auto-logged from a recurring rule"
+                          >
+                            ↻
+                          </span>
+                        )}
+                        <span className="truncate">{entry.description}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] text-[#9a8f7e] font-mono">
@@ -695,9 +887,10 @@ export default function Finance({
                     </div>
                     <button
                       onClick={() => handleDelete(entry.id, entry)}
-                      className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100"
+                      aria-label={`Delete ${entry.description}`}
+                      className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                     >
-                      ✕
+                      <span aria-hidden="true">✕</span>
                     </button>
                   </div>
                 ))}
@@ -723,7 +916,7 @@ export default function Finance({
               {/* ── 6-Month Bar Chart ── */}
               <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
                 <div className="flex items-center gap-3 mb-5">
-                  <span className="font-serif italic text-[#f97316] text-sm">
+                  <span className="font-serif italic text-(--accent) text-sm">
                     6-Month Overview
                   </span>
                   <div className="flex-1 h-px bg-[#e8e2d8]" />
@@ -781,7 +974,7 @@ export default function Finance({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-sm bg-[#f97316]" />
+                    <div className="w-3 h-3 rounded-sm bg-(--accent)" />
                     <span className="text-[10px] font-mono text-[#9a8f7e]">
                       Expenses
                     </span>
@@ -793,7 +986,7 @@ export default function Finance({
               {accountTotals.length > 0 && (
                 <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
                   <div className="flex items-center gap-3 mb-5">
-                    <span className="font-serif italic text-[#f97316] text-sm">
+                    <span className="font-serif italic text-(--accent) text-sm">
                       By Account
                     </span>
                     <div className="flex-1 h-px bg-[#e8e2d8]" />
@@ -871,7 +1064,7 @@ export default function Finance({
               {categoryTotals.length > 0 && (
                 <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
                   <div className="flex items-center gap-3 mb-5">
-                    <span className="font-serif italic text-[#f97316] text-sm">
+                    <span className="font-serif italic text-(--accent) text-sm">
                       Spending by Category
                     </span>
                     <div className="flex-1 h-px bg-[#e8e2d8]" />
@@ -946,7 +1139,7 @@ export default function Finance({
               {/* ── 50/30/20 Rule ── */}
               <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="font-serif italic text-[#f97316] text-sm">
+                  <span className="font-serif italic text-(--accent) text-sm">
                     50 / 30 / 20 Rule
                   </span>
                   <div className="flex-1 h-px bg-[#e8e2d8]" />

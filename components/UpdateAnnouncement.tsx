@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { APP_VERSION } from "@/lib/version";
 import { hasHighlights, type ChangelogEntry } from "@/lib/changelog";
+import { useFocusTrap } from "@/lib/useFocusTrap";
+import { useAccentColor } from "@/lib/useAccentColor";
 
 const SEEN_KEY = "tyunnie_last_seen_version";
 
@@ -28,12 +30,14 @@ function isNewer(a: string, b: string): boolean {
 export default function UpdateAnnouncement() {
   const [open, setOpen] = useState(false);
   const [entry, setEntry] = useState<ChangelogEntry | null>(null);
-  const [accentRgb, setAccentRgb] = useState("249,115,22");
+  // Live accent from --accent-rgb (a real "r, g, b" triple).
+  // This used to read localStorage["tyunnie_accent"], which stores a HEX —
+  // producing rgba(#f97316,0.18), invalid CSS, so every glow below rendered
+  // nothing for any user who had ever saved an accent.
+  const accentRgb = useAccentColor();
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
 
   useEffect(() => {
-    const saved = localStorage.getItem("tyunnie_accent");
-    if (saved) setAccentRgb(saved);
-
     const seen = localStorage.getItem(SEEN_KEY);
     // First-ever visit: just record the current version, show nothing.
     if (!seen) {
@@ -67,6 +71,16 @@ export default function UpdateAnnouncement() {
     setOpen(false);
   }
 
+  // Esc dismisses — usability contract §3 (every overlay has a keyboard exit).
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") dismiss();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (!open || !entry) return null;
 
   const accent = `rgb(${accentRgb})`;
@@ -77,6 +91,11 @@ export default function UpdateAnnouncement() {
       onClick={dismiss}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="update-announcement-title"
+        tabIndex={-1}
         className="bg-white dark:bg-[#1a1815] border border-[#e8e2d8] dark:border-[#2a2620] rounded-2xl p-7 w-full max-w-md shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -86,7 +105,10 @@ export default function UpdateAnnouncement() {
         >
           Site updated · v{entry.version}
         </p>
-        <h2 className="font-serif italic text-2xl mb-1 text-[#111010] dark:text-[#f5f0e8]">
+        <h2
+          id="update-announcement-title"
+          className="font-serif italic text-2xl mb-1 text-[#111010] dark:text-[#f5f0e8]"
+        >
           What's new
         </h2>
         <p className="text-sm text-[#9a8f7e] dark:text-[#7a7060] mb-5">

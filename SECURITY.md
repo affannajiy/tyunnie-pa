@@ -62,6 +62,20 @@ Verified clean: all 13 `JSON.parse(localStorage…)` sites guarded after #3; eve
 
 ---
 
+## Reading `npm audit` in this repo
+
+**Do not panic at the raw number.** As of v3.23.0 `npm audit` reports **9 high-severity advisories, all of them dev-only** — old `minimatch`/`brace-expansion` copies bundled inside eslint plugins, which exist only to run `npm run lint` on a developer machine and never reach a deployed bundle.
+
+The meaningful command is:
+
+```bash
+npm audit --omit=dev   # 0 vulnerabilities
+```
+
+Production dependencies audit clean at **0**. The dev-only advisories were accepted deliberately in 3.23.0 as the cost of restoring the lint gate (`eslint-config-next` had been pinned to a wrong package, so `npm run lint` was broken for a full release). Two constraints hold that repair together and must not be "tidied up": `eslint` stays on `^9` (eslint-config-next@16 bundles a react plugin whose peer caps at ^9.7), and the `brace-expansion` override stays **scoped to `@eslint/config-array`** — making it global re-breaks the linter.
+
+---
+
 ## Known Limitations & Backup Plans
 
 1. **In-memory rate limiting / OTP store (highest priority)** — concurrent Vercel instances each hold an independent limiter Map; cold starts wipe limits, OTPs, and attempt counters. Effective limits are N× configured under load. (Memory growth within a single instance is now bounded by the idle-key sweep added in 3.22.0 — but the cross-instance correctness gap remains.)

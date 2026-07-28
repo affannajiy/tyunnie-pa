@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { getRandomQuote } from "@/lib/tyunnieQuotes";
+import { useAccentColor } from "@/lib/useAccentColor";
 
 // ── Runner game constants ──
 const CANVAS_H = 160;
@@ -34,7 +35,11 @@ type RunnerRef = {
 };
 
 export default function NotFound() {
-  const [accentRgb, setAccentRgb] = useState("249,115,22");
+  // Live accent from --accent-rgb (a real "r, g, b" triple).
+  // This used to read localStorage["tyunnie_accent"], which stores a HEX —
+  // producing rgba(#f97316,0.18), invalid CSS, so every glow below rendered
+  // nothing for any user who had ever saved an accent.
+  const accentRgb = useAccentColor();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<RunnerRef>({
     state: "idle",
@@ -51,11 +56,6 @@ export default function NotFound() {
     rafId: 0,
   });
   const [gameState, setGameState] = useState<"idle" | "running" | "dead">("idle");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("tyunnie_accent");
-    if (saved) setAccentRgb(saved);
-  }, []);
 
   useEffect(() => {
     const canvasEl = canvasRef.current;

@@ -6,10 +6,38 @@ import { useMusicContext } from "@/lib/MusicContext";
 import type { Todo, StickyNote as StickyNoteType } from "@/lib/database";
 import StickyNote from "@/components/StickyNote";
 import { updateStickyNote, deleteStickyNote } from "@/lib/database";
+import { useAccentColor } from "@/lib/useAccentColor";
 
 type PomSettings = { focusMins: number; shortMins: number };
 
 type Preset = { label: string; focusMins: number; shortMins: number };
+
+// ── Ambient glow tuning ──────────────────────────────────────────────────────
+// Original bass window. Sampling fewer bins was tried and reverted.
+const BASS_BINS = 12;
+// Envelope fall per frame. Rise is instant (see tick) — fast attack, smooth
+// decay. This is the ONLY smoothing; there is deliberately no CSS transition
+// on the element, which used to smear every frame and caused the lag.
+const DECAY = 0.86;
+
+/**
+ * The ambient glow, as one function so the idle branch and the animated branch
+ * can never drift apart. `g` is 0–1.
+ *
+ * Geometry is the original low ellipse. Two alternatives were tried and both
+ * reverted after looking at them: a wider `140% 120% at 50% 88%` sized ellipse,
+ * and a tighter `22%→55%` footprint. The original wash is the look — don't
+ * "improve" either number without asking.
+ *
+ * The static background in the JSX `style` must be kept in step with this.
+ */
+function glowCss(rgb: string, g: number): string {
+  // Original footprint. A tighter 22→55 was tried and reverted — the wider wash
+  // is the look. Don't shrink these without asking.
+  const radius = Math.round(30 + g * 60);
+  const opacity = (0.08 + g * 0.47).toFixed(3);
+  return `radial-gradient(ellipse at 50% 80%, rgba(${rgb},${opacity}) 0%, transparent ${radius}%)`;
+}
 
 const PRESETS: Preset[] = [
   { label: "Classic",     focusMins: 25, shortMins: 5  },
@@ -55,6 +83,31 @@ export default function FocusMode({
   // ── Music-rhythm glow refs (never state — same rule as Music.tsx) ──
   const bgGlowRef = useRef<HTMLDivElement>(null);
   const glowRafRef = useRef<number | null>(null);
+  // Envelope + running-max live in refs, not state: they update every frame and
+  // must never trigger a React render (same rule as the glow itself).
+  const envelopeRef = useRef(0);
+  // Live accent — re-renders on tyunnie-accent-changed (Auto-Theme, picker).
+  const accentRgb = useAccentColor();
+
+  // ── Emphasis mode ──
+  // Deliberately a mode INSIDE FocusMode rather than a second fullscreen
+  // surface. A separate visualizer would need its own copy of the analyser rAF
+  // loop, and duplicating that loop is exactly what caused the same stale-accent
+  // bug to exist twice (Music.tsx + FocusMode.tsx) before v3.23.0.
+  // Lazy initialiser, not a mount effect — matches Profile.tsx / MusicContext.tsx
+  // and avoids react-hooks/set-state-in-effect.
+  const [listenMode, setListenMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("tyunnie_focus_listen") === "1";
+  });
+  function toggleListenMode() {
+    setListenMode((prev) => {
+      const next = !prev;
+      if (next) localStorage.setItem("tyunnie_focus_listen", "1");
+      else localStorage.removeItem("tyunnie_focus_listen");
+      return next;
+    });
+  }
 
   // ── Task state ──
   const [linkedTask, setLinkedTask] = useState<string | null>(null);
@@ -146,15 +199,34 @@ export default function FocusMode({
 
   // ── Music-rhythm background glow via analyser — direct DOM ref, NOT state ──
   useEffect(() => {
-    const rgb = getComputedStyle(document.documentElement)
-      .getPropertyValue("--accent-rgb").trim() || "249,115,22";
+    // accentRgb comes from useAccentColor() and is in this effect's deps, so an
+    // accent change (every track, with Auto-Theme on) tears the loop down and
+    // restarts it with the new colour. Reading the CSS var here without that
+    // dep captured it once at mount: the rAF loop then repainted the stale
+    // colour 60x/sec AND, because it writes an inline style every frame, it
+    // permanently clobbered the rgba(var(--accent-rgb),…) fallback in the JSX,
+    // so the element could never recover on its own.
+    const rgb = accentRgb;
+
+    // A rAF loop writing inline styles is invisible to the global
+    // prefers-reduced-motion block in globals.css, which only reaches CSS
+    // transitions and animations. Honour it explicitly (§13): render the glow
+    // at a calm fixed level and never start the loop.
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    if (reduceMotion) {
+      if (bgGlowRef.current) bgGlowRef.current.style.background = glowCss(rgb, 0.35);
+      return;
+    }
 
     if (!music.isPlaying || !music.analyser?.current) {
       if (glowRafRef.current) cancelAnimationFrame(glowRafRef.current);
       glowRafRef.current = null;
       if (bgGlowRef.current) {
-        bgGlowRef.current.style.background =
-          "radial-gradient(ellipse at 50% 80%, rgba(" + rgb + ",0.12) 0%, transparent 60%)";
+        envelopeRef.current = 0;
+        bgGlowRef.current.style.background = glowCss(rgb, 0);
       }
       return;
     }
@@ -164,15 +236,24 @@ export default function FocusMode({
     function tick() {
       if (!music.analyser?.current || !bgGlowRef.current) return;
       music.analyser.current.getByteFrequencyData(dataArray);
-      // Sample low-frequency bins (bass) for beat detection
-      const bassSlice = dataArray.slice(0, 12);
-      const avg = bassSlice.reduce((a, b) => a + b, 0) / bassSlice.length;
-      const g = avg / 255; // 0–1 normalised
-      // Glow grows from ~30% to ~90% radius, opacity from 0.08 to 0.55
-      const radius = Math.round(30 + g * 60);
-      const opacity = (0.08 + g * 0.47).toFixed(3);
-      bgGlowRef.current.style.background =
-        `radial-gradient(ellipse at 50% 80%, rgba(${rgb},${opacity}) 0%, transparent ${radius}%)`;
+
+      // ABSOLUTE level, as it originally was — this is what actually rises and
+      // falls with the music. An auto-normalise (raw / running-peak) was tried
+      // here and it FLATTENED the glow: modern masters keep the bass near its
+      // own maximum almost constantly, so the ratio pinned at ~1.0 and the glow
+      // became a static blob. Do not reintroduce it.
+      let sum = 0;
+      for (let i = 0; i < BASS_BINS; i++) sum += dataArray[i];
+      const target = sum / BASS_BINS / 255;
+
+      // Fast attack, smooth decay: jump straight to a new peak on the frame it
+      // lands, then ease down. Keeps the punch without the per-frame CSS smear.
+      envelopeRef.current =
+        target > envelopeRef.current
+          ? target
+          : envelopeRef.current * DECAY + target * (1 - DECAY);
+
+      bgGlowRef.current.style.background = glowCss(rgb, envelopeRef.current);
       glowRafRef.current = requestAnimationFrame(tick);
     }
 
@@ -181,7 +262,7 @@ export default function FocusMode({
       if (glowRafRef.current) cancelAnimationFrame(glowRafRef.current);
       glowRafRef.current = null;
     };
-  }, [music.isPlaying, music.analyser]);
+  }, [music.isPlaying, music.analyser, accentRgb]);
 
   // ── Timer display ──
   const pomMin = Math.floor(pomSeconds / 60).toString().padStart(2, "0");
@@ -215,8 +296,12 @@ export default function FocusMode({
         ref={bgGlowRef}
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at 50% 80%, rgba(var(--accent-rgb),0.12) 0%, transparent 60%)",
-          transition: "background 0.08s linear",
+          // Still NO CSS transition here, deliberately. The rAF loop writes this
+          // every frame; the old 0.08s ease applied an 80ms smear to each write
+          // and was the main reason the glow lagged the beat. Smoothing lives in
+          // the attack/decay envelope in tick() instead.
+          background:
+            "radial-gradient(ellipse at 50% 80%, rgba(var(--accent-rgb),0.12) 0%, transparent 60%)",
         }}
       />
 
@@ -231,8 +316,33 @@ export default function FocusMode({
             className="text-[10px] font-mono font-bold uppercase tracking-[3px] opacity-70"
             style={{ color: "var(--accent)" }}
           >
-            Focus Mode
+            {listenMode ? "Listening" : "Focus Mode"}
           </span>
+        </div>
+
+        {/* Timer / Listen emphasis toggle */}
+        <div
+          className="flex items-center gap-0.5 p-0.5 rounded-xl border border-[#2a2520] ml-auto mr-3"
+          role="group"
+          aria-label="Focus Mode layout"
+        >
+          {([false, true] as const).map((mode) => (
+            <button
+              key={String(mode)}
+              onClick={() => listenMode !== mode && toggleListenMode()}
+              aria-pressed={listenMode === mode}
+              className="px-3 py-1.5 rounded-[10px] text-[10px] font-mono uppercase tracking-widest transition-colors"
+              style={{
+                background:
+                  listenMode === mode
+                    ? "rgba(var(--accent-rgb),0.18)"
+                    : "transparent",
+                color: listenMode === mode ? "var(--accent)" : "#9a8f7e",
+              }}
+            >
+              {mode ? "Listen" : "Timer"}
+            </button>
+          ))}
         </div>
         <button
           onClick={onExit}
@@ -257,6 +367,7 @@ export default function FocusMode({
       <div className="flex-1 flex flex-col relative z-10 px-6 py-6 overflow-y-auto">
         <div className="m-auto w-full flex flex-col items-center gap-6">
         {/* Task selector */}
+        {!listenMode && (
         <div className="w-full max-w-md">
           {linkedTodo ? (
             <div
@@ -275,9 +386,10 @@ export default function FocusMode({
               </p>
               <button
                 onClick={() => setLinkedTask(null)}
+                aria-label="Unlink task from this session"
                 className="text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors shrink-0"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           ) : (
@@ -300,8 +412,70 @@ export default function FocusMode({
             </select>
           )}
         </div>
+        )}
+
+        {/* ── LISTEN MODE: album art is the hero ──
+            Reuses the same bass-reactive glow already painting the backdrop via
+            bgGlowRef; no second render loop. */}
+        {listenMode && music.currentTrack && (
+          <div className="flex flex-col items-center gap-5 w-full">
+            <div
+              // No glow around the artwork on purpose — the background ambient
+              // glow is the only light source in Listen mode. Removed on request
+              // while chasing a band at the top of the screen.
+              className="rounded-3xl overflow-hidden bg-[#2a2520] w-[min(70vw,340px)] aspect-square"
+            >
+              {music.currentTrack.cover ? (
+                <Image
+                  src={music.currentTrack.cover}
+                  alt=""
+                  width={340}
+                  height={340}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-5xl text-[#4a4038]">
+                  🎵
+                </div>
+              )}
+            </div>
+            <div className="text-center px-6 max-w-md">
+              <h2 className="font-serif italic text-2xl text-white leading-snug">
+                {music.currentTrack.title}
+              </h2>
+              <p className="text-sm text-[#9a8f7e] mt-1">
+                {music.currentTrack.artist}
+              </p>
+            </div>
+
+            {/* No timer here on purpose — Listen mode is just the music. Switch
+                to Timer with the header toggle to run a Pomodoro. A completing
+                session still chimes, so it isn't silently lost. */}
+          </div>
+        )}
+
+        {/* Listen mode with no track loaded — say what this is and what to do,
+            never a blank screen (contract §10). */}
+        {listenMode && !music.currentTrack && (
+          <div className="text-center px-6 max-w-sm">
+            <div className="text-4xl mb-3" aria-hidden="true">
+              🎵
+            </div>
+            <p className="text-sm text-[#9a8f7e] leading-relaxed">
+              Nothing playing yet. Start a track from the Music panel and it&apos;ll
+              fill the screen here, glowing along to the beat.
+            </p>
+            <button
+              onClick={toggleListenMode}
+              className="mt-4 px-4 py-2 rounded-xl border border-[#2a2520] text-[11px] font-mono text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-colors"
+            >
+              Back to Timer
+            </button>
+          </div>
+        )}
 
         {/* Timer circle */}
+        {!listenMode && (
         <div className="relative">
           <svg className="-rotate-90" width="220" height="220" viewBox="0 0 200 200">
             <circle cx="100" cy="100" r={r} fill="none" stroke="#1e1b17" strokeWidth="8" />
@@ -333,8 +507,10 @@ export default function FocusMode({
             </span>
           </div>
         </div>
+        )}
 
         {/* Timer controls */}
+        {!listenMode && (
         <div className="flex gap-3">
           <button
             onClick={() => {
@@ -386,8 +562,10 @@ export default function FocusMode({
             ⏭
           </button>
         </div>
+        )}
 
         {/* Pomodoro presets — compact pills */}
+        {!listenMode && (
         <div className="flex gap-2 flex-wrap justify-center">
           {PRESETS.map((preset) => {
             const isActive =
@@ -410,10 +588,12 @@ export default function FocusMode({
             );
           })}
         </div>
+        )}
 
-        {/* Mini music player */}
+        {/* Mini music player — in Listen mode the art above is the hero, so this
+            stays purely as the transport strip. */}
         {music.currentTrack && (
-          <div className="w-full max-w-md bg-[#1a1410] border border-[#2a2520] rounded-2xl px-4 py-3 flex items-center gap-3">
+          <div className="w-full max-w-lg bg-[#1a1410] border border-[#2a2520] rounded-2xl px-4 py-3 flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#2a2520]"
               style={{
@@ -444,25 +624,56 @@ export default function FocusMode({
               <p className="text-[10px] text-[#4a4038] font-mono truncate">
                 {music.currentTrack.artist}
               </p>
-              <div className="h-0.5 bg-[#2a2520] rounded-full mt-1.5 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${music.duration > 0 ? (music.progress / music.duration) * 100 : 0}%`,
-                    background: "var(--accent)",
-                  }}
-                />
+              {/* Seekable — was a plain div, so the bar showed progress but you
+                  couldn't scrub. Same control MiniPlayer uses. */}
+              <input
+                type="range"
+                min={0}
+                max={music.duration || 100}
+                step={0.5}
+                value={music.progress}
+                onChange={(e) => music.handleSeek(parseFloat(e.target.value))}
+                aria-label="Seek"
+                className="w-full h-0.5 rounded-full appearance-none cursor-pointer mt-1.5"
+                style={{
+                  background: `linear-gradient(to right, var(--accent) ${
+                    music.duration > 0 ? (music.progress / music.duration) * 100 : 0
+                  }%, #2a2520 ${
+                    music.duration > 0 ? (music.progress / music.duration) * 100 : 0
+                  }%)`,
+                  accentColor: "var(--accent)",
+                }}
+              />
+              <div className="flex justify-between mt-0.5">
+                <span className="text-[9px] font-mono text-[#4a4038]">
+                  {music.formatTime(music.progress)}
+                </span>
+                <span className="text-[9px] font-mono text-[#4a4038]">
+                  {music.formatTime(music.duration)}
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button
+                onClick={music.toggleShuffle}
+                aria-label="Shuffle"
+                aria-pressed={music.shuffle}
+                title="Shuffle"
+                className="w-7 h-7 flex items-center justify-center transition-colors text-sm"
+                style={{ color: music.shuffle ? "var(--accent)" : "#4a4038" }}
+              >
+                <span aria-hidden="true">⇄</span>
+              </button>
+              <button
                 onClick={music.prevTrack}
+                aria-label="Previous track"
                 className="w-7 h-7 flex items-center justify-center text-[#4a4038] hover:text-white transition-colors text-xs"
               >
-                ⏮
+                <span aria-hidden="true">⏮</span>
               </button>
               <button
                 onClick={music.togglePlay}
+                aria-label={music.isPlaying ? "Pause" : "Play"}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs transition-colors"
                 style={{ background: "var(--accent)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
@@ -472,9 +683,23 @@ export default function FocusMode({
               </button>
               <button
                 onClick={music.nextTrack}
+                aria-label="Next track"
                 className="w-7 h-7 flex items-center justify-center text-[#4a4038] hover:text-white transition-colors text-xs"
               >
-                ⏭
+                <span aria-hidden="true">⏭</span>
+              </button>
+              <button
+                onClick={music.cycleRepeat}
+                aria-label={`Repeat: ${music.repeat === "none" ? "off" : music.repeat === "all" ? "all tracks" : "this track"}`}
+                title={`Repeat: ${music.repeat}`}
+                className="w-7 h-7 flex items-center justify-center transition-colors text-sm"
+                style={{
+                  color: music.repeat !== "none" ? "var(--accent)" : "#4a4038",
+                }}
+              >
+                <span aria-hidden="true">
+                  {music.repeat === "one" ? "↺¹" : "↺"}
+                </span>
               </button>
             </div>
           </div>

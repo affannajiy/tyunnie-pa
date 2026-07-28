@@ -4,6 +4,7 @@
 import { useEffect } from "react";
 import { isMac } from "@/lib/platform";
 import { Kbd } from "@/components/ui/Kbd";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface Props {
   open: boolean;
@@ -84,6 +85,8 @@ const GROUPS: ShortcutGroup[] = [
 ];
 
 export default function ShortcutHelp({ open, onClose }: Props) {
+  // Contract §11: overlays trap Tab and hand focus back to the trigger on close.
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
   useEffect(() => {
     if (!open) return;
     function handler(e: KeyboardEvent) {
@@ -103,6 +106,8 @@ export default function ShortcutHelp({ open, onClose }: Props) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" />
 
       <div
+        ref={trapRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Keyboard shortcuts reference"

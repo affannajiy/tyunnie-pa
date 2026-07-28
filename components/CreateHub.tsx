@@ -56,7 +56,7 @@ export default function CreateHub({ onNavigate }: Props) {
           <button
             key={card.panel}
             onClick={() => onNavigate(card.panel)}
-            className="text-left bg-white dark:bg-[#1a1814] border border-[#e8e2d8] dark:border-[#2a2520] rounded-2xl p-5 hover:border-[#f97316] hover:-translate-y-1 hover:shadow-md transition-all group"
+            className="text-left bg-white dark:bg-[#1a1814] border border-[#e8e2d8] dark:border-[#2a2520] rounded-2xl p-5 hover:border-(--accent) hover:-translate-y-1 hover:shadow-md transition-all group"
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
@@ -69,7 +69,7 @@ export default function CreateHub({ onNavigate }: Props) {
             >
               {card.icon}
             </div>
-            <div className="font-bold text-[#111010] dark:text-[#f0ebe3] mb-1 group-hover:text-[#f97316] transition-colors">
+            <div className="font-bold text-[#111010] dark:text-[#f0ebe3] mb-1 group-hover:text-(--accent) transition-colors">
               {card.title}
             </div>
             <div className="text-xs text-[#9a8f7e]">{card.desc}</div>

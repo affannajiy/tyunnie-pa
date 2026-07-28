@@ -11,6 +11,8 @@ import {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMusicTracks, deleteMusicTrack } from "@/lib/database";
+import { setAccentVars, readSavedAccent } from "@/lib/accent";
+import { extractAccent } from "@/lib/artColor";
 
 export type Track = {
   id?: string;          // present for user-uploaded tracks only
@@ -274,6 +276,51 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
     load();
   }, [tracksVersion]);
+
+  // ── AUTO-THEME ──────────────────────────────────────────────────────────
+  // Borrow the accent colour from the current album art while music plays.
+  // Lives here rather than in Music.tsx so the theme follows the MiniPlayer
+  // even when the Music panel is closed.
+  //
+  // Strictly ephemeral: this only ever calls setAccentVars(), never
+  // saveAccent(). localStorage['tyunnie_accent'] and the profile row keep the
+  // colour the user deliberately picked, so a reload always lands back on it.
+  const currentCover = tracks[currentIndex]?.cover ?? "";
+
+  // localStorage isn't reactive — Profile dispatches this event on toggle so
+  // turning Auto-Theme off restores the saved accent immediately.
+  const [autoTheme, setAutoTheme] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("tyunnie_autotheme") === "1",
+  );
+  useEffect(() => {
+    const sync = () =>
+      setAutoTheme(localStorage.getItem("tyunnie_autotheme") === "1");
+    window.addEventListener("tyunnie-autotheme-changed", sync);
+    return () => window.removeEventListener("tyunnie-autotheme-changed", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!autoTheme) return;
+
+    let cancelled = false;
+    // The user's real accent — restored on pause, on a colourless cover, and
+    // on unmount. Read fresh each run so a picker change mid-session sticks.
+    const home = readSavedAccent();
+
+    if (!isPlaying || !currentCover) {
+      setAccentVars(home);
+      return;
+    }
+
+    extractAccent(currentCover).then((hex) => {
+      if (!cancelled) setAccentVars(hex ?? home);
+    });
+
+    return () => {
+      cancelled = true;
+      setAccentVars(home);
+    };
+  }, [currentCover, isPlaying, autoTheme]);
 
   // Sync volume and mute to audio element
   useEffect(() => {

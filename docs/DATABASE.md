@@ -12,7 +12,8 @@ Tyunnie uses **Supabase (PostgreSQL)** with Row Level Security on every table.
 | `drafts` | Writing drafts |
 | `projects` | Project tracker with status + progress |
 | `snips` | Code snippets |
-| `finance` | Income / expense entries |
+| `finance` | Income / expense entries (`recurring_id` links auto-logged rows to a rule) |
+| `recurring_finance` | Monthly income/expense templates; client materialises them into `finance` on load |
 | `profiles` | User profile + preferences |
 | `vault` | AES-GCM encrypted password entries |
 | `vault_meta` | PIN verifier + salt (PIN never stored) |
@@ -28,10 +29,11 @@ Defined in `lib/database.ts`:
 
 ```ts
 Todo:         { text, tag: 'cs'|'write'|'personal'|'other', due: 'YYYY-MM-DD'|null, done }
-Draft:        { title, body }
+Draft:        { title, body, updated_at }   // updated_at touched on every save — drives the writing streak
 Project:      { name, status: 'planning'|'active'|'paused'|'done', start_date, end_date, progress: 0-100, description }
 Snip:         { name, language: 'py'|'js'|'ts'|'bash', code }
-FinanceEntry: { type: 'income'|'expense', description, amount, category, account, date: 'YYYY-MM-DD' }
+FinanceEntry: { type: 'income'|'expense', description, amount, category, account, date: 'YYYY-MM-DD', recurring_id? }
+RecurringRule:{ type: 'income'|'expense', description, amount, category, account, day_of_month: 1-31, active, last_generated: 'YYYY-MM'|null }
 Profile:      { display_name, birth_day, birth_month, city, city_lat, city_lon, theme, locale, currency,
                 occupation, workplace, bio, interests[], greeting_style, show_briefing, avatar_url, daily_quote_email }
 VaultEntry:   { name, encrypted_data, iv, salt }   // all base64
@@ -94,6 +96,8 @@ create table profiles (
 
 -- Migrations (run if table already exists):
 -- alter table public.profiles add column if not exists accent_color text default null;
+-- 3.23.0 recurring transactions + writing streaks: run docs/sql/3.23.0-recurring-and-streaks.sql
+--   (creates recurring_finance, adds finance.recurring_id, adds drafts.updated_at)
 -- alter table public.profiles alter column accent_color set default null;
 -- update public.profiles set accent_color = null where accent_color = '#f97316';
 -- alter table public.profiles add column if not exists desk_layout jsonb default null;

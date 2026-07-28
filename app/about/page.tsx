@@ -5,15 +5,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { APP_VERSION } from "@/lib/version";
 import { hasHighlights, type ChangelogEntry } from "@/lib/changelog";
+import { useAccentColor } from "@/lib/useAccentColor";
 
 export default function AboutPage() {
-  const [accentRgb, setAccentRgb] = useState("249,115,22");
+  // Live accent from --accent-rgb (a real "r, g, b" triple).
+  // This used to read localStorage["tyunnie_accent"], which stores a HEX —
+  // producing rgba(#f97316,0.18), invalid CSS, so every glow below rendered
+  // nothing for any user who had ever saved an accent.
+  const accentRgb = useAccentColor();
   const [entries, setEntries] = useState<ChangelogEntry[] | null>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("tyunnie_accent");
-    if (saved) setAccentRgb(saved);
-  }, []);
 
   useEffect(() => {
     fetch("/api/changelog", { cache: "no-store" })

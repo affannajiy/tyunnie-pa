@@ -73,15 +73,24 @@ function pick<T>(arr: T[]): T {
 
 // Splits the model output into a short subject line + body. The model is asked
 // to lead with "SUBJECT: ...". If it doesn't, we fall back to a label pool.
+// The note is meant to read like a text message, so a trailing "— Taehyun" is
+// noise (his name is already in the From line and the subject). The prompt says
+// not to sign off; this strips it on the days the model does it anyway.
+function stripSignOff(body: string): string {
+  return body
+    .replace(/\s*[—–-]{1,2}\s*taehyun\s*[.!]?\s*$/i, "")
+    .trim();
+}
+
 function parseMessage(raw: string): { subject: string; body: string } {
   const text = raw.trim();
   const match = text.match(/^\s*subject:\s*(.+?)\s*(?:\n|$)/i);
   if (match) {
     const subject = match[1].trim().replace(/^["']|["']$/g, "").slice(0, 60);
-    const body = text.slice(match[0].length).trim();
+    const body = stripSignOff(text.slice(match[0].length).trim());
     if (body) return { subject, body };
   }
-  return { subject: pick(FALLBACK_LABELS), body: text };
+  return { subject: pick(FALLBACK_LABELS), body: stripSignOff(text) };
 }
 
 function escapeHtml(str: string): string {
@@ -162,30 +171,31 @@ export async function GET(req: NextRequest) {
             role: "system",
             content: `${TYUN_CORE}
 
-You're writing one short morning note to this person — a text, not a greeting card. It must sound exactly like you: dry, warm underneath, never sappy, never a motivational poster.
+You're sending this person ONE line — a text message you'd tap out in five seconds, not a note, not a card, not a speech.
 
 TODAY'S ANGLE (your starting point, not a script — make it yours): ${topic}
 TONE: ${tone}
 
 RULES
-- First line MUST be "SUBJECT: <2-5 word subject>" — lowercase-casual is fine, make it specific to today's note, never generic like "A thought" or "Get up".
-- Then a blank line, then the note itself: 1-3 sentences. Real, specific, a little surprising. Avoid clichés and avoid opening the same way every day.
-- Do NOT use the reader's name or any "Hey [name]" greeting — dive straight in.
-- Sign off the note with "— Taehyun".
+- First line MUST be "SUBJECT: <2-4 word subject>" — lowercase-casual is fine, make it specific to today's line, never generic like "A thought" or "Get up".
+- Then a blank line, then the message: normally ONE sentence. A second sentence only if it genuinely earns its place — most days it doesn't. Never three.
+- Say one thing. Don't set it up, don't explain it, don't land a moral afterwards. The thought on its own is enough.
+- Dive straight in — no greeting, no reader's name, no sign-off, no "— Taehyun". They know it's you.
+- Real and specific over wise. Sound like a person talking, not a caption.
 - Plain text only: no asterisks, no markdown, no emojis.`,
           },
           {
             role: "user",
-            content: `Write today's note. Angle: ${topic}. Tone: ${tone}. Remember the SUBJECT line first.`,
+            content: `Write today's one line. Angle: ${topic}. Tone: ${tone}. SUBJECT line first, then the single sentence.`,
           },
         ],
-        max_tokens: 140,
+        max_tokens: 70,
         temperature: 1.0,
       });
 
       const { subject, body } = parseMessage(
         completion.choices[0]?.message?.content ??
-          "SUBJECT: drink water\n\nDrink some water. Revolutionary advice, I know. — Taehyun",
+          "SUBJECT: drink water\n\nDrink some water. Revolutionary advice, I know.",
       );
       const quote = escapeHtml(body);
       const subjectLabel = escapeHtml(subject);
@@ -200,13 +210,11 @@ RULES
             <p style="font-size: 11px; font-family: monospace; color: #f97316; letter-spacing: 3px; text-transform: uppercase; margin: 0 0 14px;">
               ${subjectLabel}
             </p>
-            <div style="background: #ffffff; border: 1.5px solid #f97316; border-radius: 14px; padding: 22px 26px;">
-              <p style="font-family: Georgia, serif; font-style: italic; font-size: 17px; color: #111010; line-height: 1.6; margin: 0;">
-                ${quote}
-              </p>
-            </div>
-            <p style="color: #c5bdb0; font-size: 10px; font-family: monospace; margin: 18px 0 0;">
-              Tyunnie × Taehyun · daily quotes · turn off in Profile → Preferences
+            <p style="font-family: Georgia, serif; font-style: italic; font-size: 19px; color: #111010; line-height: 1.55; margin: 0;">
+              ${quote}
+            </p>
+            <p style="color: #c5bdb0; font-size: 10px; font-family: monospace; margin: 26px 0 0;">
+              Tyunnie × Taehyun · daily note · turn off in Profile → Preferences
             </p>
           </div>
         `,

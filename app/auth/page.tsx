@@ -1,13 +1,14 @@
 // app/auth/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { enterGuest } from "@/lib/guest";
 import { APP_VERSION } from "@/lib/version";
+import { useAccentColor } from "@/lib/useAccentColor";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -17,12 +18,11 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
-  const [accentRgb, setAccentRgb] = useState("249,115,22");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("tyunnie_accent");
-    if (saved) setAccentRgb(saved);
-  }, []);
+  // Live accent from --accent-rgb (a real "r, g, b" triple).
+  // This used to read localStorage["tyunnie_accent"], which stores a HEX —
+  // producing rgba(#f97316,0.18), invalid CSS, so every glow below rendered
+  // nothing for any user who had ever saved an accent.
+  const accentRgb = useAccentColor();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

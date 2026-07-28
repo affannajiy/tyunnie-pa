@@ -11,6 +11,7 @@ import {
   type Todo,
 } from "@/lib/database";
 import { useWorkspace } from "@/lib/WorkspaceContext";
+import { readAccentVar } from "@/lib/accent";
 
 type Props = {
   userId: string;
@@ -47,6 +48,17 @@ function getTagStyle(value: string) {
 
 function getTagLabel(value: string) {
   return TAGS.find((t) => t.value === value)?.label ?? value;
+}
+
+// Confetti palette derived from the live accent so completion celebrates in the
+// user's colour (and follows Auto-Theme) instead of a frozen orange.
+function accentConfettiColors(): string[] {
+  return [
+    readAccentVar("--accent"),
+    readAccentVar("--accent-mid"),
+    readAccentVar("--accent-dim"),
+    readAccentVar("--accent-soft"),
+  ];
 }
 
 export default function Todo({ userId, onAction, refreshKey }: Props) {
@@ -146,7 +158,10 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
         particleCount: 80,
         spread: 60,
         origin: { y: 0.7 },
-        colors: ["#f97316", "#fed7aa", "#c2500f", "#fff0e6"],
+        // canvas-confetti takes real colour strings, not classes — the
+        // ACCENT COLOR OVERRIDES block in globals.css only remaps Tailwind
+        // classes, so hardcoding here stayed orange under any custom accent.
+        colors: accentConfettiColors(),
       });
       onAction("Yes!! One down — you're unstoppable 🔥");
     }
@@ -184,7 +199,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
             <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
               Pending
             </div>
-            <div className="font-serif italic text-3xl text-[#f97316]">
+            <div className="font-serif italic text-3xl text-(--accent)">
               {pendingCount}
             </div>
           </div>
@@ -210,7 +225,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
       {/* Add task form */}
       <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5 mb-5">
         <div className="flex items-center gap-3 mb-4">
-          <span className="font-serif italic text-[#f97316] text-sm">
+          <span className="font-serif italic text-(--accent) text-sm">
             New Task
           </span>
           <div className="flex-1 h-px bg-[#e8e2d8]" />
@@ -228,7 +243,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
                 if (e.key === "Enter") handleAdd(e);
               }}
               placeholder="What needs to be done?"
-              className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+              className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
             />
           </div>
 
@@ -241,7 +256,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
               <select
                 value={tag}
                 onChange={(e) => setTag(e.target.value as Todo["tag"])}
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
               >
                 {TAGS.map((t) => (
                   <option key={t.value} value={t.value}>
@@ -260,7 +275,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
                 type="date"
                 value={due}
                 onChange={(e) => setDue(e.target.value)}
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
               />
             </div>
 
@@ -269,7 +284,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
               <button
                 type="submit"
                 disabled={saving || !text.trim()}
-                className="bg-[#f97316] text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+                className="bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {saving ? "Adding..." : "Add ✦"}
               </button>
@@ -286,8 +301,8 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
             onClick={() => setFilter(f)}
             className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all border ${
               filter === f
-                ? "bg-[#f97316] text-white border-[#f97316]"
-                : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-[#f97316] hover:text-[#f97316]"
+                ? "bg-(--accent) text-white border-(--accent)"
+                : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-(--accent) hover:text-(--accent)"
             }`}
           >
             {f}
@@ -344,12 +359,15 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
                   shrink-0 transition-all text-[11px] font-bold
                   ${
                     todo.done
-                      ? "bg-[#f97316] border-[#f97316] text-white"
-                      : "border-[#e8e2d8] text-transparent hover:border-[#f97316]"
+                      ? "bg-(--accent) border-(--accent) text-white"
+                      : "border-[#e8e2d8] text-transparent hover:border-(--accent)"
                   }
                 `}
+                role="checkbox"
+                aria-checked={todo.done}
+                aria-label={todo.text}
               >
-                ✓
+                <span aria-hidden="true">✓</span>
               </button>
 
               {/* Text */}
@@ -386,9 +404,10 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
               {/* Delete — visible on hover */}
               <button
                 onClick={() => handleDelete(todo.id, todo.text)}
-                className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 shrink-0"
+                aria-label={`Delete task ${todo.text}`}
+                className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           ))}

@@ -1,8 +1,8 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.22.2.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.23.0.
 
-Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../docs/DATABASE.md) (schema/SQL) · [SECURITY.md](../SECURITY.md) (posture/audit). Full file-tree + verbose notes live in git history of this file (pre-3.22 versions) if needed.
+Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../docs/DATABASE.md) (schema/SQL) · [SECURITY.md](../SECURITY.md) (posture/audit) · [USABILITY_HEURISTICS.md](../docs/USABILITY_HEURISTICS.md) (**UI contract — read before any UI change**). Full file-tree + verbose notes live in git history of this file (pre-3.22 versions) if needed.
 
 ---
 
@@ -18,7 +18,8 @@ Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../do
 ## Non-Obvious Rules
 
 ### Build / TypeScript (break Vercel if violated)
-- **Use `any`** for Web Speech API event types in `lib/useSpeech.ts` — `SpeechRecognitionEvent` breaks Vercel.
+- **Use `any`** for Web Speech API event types in `lib/useSpeech.ts` — `SpeechRecognitionEvent` breaks Vercel. The file-scope `eslint-disable @typescript-eslint/no-explicit-any` (with its reason comment) is load-bearing — never delete it "to fix a lint error".
+- **Lint toolchain is fragile — don't "upgrade" it.** `eslint` must stay `^9`: `eslint-config-next@16` claims `>=9.0.0` but bundles `eslint-plugin-react@7.37.5` whose peer caps at `^9.7`, so ESLint 10 dies with `contextOrFilename.getFilename is not a function`. The `brace-expansion: ^2.0.1` override must stay **scoped under `@eslint/config-array`** — global v5 exports an object, and the bundled `minimatch@3.1.5` needs a function (`expand is not a function`). `npm audit` raw count includes dev-only eslint advisories; real number is `npm audit --omit=dev` = 0.
 - CSS module decls go in `global.d.ts`, not `next-env.d.ts` (gitignored, regenerated).
 - `dynamic()` loses prop types — use `dynamic<Props>(...)` with type from `lib/tyunniePanelTypes.ts`, not the component.
 - tsconfig target ES2017 — no regex `s`/dotAll flag, no ES2018+ syntax in `lib/changelog.ts` parser.
@@ -30,6 +31,9 @@ Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../do
 ### State persistence
 - `sessionStorage` (not `useRef`) gates one-shot AI calls — refs reset on remount: `tyunnie_briefing`, `desk_oneliner`, `pomodoro_autostart`.
 - Dark mode `localStorage['tyunnie_theme']`, accent `tyunnie_accent` → CSS vars on `<html>` (set before paint in layout script).
+- **Accent has two apply paths** (`lib/accent.ts`): `setAccentVars(hex)` = CSS vars only, ephemeral; `saveAccent(userId, hex)` = vars + `localStorage` + profile row. Auto-Theme must ONLY ever call the first — calling `saveAccent` from the music path destroys the user's picked colour and spams `upsertProfile` once per track.
+- **`localStorage['tyunnie_accent']` holds a HEX (`#f97316`), never an `r,g,b` triple** — never interpolate it into `rgba(...)` (invalid CSS → glow renders nothing). For a triple use `useAccentColor()` (reads `--accent-rgb`, live via `tyunnie-accent-changed`); for one raw var in canvas/JS contexts use `readAccentVar(name)` from `lib/accent.ts` — call at paint time, never cache.
+- **Any rAF loop / canvas `draw()` using the accent must take it as a dep** (or re-read per frame) — a `const rgb` read once at effect top is captured stale, and a per-frame inline style also clobbers the JSX `rgba(var(--accent-rgb),…)` fallback so it can't self-recover. Now load-bearing: Auto-Theme changes the accent every track. Reference impl: `Desk.tsx`; also `Music.tsx`, `FocusMode.tsx`, `Calculator.tsx`.
 - All `JSON.parse(localStorage...)` MUST be try/caught — corrupt blob in a mount effect trips the error boundary.
 
 ### About / Changelog / Version
@@ -47,6 +51,15 @@ Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../do
 - `togglePlay` must be `async` (`audioCtx.resume()` is a Promise). `skipBack/Forward` read `audioRef.currentTime` directly, never `progress` state.
 - Persistence: volume lazy-init useState, track index useEffect, position throttled ~5s; restore via `pendingRestoreRef` (no auto-play).
 - MiniPlayer is always a separate floating overlay — never embed controls in TyunniePanel.
+- **Auto-Theme** (`localStorage['tyunnie_autotheme']`): driver lives in `MusicContext`, NOT `Music.tsx`, so it follows the MiniPlayer when the panel is closed. `lib/artColor.ts` returns `null` (never a bad colour) on greyscale/CORS-tainted/failed covers — callers fall back to `readSavedAccent()`. Toggle dispatches `tyunnie-autotheme-changed` because localStorage isn't reactive. `--accent*` are `@property`-registered as `<color>` in `globals.css` so they can transition; `--accent-rgb` can't (bare list, not a colour).
+
+### Focus Mode
+- Transport glyphs are **monochrome text characters**, never colour emoji: `⇄` shuffle, `⏮ ▶/⏸ ⏭`, `↺`/`↺¹` repeat — identical to `Music.tsx`. Emoji like 🔀/🔁 render as multicolour pictographs and don't inherit `color`. (`🎵` is fine as the missing-cover placeholder; Music.tsx uses the same.)
+- **Two emphases, one component.** `listenMode` (`localStorage['tyunnie_focus_listen']`, lazy `useState` init — NOT a mount effect) swaps the hero between the timer ring and the album art. Do **not** build a separate fullscreen visualizer: FocusMode is already `fixed inset-0 z-100` with the analyser glow + transport, and a second copy of that rAF loop is what caused the stale-accent bug to exist twice.
+- Glow is an unsized `ellipse at 50% 80%`, falloff `30%→90%`, opacity `0.08→0.55` — **the original values; both a wider sized ellipse and a tighter `22%→55%` were tried and rejected. Don't retune without asking.** Built via `glowCss()`; never inline a second copy, and keep the static pre-loop `style` background (`transparent 60%`) in step with it. **Listen-mode hero art must NOT have its own `boxShadow`** — a large one there produced a visible dark band across the top of the screen.
+- **Never put a CSS `transition` on a property a rAF loop writes.** It smears every frame. Do attack/decay in JS instead (fast rise, `DECAY` fall).
+- **rAF loops bypass `prefers-reduced-motion`** — the globals.css block only reaches CSS transitions/animations. Check `matchMedia` explicitly and don't start the loop.
+- Listen mode shows **no timer at all** — the header Timer/Listen toggle is the only way to a Pomodoro. Chosen deliberately over a visible pill; acceptable under §1 because a completing session still plays its chime, so it is never silently lost.
 
 ### MiniPlayer / TyunniePanel Float (Pointer-Events drag pattern)
 - `setPointerCapture`, `touchAction:none`, exclude `button/input/textarea` in `onPointerDown`. Init position in `useEffect` (no `window` on server).
@@ -77,6 +90,9 @@ Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../do
 - Vault PIN never stored — only PBKDF2 verifier + salt + IV. OTP in-memory Map (10-min, not cold-start-persistent).
 - StickyNote `isTypingRef` guard (600ms) prevents prop sync overwriting mid-type.
 - Collapsible panels toggle `flex-1`/`flex-none`, NOT `w-0`.
+- **Tap feedback is a global `:where()` rule** in `globals.css` — zero specificity so it never outranks Tailwind's `transition-colors`. Don't convert it to a normal selector. Elements with an **inline** `transform` are excluded because inline wins: the dock composes its press into `dockScale()` via `pressedIdx` instead. Opt out with `.no-tap`.
+- **Command palette**: `PaletteResult.data` (discriminated by kind) carries the source record for the preview pane. Modal widens to `max-w-3xl` if ANY result is previewable and holds that width — never resize per-selection.
+- Loading states are shape-matched skeletons + **time-based** stage copy. Never render a progress bar for Groq/JDoodle — we don't know the duration.
 - Pomodoro: remount via incrementing `pomodoroKey`, NOT `key={pomodoroTask}` (task resets to `""` mid-session).
 - Corrupted Supabase session after failed Google OAuth → clear `sb-*` from localStorage + IndexedDB. `supabase.ts` overrides auth `lock` to avoid navigator-LockManager "steal" aborts; `authHeader()` uses `refreshSession()`.
 - Shared utils: `lib/platform.ts` `isMac()`/`modKey()` and `components/ui/Kbd.tsx` — import, never redefine locally.

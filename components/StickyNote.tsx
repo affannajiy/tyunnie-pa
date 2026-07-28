@@ -261,10 +261,11 @@ export default function StickyNote({ note, onUpdate, onDelete }: Props) {
           </div>
           <button
             onClick={() => onDelete(note.id)}
-            className="w-4 h-4 flex items-center justify-center text-[10px] opacity-40 hover:opacity-100 transition-opacity"
+            aria-label="Delete sticky note"
+            className="w-4 h-4 flex items-center justify-center text-[10px] opacity-40 hover:opacity-100 focus-visible:opacity-100 transition-opacity"
             style={{ color: c.text }}
           >
-            ✕
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
 

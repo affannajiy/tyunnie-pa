@@ -26,8 +26,80 @@
   --accent-rgb: 249, 115, 22;
 }
 
+/* Custom properties only animate once registered with a type — a plain
+   `transition: --accent` on an unregistered var is a no-op. Registering the
+   four colour vars lets the whole UI melt between accents instead of snapping,
+   which matters for Auto-Theme (the accent changes on every track).
+   --accent-rgb stays unregistered: it's a bare "r, g, b" list, not a <color>,
+   so it can't interpolate. Glows that read it snap — at their opacity, invisible. */
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f97316;
+}
+@property --accent-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #fff0e6;
+}
+@property --accent-mid {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #fed7aa;
+}
+@property --accent-dim {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #c2500f;
+}
+
+:root {
+  transition:
+    --accent 600ms ease,
+    --accent-soft 600ms ease,
+    --accent-mid 600ms ease,
+    --accent-dim 600ms ease;
+}
+
 * {
   box-sizing: border-box;
+}
+
+/* ── TAP FEEDBACK ──
+   A control that doesn't move when pressed feels dead, and 51 buttons across
+   the panels had no active state at all. One rule beats scattering
+   active:scale-95 across ten files and hoping it stays consistent.
+
+   Exclusions, all for real reasons:
+   - [style*="transform"] — inline transforms WIN over this rule, so the dock
+     and MiniPlayer compose their own press scale instead (see Sidebar.tsx).
+   - [role="option"] / [role="checkbox"] — full-width list rows. Shrinking a
+     whole row on press reads as a glitch, not as feedback.
+   - .no-tap — explicit opt-out for game cells and grid squares, where a press
+     scale fights the board layout.
+   prefers-reduced-motion below collapses the transition to ~0, so the state
+   still applies instantly but nothing animates.
+
+   Both rules are wrapped in :where() so they carry ZERO specificity. That
+   matters for the transition: a normal selector here would outrank Tailwind's
+   own `transition-colors` utility and silently kill the colour fade on every
+   button that declares one. With :where(), those buttons keep their declared
+   transition and simply apply the press scale instantly — which reads as
+   immediate feedback, not as a bug. Buttons with no transition of their own
+   get the springy one below. */
+:where(
+    button:not([disabled]):not([style*="transform"]):not([role="option"]):not(
+        [role="checkbox"]
+      ):not(.no-tap),
+    [role="button"]:not(.no-tap)
+  ):active {
+  transform: scale(0.96);
+}
+:where(
+    button:not([style*="transform"]):not(.no-tap),
+    [role="button"]:not(.no-tap)
+  ) {
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 html,
@@ -53,6 +125,43 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #e8e2d8;
   border-radius: 2px;
+}
+
+/* ── FOCUS VISIBILITY ────────────────────────────────────
+   Usability contract §11: `outline-none` is used widely to drop the ugly UA
+   ring in favour of a border-colour change on focus — but that leaves keyboard
+   users with no indicator on non-input controls. This restores one, globally,
+   in the user's own accent colour.
+
+   `:focus-visible` (not `:focus`) means mouse clicks stay clean — the ring only
+   appears for keyboard/AT navigation, which is exactly who needs it. */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.9);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Elements that opt out of the UA outline still get the ring above; this makes
+   the intent explicit for anything that sets `outline-none` in a utility class. */
+.outline-none:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.9);
+  outline-offset: 2px;
+}
+
+/* ── REDUCED MOTION ──────────────────────────────────────
+   Usability contract §13. Users who ask their OS for less movement get it:
+   animations and transitions collapse to effectively instant, so state changes
+   still *happen* (and anything mid-flight still completes/fires its events) but
+   nothing moves. Smooth scrolling is dropped for the same reason. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .font-serif {
@@ -107,6 +216,31 @@ body {
 }
 
 /* Backdrop fade */
+/* Skeleton shimmer for honest loading states. Shape-matched placeholders beat
+   a spinner because they tell you what's coming, not just that something is.
+   Deliberately NOT a progress bar — we don't know the percentage, so we don't
+   draw one. The prefers-reduced-motion block flattens this to a static bar. */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-line {
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.13) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s linear infinite;
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }

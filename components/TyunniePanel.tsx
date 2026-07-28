@@ -380,21 +380,28 @@ export default function TyunniePanel({
     }
   }, [bubbles, thinking, confirm]);
 
+  // Briefing cache key carries the name for the same reason the desk one-liner
+  // does: the cached value is generated text with the name inside it, so a
+  // rename has to miss the cache rather than rely on someone remembering to
+  // invalidate it. See Desk.tsx for the full note.
+  const briefingName = profile?.display_name ?? userName ?? "";
+  const briefingCacheKey = `tyunnie_briefing:${briefingName}`;
+
   // ── TRIGGER BRIEFING EVENT ──
   useEffect(() => {
     const handler = () => {
-      sessionStorage.removeItem("tyunnie_briefing");
+      sessionStorage.removeItem(briefingCacheKey);
       setBriefingKey((k) => k + 1);
     };
     window.addEventListener("tyunnie-trigger-briefing", handler);
     return () => window.removeEventListener("tyunnie-trigger-briefing", handler);
-  }, []);
+  }, [briefingCacheKey]);
 
   // ── DAILY BRIEFING ──
   useEffect(() => {
     if (isGuest) return; // AI is gated for guests
-    if (briefingKey === 0 && sessionStorage.getItem("tyunnie_briefing")) {
-      setBriefing(sessionStorage.getItem("tyunnie_briefing"));
+    if (briefingKey === 0 && sessionStorage.getItem(briefingCacheKey)) {
+      setBriefing(sessionStorage.getItem(briefingCacheKey));
       return;
     }
     async function fetchBriefing() {
@@ -441,7 +448,7 @@ Only mention tasks or money if it's genuinely worth bringing up, and say it casu
         const d = await r.json();
         const text = d.text ?? null;
         setBriefing(text); // ← inside here
-        if (text) sessionStorage.setItem("tyunnie_briefing", text); // ← inside here
+        if (text) sessionStorage.setItem(briefingCacheKey, text); // ← inside here
       } catch {
         setBriefing(null);
       } finally {
@@ -450,8 +457,10 @@ Only mention tasks or money if it's genuinely worth bringing up, and say it casu
     }
 
     fetchBriefing();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [briefingKey]);
+   
+    // briefingCacheKey included so a rename re-runs this and regenerates the
+    // briefing under the new name instead of serving the old cached text.
+  }, [briefingKey, briefingCacheKey]);
 
   // ── KEEP isOpenRef IN SYNC ──
   useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
@@ -1299,7 +1308,7 @@ casual chat (no data action — still set a mood):
           break;
 
         case "trigger_briefing":
-          sessionStorage.removeItem("tyunnie_briefing");
+          sessionStorage.removeItem(briefingCacheKey);
           setBriefingKey((k) => k + 1);
           break;
         case "set_volume": {
@@ -1403,7 +1412,12 @@ casual chat (no data action — still set a mood):
       });
 
       const data = await res.json();
-      const fullReply: string = data.text ?? "I'm here.";
+      // The server writes its user-facing refusals to `error`, not `text` — e.g.
+      // "Daily chat limit reached. Come back tomorrow 🧡". Reading only `text`
+      // meant a user past the 300/day cap got "I'm here." to every message,
+      // forever, with no explanation. Prefer the server's own words.
+      const fullReply: string =
+        data.text ?? data.error ?? "I'm here.";
 
       const normalized = fullReply
         .replace(/\$action>/gi, "<action>")
@@ -1465,9 +1479,10 @@ casual chat (no data action — still set a mood):
       >
         <button
           onClick={() => setProactiveDismissed(true)}
+          aria-label="Dismiss suggestion"
           className="absolute top-2 right-2.5 text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors"
         >
-          ✕
+          <span aria-hidden="true">✕</span>
         </button>
         <div className="flex items-center gap-2 mb-1.5 pr-4">
           <Image
@@ -1477,7 +1492,7 @@ casual chat (no data action — still set a mood):
             height={20}
             style={{ width: 20, height: "auto" }}
           />
-          <span className="text-[9px] font-bold text-[#f97316] uppercase tracking-widest font-mono">
+          <span className="text-[9px] font-bold text-(--accent) uppercase tracking-widest font-mono">
             Tyun noticed something
           </span>
         </div>
@@ -1492,7 +1507,7 @@ casual chat (no data action — still set a mood):
             setProactiveDismissed(true);
             setTimeout(() => inputRef.current?.focus(), 50);
           }}
-          className="text-[10px] font-bold text-[#f97316] bg-[#f97316]/10 border border-[#f97316]/30 rounded-lg px-3 py-1.5 hover:bg-[#f97316]/20 transition-colors"
+          className="text-[10px] font-bold text-(--accent) bg-(--accent)/10 border border-(--accent)/30 rounded-lg px-3 py-1.5 hover:bg-(--accent)/20 transition-colors"
         >
           Use this →
         </button>
@@ -1509,7 +1524,7 @@ casual chat (no data action — still set a mood):
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-1.5 h-1.5 rounded-full bg-[#f97316]"
+                className="w-1.5 h-1.5 rounded-full bg-(--accent)"
                 style={{
                   animation: "thinkPulse 1.2s ease-in-out infinite",
                   animationDelay: `${i * 0.2}s`,
@@ -1521,8 +1536,8 @@ casual chat (no data action — still set a mood):
       )}
       {briefing && !briefingLoading && profile?.show_briefing !== false && (
         <div className="shrink-0 px-3 pt-3 pb-1">
-          <div className="bg-[#1e1b17] border border-[#f97316]/30 rounded-2xl px-3.5 py-2.5 w-full">
-            <div className="text-[9px] font-bold text-[#f97316] uppercase tracking-widest mb-1.5 font-mono">
+          <div className="bg-[#1e1b17] border border-(--accent)/30 rounded-2xl px-3.5 py-2.5 w-full">
+            <div className="text-[9px] font-bold text-(--accent) uppercase tracking-widest mb-1.5 font-mono">
               Daily briefing
             </div>
             <p className="text-[12px] text-[#c8b89a] leading-[1.7]">
@@ -1567,7 +1582,7 @@ casual chat (no data action — still set a mood):
                 ${bubbleMaxWidth} px-3 py-2 md:px-3.5 md:py-2.5 text-[11px] md:text-[12.5px] leading-[1.6] font-medium
                 ${
                   b.who === "tyunnie"
-                    ? "bg-[#f97316] text-white rounded-[4px_16px_16px_16px]"
+                    ? "bg-(--accent) text-white rounded-[4px_16px_16px_16px]"
                     : "bg-[#2a2520] text-[#e8ddd0] rounded-[16px_4px_16px_16px] border border-[#3a3028]"
                 }
               `}
@@ -1582,16 +1597,23 @@ casual chat (no data action — still set a mood):
       })}
 
       {/* Thinking state — rotating quote only (panel sprite below stays) */}
+      {/* Thinking — a message-bubble-shaped skeleton rather than a spinner, so
+          the wait is occupied by the shape of the answer that's coming. The
+          status line underneath already cycles every 2.5s (see thinkQuoteIdx);
+          it's time-based, never a fake progress estimate. */}
       {thinking && (
-        <div className="flex justify-start">
+        <div className="flex justify-start" role="status" aria-live="polite">
           <div
-            className="px-3 py-1.5 rounded-xl"
+            className="px-3 py-2.5 rounded-xl max-w-[80%] min-w-[11rem]"
             style={{
               background: "rgba(0,0,0,0.25)",
               backdropFilter: "blur(4px)",
               border: "1px solid rgba(255,255,255,0.07)",
             }}
           >
+            <div className="skeleton-line h-2 w-full mb-1.5" aria-hidden="true" />
+            <div className="skeleton-line h-2 w-[85%] mb-1.5" aria-hidden="true" />
+            <div className="skeleton-line h-2 w-[60%] mb-2" aria-hidden="true" />
             <span className="text-[11px] italic font-serif text-[#9a8f7e]">
               &ldquo;{getCyclingQuote(thinkQuoteIdx)}&rdquo;
             </span>
@@ -1602,10 +1624,10 @@ casual chat (no data action — still set a mood):
       {/* Confirmation card */}
       {confirm && (
         <div
-          className="bg-[#1e1b17] border border-[#f97316] rounded-xl p-3.5 mx-1"
+          className="bg-[#1e1b17] border border-(--accent) rounded-xl p-3.5 mx-1"
           style={{ animation: "bubbleIn 0.3s ease" }}
         >
-          <div className="text-[10px] font-bold text-[#f97316] mb-2 tracking-wide">
+          <div className="text-[10px] font-bold text-(--accent) mb-2 tracking-wide">
             ✦ {confirm.label}
           </div>
           <div
@@ -1663,7 +1685,7 @@ casual chat (no data action — still set a mood):
           className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 self-end transition-all ${
             listening
               ? "bg-red-500/20 border border-red-500/40 text-red-400 animate-pulse"
-              : "bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+              : "bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
           }`}
         >
           {listening ? (
@@ -1705,7 +1727,7 @@ casual chat (no data action — still set a mood):
         className={`flex-1 bg-[#1e1b17] border rounded-xl text-[#e8ddd0] text-[11px] md:text-xs px-3 py-2 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors ${
           listening
             ? "border-red-500/40 placeholder:text-red-400/60"
-            : "border-[#3a3028] focus:border-[#f97316]"
+            : "border-[#3a3028] focus:border-(--accent)"
         }`}
         style={{ minHeight: "36px", maxHeight: "72px" }}
       />
@@ -1713,7 +1735,7 @@ casual chat (no data action — still set a mood):
       <button
         onClick={sendChat}
         disabled={thinking || !input.trim()}
-        className="w-10 h-10 bg-[#f97316] rounded-xl text-white text-base flex items-center justify-center shrink-0 hover:bg-[#c2500f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
+        className="w-10 h-10 bg-(--accent) rounded-xl text-white text-base flex items-center justify-center shrink-0 hover:bg-[#c2500f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-end"
       >
         ↑
       </button>
@@ -1784,7 +1806,7 @@ casual chat (no data action — still set a mood):
                   onOpen?.();
                 }}
                 title="Snap back to panel"
-                className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all flex items-center justify-center"
+                className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
               >
                 <svg
                   width="12"
@@ -1807,9 +1829,10 @@ casual chat (no data action — still set a mood):
                   localStorage.setItem("tyunnie_float", "false");
                 }}
                 title="Close"
+                aria-label="Close chat"
                 className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           </div>
@@ -1902,7 +1925,7 @@ casual chat (no data action — still set a mood):
                               width: isActive ? 26 : 8,
                               height: 5,
                               background: isActive
-                                ? "#f97316"
+                                ? "var(--accent)"
                                 : isFilled
                                 ? "rgba(var(--accent-rgb),0.6)"
                                 : "rgba(255,255,255,0.2)",
@@ -1930,7 +1953,7 @@ casual chat (no data action — still set a mood):
                           onClose?.();
                         }}
                         title="Float panel"
-                        className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-[#f97316] hover:border-[#f97316] transition-all flex items-center justify-center"
+                        className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
                       >
                         <svg
                           width="12"
@@ -1951,9 +1974,10 @@ casual chat (no data action — still set a mood):
                     <button
                       onClick={onClose}
                       title="Close"
+                      aria-label="Close chat"
                       className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
                     >
-                      ✕
+                      <span aria-hidden="true">✕</span>
                     </button>
                   </div>
                 </div>

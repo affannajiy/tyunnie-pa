@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { authHeader } from "@/lib/supabase";
 import { isGuest } from "@/lib/guest";
+import { useAccentColor } from "@/lib/useAccentColor";
 import {
   differenceInDays,
   differenceInCalendarMonths,
@@ -102,7 +103,7 @@ function tryEval(
   try {
     const e = buildEval(expr, mode, memory, ans);
     if (!e) return null;
-    // eslint-disable-next-line no-new-func
+     
     const v = new Function(
       "Math",
       "factorial",
@@ -239,7 +240,7 @@ function sanitizeGraphExpr(raw: string): string | null {
 }
 
 function evalGraphFn(sanitized: string, x: number): number {
-  // eslint-disable-next-line no-new-func
+   
   return new Function("x", "Math", `"use strict"; return (${sanitized});`)(
     x,
     Math,
@@ -854,6 +855,10 @@ function GraphingCalc() {
     lastY: 0,
   });
 
+  // Live accent — the graph curve resolves --accent inside draw(), which React
+  // cannot observe, so this drives the repaint.
+  const accentRgb = useAccentColor();
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -978,7 +983,9 @@ function GraphingCalc() {
       }
       ctx.stroke();
     });
-  }, [functions, viewX, viewY, scale]);
+    // accentRgb is in the deps purely so an accent change repaints the curve —
+    // draw() resolves --accent from computed style, which React can't observe.
+  }, [functions, viewX, viewY, scale, accentRgb]);
 
   useEffect(() => {
     draw();
@@ -1117,9 +1124,10 @@ function GraphingCalc() {
               </span>
               <button
                 onClick={() => removeFunction(i)}
+                aria-label={`Remove function ${fn.expr}`}
                 className="text-gray-400 dark:text-[#5a4a3a] hover:text-red-400 transition-colors text-xs"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           );
@@ -1195,7 +1203,14 @@ function ConverterCalc() {
     }
     authHeader()
       .then((ah) => fetch("/api/exchange-rates", { headers: ah }))
-      .then((r) => r.json())
+      .then((r) => {
+        // The route answers 401/429/502 with a JSON {error} body, which parses
+        // fine — so without this check .catch never fired, data.rates was
+        // undefined, and the UI went on to claim "Live rates · fetched at HH:MM"
+        // while every non-USD conversion divided by undefined and showed NaN.
+        if (!r.ok) throw new Error("rates unavailable");
+        return r.json();
+      })
       .then((data: { base: string; rates: Record<string, number> }) => {
         setRates({ USD: 1, ...data.rates });
         setRatesLoaded(true);

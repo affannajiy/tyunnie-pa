@@ -1,6 +1,6 @@
 {
   "name": "tyunnie",
-  "version": "3.22.2",
+  "version": "3.23.0",
   "private": true,
   "scripts": {
     "dev": "node scripts/dev.mjs",
@@ -32,9 +32,19 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^10.1.0",
-    "eslint-config-next": "^0.2.4",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "sharp": "^0.35.0",
+    "postcss": "^8.5.10",
+    "eslint-config-next": {
+      "brace-expansion": "^5.0.8"
+    },
+    "@eslint/config-array": {
+      "brace-expansion": "^2.0.1"
+    }
   }
 }

@@ -546,7 +546,7 @@ export default function Home() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [activePanel]);
 
   // ── ACCENT COLOR — apply hex to CSS vars + localStorage ──

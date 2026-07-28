@@ -39,10 +39,22 @@ function getLangLabel(value: string) {
   return LANGUAGES.find((l) => l.value === value)?.label ?? value;
 }
 
+const RUN_STAGES = [
+  "sending to the runner…",
+  "compiling…",
+  "running your code…",
+  "still going — heavy job…",
+];
+
 export default function Snippets({ userId, onAction, refreshKey }: Props) {
   const { setSnapshot } = useWorkspace();
   const [snips, setSnips] = useState<Snip[]>([]);
   const [loading, setLoading] = useState(true);
+  // Honest loading copy for the runner. Time-based stages, not a progress
+  // estimate — we have no idea how long JDoodle will take, so we never imply
+  // we do. Advances every 1.8s and stops on the last stage rather than looping,
+  // which would suggest a cycle that isn't happening.
+  const [runStage, setRunStage] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false); // unsaved changes
 
@@ -62,6 +74,16 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
   const [output, setOutput] = useState("");
   const [running, setRunning] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
+
+  // Contract §3: unsaved work is protected. Snippets tracked isDirty and even
+  // rendered an "unsaved" pill, but then discarded the buffer without asking —
+  // Writing.tsx:148 already had the right pattern. Guards only the two
+  // user-initiated navigations; the mount effect and post-delete reload call
+  // loadSnip/newSnip directly, where a prompt would make no sense.
+  function confirmDiscard(): boolean {
+    if (!isDirty) return true;
+    return window.confirm("You have unsaved changes. Discard them?");
+  }
 
   function loadSnip(snip: Snip) {
     setActiveId(snip.id);
@@ -85,7 +107,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
 
   // Listen for global "tyunnie-new-snippet" — open a blank new snippet
   useEffect(() => {
-    function handler() { newSnip(); }
+    function handler() { if (confirmDiscard()) newSnip(); }
     window.addEventListener("tyunnie-new-snippet", handler);
     return () => window.removeEventListener("tyunnie-new-snippet", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -200,8 +222,9 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
       return;
     }
     setRunning(true);
+    setRunStage(0);
     setShowTerminal(true);
-    setOutput("Running...");
+    setOutput("");
 
     try {
       const res = await fetch("/api/run", {
@@ -218,6 +241,16 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
 
     setRunning(false);
   }
+
+  // Advance the runner status copy while a job is in flight
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(
+      () => setRunStage((s) => Math.min(s + 1, RUN_STAGES.length - 1)),
+      1800,
+    );
+    return () => clearInterval(t);
+  }, [running]);
 
   // Tab key inserts 2 spaces instead of jumping focus
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -253,8 +286,8 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
       <div className="flex flex-row md:flex-col gap-2 md:w-50 shrink-0 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
         {/* New snip button */}
         <button
-          onClick={newSnip}
-          className="shrink-0 bg-[#f97316] text-white font-bold rounded-xl py-2.5 px-4 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px whitespace-nowrap"
+          onClick={() => { if (confirmDiscard()) newSnip(); }}
+          className="shrink-0 bg-(--accent) text-white font-bold rounded-xl py-2.5 px-4 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px whitespace-nowrap"
         >
           + New Snip
         </button>
@@ -265,7 +298,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search snips..."
-          className="shrink-0 w-32 md:w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-xs outline-none focus:border-[#f97316] transition-colors"
+          className="shrink-0 w-32 md:w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-xs outline-none focus:border-(--accent) transition-colors"
         />
 
         {/* Snip file list */}
@@ -286,14 +319,14 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
             <div
               key={snip.id}
               onClick={() => {
-                if (snip.id !== activeId) loadSnip(snip);
+                if (snip.id !== activeId && confirmDiscard()) loadSnip(snip);
               }}
               className={`
                 flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer
                 transition-all group border shrink-0 min-w-32 md:min-w-0
                 ${
                   activeId === snip.id
-                    ? "bg-[#fff0e6] border-[#f97316]"
+                    ? "bg-[#fff0e6] border-(--accent)"
                     : "bg-white border-[#e8e2d8] hover:border-[#fed7aa]"
                 }
               `}
@@ -315,9 +348,10 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
                   e.stopPropagation();
                   handleDelete(snip.id, snip.name);
                 }}
-                className="text-[#c5bdb0] hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                aria-label={`Delete snippet ${snip.name}`}
+                className="text-[#c5bdb0] hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all shrink-0"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           ))}
@@ -376,7 +410,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
           {/* Copy button */}
           <button
             onClick={handleCopy}
-            className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors px-2 py-1 rounded-lg hover:bg-[#e8e2d8]"
+            className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors px-2 py-1 rounded-lg hover:bg-[#e8e2d8]"
           >
             {copied ? "✓ Copied" : "Copy"}
           </button>
@@ -401,7 +435,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="bg-[#f97316] text-white font-bold rounded-lg px-4 py-1.5 text-[10px] tracking-wide hover:bg-[#c2500f] transition-all disabled:opacity-40"
+            className="bg-(--accent) text-white font-bold rounded-lg px-4 py-1.5 text-[10px] tracking-wide hover:bg-[#c2500f] transition-all disabled:opacity-40"
           >
             {saving ? "Saving..." : "Save"}
           </button>
@@ -452,9 +486,10 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
                   setShowTerminal(false);
                   setOutput("");
                 }}
+                aria-label="Close output terminal"
                 className="text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
 
@@ -467,21 +502,21 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
               }}
             >
               {running ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map((i) => (
+                /* Console-shaped skeleton — ragged mono-width lines that match
+                   the output about to replace them, rather than a spinner that
+                   tells you nothing about what's coming. */
+                <div role="status" aria-live="polite">
+                  <div className="space-y-2 mb-3" aria-hidden="true">
+                    {["70%", "45%", "88%", "32%", "60%"].map((w, i) => (
                       <div
                         key={i}
-                        className="w-1.5 h-1.5 rounded-full bg-[#f97316]"
-                        style={{
-                          animation: "thinkPulse 1.2s ease-in-out infinite",
-                          animationDelay: `${i * 0.2}s`,
-                        }}
+                        className="skeleton-line h-2.5"
+                        style={{ width: w, animationDelay: `${i * 0.12}s` }}
                       />
                     ))}
                   </div>
                   <span className="font-mono text-[11px] text-[#9a8f7e]">
-                    Running...
+                    {RUN_STAGES[runStage]}
                   </span>
                 </div>
               ) : (

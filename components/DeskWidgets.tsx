@@ -6,6 +6,7 @@ import { useMusicContext } from "@/lib/MusicContext";
 import type { Profile, Todo, Project, FinanceEntry } from "@/lib/database";
 import { upsertProfile } from "@/lib/database";
 import type { Panel } from "@/components/Sidebar";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ function resolveCollisions(layouts: WLayout[], movedId: WidgetId): WLayout[] {
   function overlaps(a: WLayout, b: WLayout): boolean {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
-  let result = [...layouts];
+  const result = [...layouts];
   let changed = true;
   let iter = 0;
   while (changed && iter < 20) {
@@ -226,6 +227,18 @@ export default function DeskWidgets({
   const [hidden, setHidden] = useState<WidgetId[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  // Contract §11: overlays trap Tab and hand focus back to the trigger on close.
+  const templatesTrapRef = useFocusTrap<HTMLDivElement>(showTemplates);
+
+  // Contract §3: every overlay has a keyboard exit.
+  useEffect(() => {
+    if (!showTemplates) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowTemplates(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showTemplates]);
   const [cellW, setCellW] = useState(220);
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -740,7 +753,7 @@ export default function DeskWidgets({
                     setPomMode("focus");
                     setPomSeconds(pomSettings.focusMins * 60);
                   }}
-                  className="w-9 h-9 rounded-2xl border border-[#f0ece8] text-[#b09880] text-sm hover:text-[#f97316] hover:border-[#f97316] transition-all flex items-center justify-center"
+                  className="w-9 h-9 rounded-2xl border border-[#f0ece8] text-[#b09880] text-sm hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
                 >
                   ↺
                 </button>
@@ -820,7 +833,7 @@ export default function DeskWidgets({
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={music.prevTrack}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-[#f97316] hover:border-[#f97316] transition-all text-xs"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all text-xs"
                   >
                     ⏮
                   </button>
@@ -833,7 +846,7 @@ export default function DeskWidgets({
                   </button>
                   <button
                     onClick={music.nextTrack}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-[#f97316] hover:border-[#f97316] transition-all text-xs"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all text-xs"
                   >
                     ⏭
                   </button>
@@ -911,7 +924,7 @@ export default function DeskWidgets({
             <div className="mt-auto pt-3 border-t border-[#f8f4f0] shrink-0">
               <button
                 onClick={() => onNavigate("todo")}
-                className="w-full py-3 rounded-2xl border-2 border-dashed border-[#f0d8c8] text-[#b09880] text-sm font-medium hover:border-[#f97316] hover:text-[#f97316] hover:bg-orange-50/50 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-2xl border-2 border-dashed border-[#f0d8c8] text-[#b09880] text-sm font-medium hover:border-(--accent) hover:text-(--accent) hover:bg-orange-50/50 transition-all flex items-center justify-center gap-2"
               >
                 <span className="text-lg">+</span>
                 Quick add a task
@@ -1030,7 +1043,7 @@ export default function DeskWidgets({
             <>
               <button
                 onClick={() => setShowTemplates(true)}
-                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all"
               >
                 Templates
               </button>
@@ -1039,7 +1052,7 @@ export default function DeskWidgets({
                   setLayouts(DEFAULT_LAYOUT);
                   setHidden([]);
                 }}
-                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all"
               >
                 Reset
               </button>
@@ -1050,7 +1063,7 @@ export default function DeskWidgets({
             className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
               editMode
                 ? "text-white shadow-sm"
-                : "border border-[#f0ece8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+                : "border border-[#f0ece8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
             }`}
             style={editMode ? { background: "var(--accent)" } : {}}
           >
@@ -1067,16 +1080,27 @@ export default function DeskWidgets({
         >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" />
           <div
+            ref={templatesTrapRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="layout-templates-title"
             className="relative w-full max-w-sm bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e2d8] dark:border-[#2a2520]">
-              <span className="font-serif italic text-(--accent) text-sm">Layout Templates</span>
+              <span
+                id="layout-templates-title"
+                className="font-serif italic text-(--accent) text-sm"
+              >
+                Layout Templates
+              </span>
               <button
                 onClick={() => setShowTemplates(false)}
+                aria-label="Close layout templates"
                 className="text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors text-sm"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
             <div className="p-4 flex flex-col gap-2">
@@ -1088,11 +1112,11 @@ export default function DeskWidgets({
                     setHidden(t.hidden);
                     setShowTemplates(false);
                   }}
-                  className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl border border-[#f0ece8] hover:border-[#f97316] hover:bg-orange-50 transition-all group"
+                  className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl border border-[#f0ece8] hover:border-(--accent) hover:bg-orange-50 transition-all group"
                 >
                   <span className="text-xl">{t.icon}</span>
                   <div>
-                    <p className="text-sm font-bold text-[#2d2416] group-hover:text-[#f97316] transition-colors">
+                    <p className="text-sm font-bold text-[#2d2416] group-hover:text-(--accent) transition-colors">
                       {t.name}
                     </p>
                     <p className="text-[10px] text-[#b09880] font-mono">

@@ -110,7 +110,7 @@ function clearLines(grid: Grid): { grid: Grid; lines: number } {
 }
 
 function ghostPos(grid: Grid, shape: number[][], pos: Position): Position {
-  let ghost = { ...pos };
+  const ghost = { ...pos };
   while (isValid(grid, shape, { ...ghost, y: ghost.y + 1 })) ghost.y++;
   return ghost;
 }
@@ -283,7 +283,7 @@ export default function Tetris() {
         case "z":
         case "Z": {
           // Counter-clockwise = rotate 3 times
-          let ccw = rotate(rotate(rotate(shape)));
+          const ccw = rotate(rotate(rotate(shape)));
           const kicks = [0, -1, 1, -2, 2];
           for (const kick of kicks) {
             const kp = { ...pos, x: pos.x + kick };
@@ -298,7 +298,7 @@ export default function Tetris() {
         case " ": {
           e.preventDefault();
           // Hard drop
-          let ghost = { ...pos };
+          const ghost = { ...pos };
           while (isValid(grid, shape, { ...ghost, y: ghost.y + 1 })) ghost.y++;
           setPos(ghost);
           // Lock after small delay so state updates
@@ -374,7 +374,7 @@ export default function Tetris() {
     } else {
       if (dy > 30) {
         // Swipe down = hard drop
-        let ghost = { ...pos };
+        const ghost = { ...pos };
         while (isValid(grid, shape, { ...ghost, y: ghost.y + 1 })) ghost.y++;
         setPos(ghost);
         setTimeout(() => lockPiece(), 0);
@@ -540,11 +540,14 @@ export default function Tetris() {
 
         {/* Board — first on mobile (order-1), centre on desktop (order-2) */}
         <div
-          className="order-1 md:order-2 relative border-2 border-[#e8e2d8] rounded-xl overflow-hidden"
+          // Board background is a CLASS, not an inline style. Dark mode here
+          // works by overriding the light utility classes in globals.css
+          // (`.dark .bg-[#faf8f5]`), so an inline backgroundColor is invisible
+          // to it and the board stayed light in dark mode. Contract §13.
+          className="order-1 md:order-2 relative border-2 border-[#e8e2d8] rounded-xl overflow-hidden bg-[#faf8f5]"
           style={{
             width: COLS * CELL_SIZE,
             height: ROWS * CELL_SIZE,
-            backgroundColor: "#faf8f5",
           }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -757,7 +760,7 @@ export default function Tetris() {
           <button
             onTouchStart={() => {
               const { grid, shape, pos } = stateRef.current;
-              let ghost = { ...pos };
+              const ghost = { ...pos };
               while (isValid(grid, shape, { ...ghost, y: ghost.y + 1 }))
                 ghost.y++;
               setPos(ghost);

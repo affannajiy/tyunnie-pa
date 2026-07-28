@@ -255,7 +255,7 @@ export default function Solitaire() {
         }
         return applyMove(prev, selected.cards, selected, fi);
       });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+       
     },
     [selected],
   );
@@ -295,7 +295,7 @@ export default function Solitaire() {
         });
         return prev;
       });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+       
     },
     [selected],
   );
@@ -310,7 +310,7 @@ export default function Solitaire() {
       setState((prev) =>
         applyMove(prev, selected.cards, selected, undefined, colIdx),
       );
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+       
     },
     [selected],
   );

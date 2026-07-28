@@ -16,6 +16,8 @@ import {
   type VaultEntry,
   type VaultMeta,
 } from "@/lib/database";
+import { saveAccent } from "@/lib/accent";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import {
   encryptData,
   decryptData,
@@ -120,6 +122,19 @@ export default function Profile({
   const [showBriefing, setShowBriefing] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
+  // Contract §11: overlays trap Tab and hand focus back to the trigger on close.
+  const cropTrapRef = useFocusTrap<HTMLDivElement>(showCropModal);
+
+  // Contract §3: every overlay has a keyboard exit. Cancelling the crop is
+  // non-destructive — the original avatar is untouched until Save.
+  useEffect(() => {
+    if (!showCropModal) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowCropModal(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showCropModal]);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropScale, setCropScale] = useState(1);
   const [cropOffsetX, setCropOffsetX] = useState(0);
@@ -178,6 +193,12 @@ export default function Profile({
   const [accentColor, setAccentColor] = useState<string>(() => {
     if (typeof window === "undefined") return "#f97316";
     return localStorage.getItem("tyunnie_accent") ?? "#f97316";
+  });
+  // Auto-Theme: borrow the accent from whatever album art is playing.
+  // MusicContext owns the actual colour swapping; this is just the switch.
+  const [autoTheme, setAutoTheme] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("tyunnie_autotheme") === "1";
   });
   const [showColorPicker, setShowColorPicker] = useState(false);
   // pickerHue tracks the hue bar position (0-360) independently so the spectrum
@@ -416,6 +437,12 @@ export default function Profile({
   }
 
   async function handleDeleteEntry(id: string) {
+    // Vault data is AES-GCM encrypted client-side with a PIN we never store —
+    // there is no recovery path whatsoever. The most irreversible delete here.
+    const confirmed = window.confirm(
+      "Delete this vault entry? It's encrypted with your PIN and cannot be recovered.",
+    );
+    if (!confirmed) return;
     await deleteVaultEntry(id);
     setVaultEntries((prev) => prev.filter((e) => e.id !== id));
     setDecryptedEntries((prev) => {
@@ -963,66 +990,19 @@ export default function Profile({
   }
 
   function applyAccent(hex: string) {
-    // Derive soft/mid/dim variants from the chosen hex using HSL math
-    const ri = parseInt(hex.slice(1, 3), 16);
-    const gi = parseInt(hex.slice(3, 5), 16);
-    const bi = parseInt(hex.slice(5, 7), 16);
-    const r = ri / 255,
-      g = gi / 255,
-      b = bi / 255;
-    const max = Math.max(r, g, b),
-      min = Math.min(r, g, b);
-    let h = 0,
-      s = 0;
-    const l = (max + min) / 2;
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch (max) {
-        case r:
-          h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-          break;
-        case g:
-          h = ((b - r) / d + 2) / 6;
-          break;
-        case b:
-          h = ((r - g) / d + 4) / 6;
-          break;
-      }
-    }
-    const hDeg = Math.round(h * 360);
-    const sPct = Math.round(s * 100);
-    const lPct = Math.round(l * 100);
-
-    function hsl2hex(hh: number, ss: number, ll: number): string {
-      const sn = ss / 100,
-        ln = ll / 100;
-      const a = sn * Math.min(ln, 1 - ln);
-      const f = (n: number) => {
-        const k = (n + hh / 30) % 12;
-        const c = ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-        return Math.round(255 * c)
-          .toString(16)
-          .padStart(2, "0");
-      };
-      return `#${f(0)}${f(8)}${f(4)}`;
-    }
-
-    const soft = hsl2hex(hDeg, Math.min(sPct + 10, 100), Math.min(lPct + 42, 97));
-    const mid = hsl2hex(hDeg, Math.min(sPct + 5, 100), Math.min(lPct + 28, 90));
-    const dim = hsl2hex(hDeg, Math.min(sPct + 5, 100), Math.max(lPct - 18, 15));
-
-    const root = document.documentElement;
-    root.style.setProperty("--accent", hex);
-    root.style.setProperty("--accent-soft", soft);
-    root.style.setProperty("--accent-mid", mid);
-    root.style.setProperty("--accent-dim", dim);
-    root.style.setProperty("--accent-rgb", `${ri}, ${gi}, ${bi}`);
-    localStorage.setItem("tyunnie_accent", hex);
+    // Vars + localStorage + profile row, all in lib/accent.ts. Kept separate
+    // from the music auto-theme, which paints vars only and never persists.
+    saveAccent(userId, hex);
     setAccentColor(hex);
-    window.dispatchEvent(new Event("tyunnie-accent-changed"));
-    // Persist to DB immediately so the choice syncs across all devices on next login
-    upsertProfile(userId, { accent_color: hex }).catch(() => {});
+  }
+
+  function toggleAutoTheme() {
+    const next = !autoTheme;
+    setAutoTheme(next);
+    if (next) localStorage.setItem("tyunnie_autotheme", "1");
+    else localStorage.removeItem("tyunnie_autotheme");
+    // MusicContext listens for this — flipping off restores the saved accent
+    window.dispatchEvent(new Event("tyunnie-autotheme-changed"));
   }
 
   async function handleSave() {
@@ -1069,12 +1049,12 @@ export default function Profile({
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={onClose}
-          className="text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest"
+          className="text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest"
         >
           ← Back
         </button>
         <div className="flex-1 h-px bg-[#e8e2d8]" />
-        <span className="font-serif italic text-[#f97316] text-sm">
+        <span className="font-serif italic text-(--accent) text-sm">
           Your Profile
         </span>
       </div>
@@ -1096,7 +1076,7 @@ export default function Profile({
                   className="w-14 h-14 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xl font-bold">
+                <div className="w-14 h-14 rounded-full bg-(--accent) flex items-center justify-center text-white text-xl font-bold">
                   {displayName
                     ? displayName
                         .trim()
@@ -1109,7 +1089,7 @@ export default function Profile({
                 </div>
               )}
               {/* Overlay buttons */}
-              <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+              <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center gap-1">
                 <label
                   className="cursor-pointer p-1 hover:scale-110 transition-transform"
                   title="Upload photo"
@@ -1154,7 +1134,7 @@ export default function Profile({
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="What should Tyunnie call you?"
-              className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+              className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
             />
           </div>
 
@@ -1166,7 +1146,7 @@ export default function Profile({
               <select
                 value={birthDay}
                 onChange={(e) => setBirthDay(e.target.value)}
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
               >
                 <option value="">Day</option>
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
@@ -1183,7 +1163,7 @@ export default function Profile({
               <select
                 value={birthMonth}
                 onChange={(e) => setBirthMonth(e.target.value)}
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
               >
                 <option value="">Month</option>
                 {MONTHS.map((m, i) => (
@@ -1211,9 +1191,10 @@ export default function Profile({
                     setCityLat(null);
                     setCityLon(null);
                   }}
+                  aria-label="Clear saved city"
                   className="text-[#c5bdb0] hover:text-red-400 transition-colors text-sm"
                 >
-                  ✕
+                  <span aria-hidden="true">✕</span>
                 </button>
               </div>
             ) : (
@@ -1224,12 +1205,12 @@ export default function Profile({
                   onChange={(e) => setCitySearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && searchCity()}
                   placeholder="Search city..."
-                  className="flex-1 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  className="flex-1 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                 />
                 <button
                   onClick={searchCity}
                   disabled={citySearching}
-                  className="px-4 py-2.5 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                  className="px-4 py-2.5 rounded-xl bg-(--accent) text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
                 >
                   {citySearching ? "..." : "Find"}
                 </button>
@@ -1257,7 +1238,7 @@ export default function Profile({
                 value={occupation}
                 onChange={(e) => setOccupation(e.target.value)}
                 placeholder="e.g. CS Student"
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
               />
             </div>
             <div className="flex-1">
@@ -1269,7 +1250,7 @@ export default function Profile({
                 value={workplace}
                 onChange={(e) => setWorkplace(e.target.value)}
                 placeholder="e.g. UTP"
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
               />
             </div>
           </div>
@@ -1283,7 +1264,7 @@ export default function Profile({
               onChange={(e) => setBio(e.target.value)}
               placeholder="A short description Tyunnie can use to know you better..."
               rows={3}
-              className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors resize-none"
+              className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors resize-none"
             />
           </div>
 
@@ -1298,8 +1279,8 @@ export default function Profile({
                   onClick={() => toggleInterest(i)}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all border ${
                     interests.includes(i)
-                      ? "bg-[#f97316] text-white border-[#f97316]"
-                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-[#f97316] hover:text-[#f97316]"
+                      ? "bg-(--accent) text-white border-(--accent)"
+                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-(--accent) hover:text-(--accent)"
                   }`}
                 >
                   {i}
@@ -1323,7 +1304,7 @@ export default function Profile({
               <select
                 value={locale}
                 onChange={(e) => setLocale(e.target.value)}
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
               >
                 {LOCALES.map((l) => (
                   <option key={l.value} value={l.value}>
@@ -1339,7 +1320,7 @@ export default function Profile({
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -1361,8 +1342,8 @@ export default function Profile({
                   onClick={() => setGreetingStyle(s)}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${
                     greetingStyle === s
-                      ? "bg-[#f97316] text-white border-[#f97316]"
-                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-[#f97316]"
+                      ? "bg-(--accent) text-white border-(--accent)"
+                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-(--accent)"
                   }`}
                 >
                   {s}
@@ -1388,8 +1369,8 @@ export default function Profile({
                   }}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${
                     (v === "dark") === isDark
-                      ? "bg-[#f97316] text-white border-[#f97316]"
-                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-[#f97316]"
+                      ? "bg-(--accent) text-white border-(--accent)"
+                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-(--accent)"
                   }`}
                 >
                   {label}
@@ -1403,7 +1384,43 @@ export default function Profile({
             <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-3">
               Accent Color
             </label>
+
+            {/* Auto-Theme — accent follows the current album art while playing */}
+            <button
+              onClick={toggleAutoTheme}
+              role="switch"
+              aria-checked={autoTheme}
+              className="w-full flex items-center gap-3 mb-3 p-2.5 rounded-xl border border-[#e8e2d8] hover:border-(--accent) transition-colors text-left"
+            >
+              <span
+                aria-hidden="true"
+                className={`shrink-0 w-9 h-5 rounded-full transition-colors relative ${
+                  autoTheme ? "bg-(--accent)" : "bg-[#e8e2d8]"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                    autoTheme ? "left-4.5" : "left-0.5"
+                  }`}
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold text-[#111010]">
+                  Auto-Theme
+                </span>
+                <span className="block text-[10px] text-[#9a8f7e] leading-snug">
+                  Borrow the colour from whatever&apos;s playing
+                </span>
+              </span>
+            </button>
+
             {/* Preset swatches + custom picker toggle */}
+            {autoTheme && (
+              <p className="text-[10px] text-[#9a8f7e] mb-2 leading-snug">
+                Auto-Theme is on — your pick below is still saved, and comes back
+                the moment the music stops.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2 mb-3">
               {ACCENT_PRESETS.map(({ hex, label }) => (
                 <button
@@ -1628,7 +1645,7 @@ export default function Profile({
             </div>
             <button
               onClick={() => setShowBriefing((p) => !p)}
-              className={`w-11 h-6 rounded-full transition-all relative ${showBriefing ? "bg-[#f97316]" : "bg-[#e8e2d8]"}`}
+              className={`w-11 h-6 rounded-full transition-all relative ${showBriefing ? "bg-(--accent)" : "bg-[#e8e2d8]"}`}
             >
               <div
                 className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${showBriefing ? "left-5" : "left-0.5"}`}
@@ -1647,7 +1664,7 @@ export default function Profile({
             </div>
             <button
               onClick={() => setDailyQuoteEmail((p) => !p)}
-              className={`w-11 h-6 rounded-full transition-all relative ${dailyQuoteEmail ? "bg-[#f97316]" : "bg-[#e8e2d8]"}`}
+              className={`w-11 h-6 rounded-full transition-all relative ${dailyQuoteEmail ? "bg-(--accent)" : "bg-[#e8e2d8]"}`}
             >
               <div
                 className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${dailyQuoteEmail ? "left-5" : "left-0.5"}`}
@@ -1672,7 +1689,7 @@ export default function Profile({
                     setNewPinStep("enter");
                     setNewPinError("");
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
                 >
                   🔑 Change PIN
                 </button>
@@ -1710,7 +1727,7 @@ export default function Profile({
                     <button
                       onClick={handleRequestOtp}
                       disabled={otpSending}
-                      className="flex-1 py-2.5 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                      className="flex-1 py-2.5 rounded-xl bg-(--accent) text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
                     >
                       {otpSending ? "Sending..." : "Send verification code"}
                     </button>
@@ -1720,7 +1737,7 @@ export default function Profile({
                         setOtpStep("idle");
                         setOtpError("");
                       }}
-                      className="px-4 py-2.5 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-[#f97316] transition-all"
+                      className="px-4 py-2.5 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-(--accent) transition-all"
                     >
                       Cancel
                     </button>
@@ -1753,12 +1770,12 @@ export default function Profile({
                       }
                       onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
                       placeholder="000000"
-                      className="flex-1 bg-white border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-center tracking-[6px] font-mono outline-none focus:border-[#f97316] transition-colors"
+                      className="flex-1 bg-white border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-center tracking-[6px] font-mono outline-none focus:border-(--accent) transition-colors"
                     />
                     <button
                       onClick={handleVerifyOtp}
                       disabled={otpSending || otpInput.length !== 6}
-                      className="px-4 py-2.5 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                      className="px-4 py-2.5 rounded-xl bg-(--accent) text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
                     >
                       {otpSending ? "..." : "Verify"}
                     </button>
@@ -1767,7 +1784,7 @@ export default function Profile({
                     <button
                       onClick={handleRequestOtp}
                       disabled={otpSending}
-                      className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+                      className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors"
                     >
                       Resend code
                     </button>
@@ -1809,7 +1826,7 @@ export default function Profile({
                           key={i}
                           className={`w-4 h-4 rounded-full border-2 transition-all ${
                             i < current.length
-                              ? "bg-[#f97316] border-[#f97316]"
+                              ? "bg-(--accent) border-(--accent)"
                               : "bg-transparent border-[#e8e2d8]"
                           }`}
                         />
@@ -1844,7 +1861,7 @@ export default function Profile({
                             ? "invisible"
                             : key === "⌫"
                               ? "text-[#9a8f7e] hover:bg-white border border-[#e8e2d8]"
-                              : "bg-white border border-[#e8e2d8] text-[#111010] hover:border-[#f97316] hover:text-[#f97316] active:scale-95"
+                              : "bg-white border border-[#e8e2d8] text-[#111010] hover:border-(--accent) hover:text-(--accent) active:scale-95"
                         }`}
                       >
                         {savingPin ? "..." : key}
@@ -1894,7 +1911,7 @@ export default function Profile({
                           key={i}
                           className={`w-4 h-4 rounded-full border-2 transition-all ${
                             i < current.length
-                              ? "bg-[#f97316] border-[#f97316]"
+                              ? "bg-(--accent) border-(--accent)"
                               : "bg-transparent border-[#e8e2d8]"
                           }`}
                         />
@@ -1930,7 +1947,7 @@ export default function Profile({
                             ? "invisible"
                             : key === "⌫"
                               ? "text-[#9a8f7e] hover:bg-[#faf8f5] border border-[#e8e2d8]"
-                              : "bg-[#faf8f5] border border-[#e8e2d8] text-[#111010] hover:border-[#f97316] hover:text-[#f97316] active:scale-95"
+                              : "bg-[#faf8f5] border border-[#e8e2d8] text-[#111010] hover:border-(--accent) hover:text-(--accent) active:scale-95"
                         }`}
                       >
                         {vaultLoading && key === "0" ? "..." : key}
@@ -1972,47 +1989,47 @@ export default function Profile({
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             placeholder="Site / App name *"
-                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
                           <input
                             type="text"
                             value={editUsername}
                             onChange={(e) => setEditUsername(e.target.value)}
                             placeholder="Username / Email"
-                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
                           <input
                             type="password"
                             value={editPassword}
                             onChange={(e) => setEditPassword(e.target.value)}
                             placeholder="Password *"
-                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
                           <input
                             type="text"
                             value={editWebsite}
                             onChange={(e) => setEditWebsite(e.target.value)}
                             placeholder="Website URL (optional)"
-                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
                           <input
                             type="text"
                             value={editNotes}
                             onChange={(e) => setEditNotes(e.target.value)}
                             placeholder="Notes (optional)"
-                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                            className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
                           <div className="flex gap-2 mt-1">
                             <button
                               onClick={() => setEditingId(null)}
-                              className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-[#f97316] transition-all"
+                              className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-(--accent) transition-all"
                             >
                               Cancel
                             </button>
                             <button
                               onClick={() => handleEditEntry(entry.id)}
                               disabled={savingEdit}
-                              className="flex-1 py-2 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                              className="flex-1 py-2 rounded-xl bg-(--accent) text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
                             >
                               {savingEdit ? "Saving..." : "Save"}
                             </button>
@@ -2035,7 +2052,7 @@ export default function Profile({
                                     return next;
                                   })
                                 }
-                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors"
                               >
                                 {revealed ? "Hide" : "Show"}
                               </button>
@@ -2045,7 +2062,7 @@ export default function Profile({
                                     dec?.password ?? "",
                                   )
                                 }
-                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors"
                               >
                                 Copy
                               </button>
@@ -2058,15 +2075,16 @@ export default function Profile({
                                   setEditNotes(dec?.notes ?? "");
                                   setEditWebsite(dec?.website ?? "");
                                 }}
-                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-[#f97316] transition-colors"
+                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteEntry(entry.id)}
+                                aria-label={`Delete vault entry ${entry.name}`}
                                 className="text-[10px] font-mono text-[#c5bdb0] hover:text-red-400 transition-colors"
                               >
-                                ✕
+                                <span aria-hidden="true">✕</span>
                               </button>
                             </div>
                           </div>
@@ -2083,7 +2101,7 @@ export default function Profile({
                               href={dec.website}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[10px] text-[#f97316] font-mono mt-1 hover:underline block truncate"
+                              className="text-[10px] text-(--accent) font-mono mt-1 hover:underline block truncate"
                             >
                               🔗 {dec.website}
                             </a>
@@ -2108,47 +2126,47 @@ export default function Profile({
                     value={newEntryName}
                     onChange={(e) => setNewEntryName(e.target.value)}
                     placeholder="Site / App name *"
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
                   <input
                     type="text"
                     value={newEntryUsername}
                     onChange={(e) => setNewEntryUsername(e.target.value)}
                     placeholder="Username / Email"
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
                   <input
                     type="password"
                     value={newEntryPassword}
                     onChange={(e) => setNewEntryPassword(e.target.value)}
                     placeholder="Password *"
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
                   <input
                     type="text"
                     value={newEntryWebsite}
                     onChange={(e) => setNewEntryWebsite(e.target.value)}
                     placeholder="Website URL (optional)"
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
                   <input
                     type="text"
                     value={newEntryNotes}
                     onChange={(e) => setNewEntryNotes(e.target.value)}
                     placeholder="Notes (optional)"
-                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-[#f97316] transition-colors"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
                   <div className="flex gap-2 mt-1">
                     <button
                       onClick={() => setShowAddEntry(false)}
-                      className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-[#f97316] transition-all"
+                      className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-(--accent) transition-all"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleAddEntry}
                       disabled={savingEntry}
-                      className="flex-1 py-2 rounded-xl bg-[#f97316] text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
+                      className="flex-1 py-2 rounded-xl bg-(--accent) text-white text-xs font-bold hover:bg-[#c2500f] transition-all disabled:opacity-40"
                     >
                       {savingEntry ? "Saving..." : "Save Entry"}
                     </button>
@@ -2157,7 +2175,7 @@ export default function Profile({
               ) : (
                 <button
                   onClick={() => setShowAddEntry(true)}
-                  className="w-full py-2.5 rounded-xl border border-dashed border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono"
+                  className="w-full py-2.5 rounded-xl border border-dashed border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all font-mono"
                 >
                   + Add entry
                 </button>
@@ -2170,22 +2188,32 @@ export default function Profile({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-3 rounded-2xl bg-[#f97316] text-white font-bold text-sm uppercase tracking-widest hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40"
+          className="w-full py-3 rounded-2xl bg-(--accent) text-white font-bold text-sm uppercase tracking-widest hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40"
         >
           {saving ? "Saving..." : saved ? "Saved ✓" : "Save Profile"}
         </button>
       </div>
       {showCropModal && cropSrc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white rounded-2xl p-6 w-85 shadow-xl">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-4">
+          <div
+            ref={cropTrapRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="crop-photo-title"
+            className="bg-white rounded-2xl p-6 w-85 shadow-xl"
+          >
+            <p
+              id="crop-photo-title"
+              className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-4"
+            >
               Adjust Photo
             </p>
 
             {/* Preview canvas */}
             <div className="flex justify-center mb-4">
               <div
-                className="relative w-50 h-50 overflow-hidden rounded-full border-2 border-[#f97316] cursor-grab active:cursor-grabbing"
+                className="relative w-50 h-50 overflow-hidden rounded-full border-2 border-(--accent) cursor-grab active:cursor-grabbing"
                 onMouseDown={(e) => {
                   setIsDragging(true);
                   setDragStart({
@@ -2235,7 +2263,7 @@ export default function Profile({
                 onChange={(e) => {
                   setCropScale(parseFloat(e.target.value));
                 }}
-                className="w-full accent-[#f97316]"
+                className="w-full accent-(--accent)"
               />
             </div>
 
@@ -2245,13 +2273,13 @@ export default function Profile({
                   setShowCropModal(false);
                   setCropSrc(null);
                 }}
-                className="flex-1 py-2.5 rounded-xl border border-[#e8e2d8] text-sm text-[#9a8f7e] hover:border-[#f97316] transition-all"
+                className="flex-1 py-2.5 rounded-xl border border-[#e8e2d8] text-sm text-[#9a8f7e] hover:border-(--accent) transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCropSave}
-                className="flex-1 py-2.5 rounded-xl bg-[#f97316] text-white text-sm font-bold hover:bg-[#c2500f] transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-(--accent) text-white text-sm font-bold hover:bg-[#c2500f] transition-all"
               >
                 Save Photo
               </button>

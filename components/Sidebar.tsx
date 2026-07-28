@@ -63,6 +63,17 @@ export default function Sidebar({
   hiddenPanels,
 }: Props) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  // Tap feedback. The dock icons already carry an inline `transform` from
+  // dockScale(), and inline styles beat Tailwind's active:scale-* utility — so
+  // the press has to be composed into that same transform rather than added as
+  // a class. Keyed by dock slot (see NAV_ITEMS indices in CLAUDE.md).
+  const [pressedIdx, setPressedIdx] = useState<number | null>(null);
+  const pressProps = (idx: number) => ({
+    onPointerDown: () => setPressedIdx(idx),
+    onPointerUp: () => setPressedIdx(null),
+    onPointerLeave: () => setPressedIdx(null),
+    onPointerCancel: () => setPressedIdx(null),
+  });
   const visibleNavItems = NAV_ITEMS.filter((item) => !hiddenPanels?.has(item.panel));
 
   return (
@@ -112,11 +123,12 @@ export default function Sidebar({
               <button
                 onClick={() => onChange(panel)}
                 title={label}
+                {...pressProps(idx)}
                 className="flex items-center justify-center rounded-[13px] cursor-pointer border-none outline-none transition-colors duration-100"
                 style={{
                   width: 44,
                   height: 44,
-                  transform: `scale(${scale})`,
+                  transform: `scale(${scale * (pressedIdx === idx ? 0.9 : 1)})`,
                   transformOrigin: "bottom center",
                   transition:
                     "transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s ease",
@@ -174,12 +186,13 @@ export default function Sidebar({
 
           <button
             onClick={onTyunnieToggle}
+            {...pressProps(TYUN_IDX)}
             title="Tyunnie"
             className="flex items-center justify-center rounded-[13px] cursor-pointer border-none outline-none"
             style={{
               width: 44,
               height: 44,
-              transform: `scale(${dockScale(TYUN_IDX, hoveredIdx)})`,
+              transform: `scale(${dockScale(TYUN_IDX, hoveredIdx) * (pressedIdx === TYUN_IDX ? 0.9 : 1)})`,
               transformOrigin: "bottom center",
               transition:
                 "transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s ease",
@@ -232,12 +245,13 @@ export default function Sidebar({
 
           <button
             onClick={onNewSticky}
+            {...pressProps(STICKY_IDX)}
             title="New sticky note"
             className="flex items-center justify-center rounded-[13px] cursor-pointer border-none outline-none transition-colors duration-100"
             style={{
               width: 44,
               height: 44,
-              transform: `scale(${dockScale(STICKY_IDX, hoveredIdx)})`,
+              transform: `scale(${dockScale(STICKY_IDX, hoveredIdx) * (pressedIdx === STICKY_IDX ? 0.9 : 1)})`,
               transformOrigin: "bottom center",
               transition:
                 "transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s ease",
@@ -275,12 +289,13 @@ export default function Sidebar({
 
           <button
             onClick={onFocusMode}
+            {...pressProps(FOCUS_IDX)}
             title="Focus Mode"
             className="flex items-center justify-center rounded-[13px] cursor-pointer border-none outline-none transition-colors duration-100"
             style={{
               width: 44,
               height: 44,
-              transform: `scale(${dockScale(FOCUS_IDX, hoveredIdx)})`,
+              transform: `scale(${dockScale(FOCUS_IDX, hoveredIdx) * (pressedIdx === FOCUS_IDX ? 0.9 : 1)})`,
               transformOrigin: "bottom center",
               transition:
                 "transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s ease",

@@ -1,3 +1,10 @@
+// The `any`s in this file are DELIBERATE and must not be "fixed".
+// The Web Speech API's `SpeechRecognition` / `SpeechRecognitionEvent` types are
+// not in the TS lib and are not present in Vercel's build environment — typing
+// them properly breaks the production build. See .claude/CLAUDE.md, "Build /
+// TypeScript (break Vercel if violated)". Suppressed at file scope with the
+// reason attached, rather than silently left as lint errors.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useRef, useState } from "react";
 
 type UseSpeechOptions = {

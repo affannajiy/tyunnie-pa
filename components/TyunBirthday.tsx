@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { isTyunBirthday } from "@/lib/tyunPersona";
+import { useFocusTrap } from "@/lib/useFocusTrap";
+import { useAccentColor } from "@/lib/useAccentColor";
 
 /**
  * Once-a-year "It's Taehyun's birthday today!" greeting. Fires only on Feb 5,
@@ -13,14 +15,16 @@ import { isTyunBirthday } from "@/lib/tyunPersona";
  */
 export default function TyunBirthday() {
   const [open, setOpen] = useState(false);
-  const [accentRgb, setAccentRgb] = useState("249,115,22");
+  // Live accent from --accent-rgb (a real "r, g, b" triple).
+  // This used to read localStorage["tyunnie_accent"], which stores a HEX —
+  // producing rgba(#f97316,0.18), invalid CSS, so every glow below rendered
+  // nothing for any user who had ever saved an accent.
+  const accentRgb = useAccentColor();
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
   const [year, setYear] = useState(0);
 
   useEffect(() => {
     if (!isTyunBirthday()) return;
-
-    const saved = localStorage.getItem("tyunnie_accent");
-    if (saved) setAccentRgb(saved);
 
     const y = new Date().getFullYear();
     setYear(y);
@@ -33,6 +37,16 @@ export default function TyunBirthday() {
     setOpen(false);
   }
 
+  // Esc dismisses — usability contract §3 (every overlay has a keyboard exit).
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") dismiss();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (!open) return null;
 
   const accent = `rgb(${accentRgb})`;
@@ -43,6 +57,11 @@ export default function TyunBirthday() {
       onClick={dismiss}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tyun-birthday-title"
+        tabIndex={-1}
         className="bg-white dark:bg-[#1a1815] border border-[#e8e2d8] dark:border-[#2a2620] rounded-2xl p-7 w-full max-w-sm shadow-2xl text-center"
         onClick={(e) => e.stopPropagation()}
       >
@@ -60,7 +79,10 @@ export default function TyunBirthday() {
         >
           February 5 · 🐿️
         </p>
-        <h2 className="font-serif italic text-2xl mb-2 text-[#111010] dark:text-[#f5f0e8]">
+        <h2
+          id="tyun-birthday-title"
+          className="font-serif italic text-2xl mb-2 text-[#111010] dark:text-[#f5f0e8]"
+        >
           It's Taehyun's birthday today
         </h2>
         <p className="text-sm text-[#4a4339] dark:text-[#bcb3a4] mb-6 leading-relaxed">

@@ -158,7 +158,7 @@ export default function MiniPlayer({ activePanel, onNavigate }: Props) {
             {/* Play/pause */}
             <button
               onClick={music.togglePlay}
-              className="w-7 h-7 rounded-full bg-[#f97316] flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors shrink-0"
+              className="w-7 h-7 rounded-full bg-(--accent) flex items-center justify-center text-white text-xs hover:bg-[#c2500f] transition-colors shrink-0"
               style={{ boxShadow: "0 2px 10px rgba(var(--accent-rgb),0.4)" }}
             >
               {music.isPlaying ? "⏸" : "▶"}
@@ -166,14 +166,15 @@ export default function MiniPlayer({ activePanel, onNavigate }: Props) {
             {/* Close */}
             <button
               onClick={handleClose}
+              aria-label="Close player"
               className="w-6 h-6 flex items-center justify-center text-[#4a4038] hover:text-[#9a8f7e] transition-colors shrink-0 text-[10px]"
             >
-              ✕
+              <span aria-hidden="true">✕</span>
             </button>
           </div>
           {/* Thin progress bar at bottom */}
           <div className="h-0.5 bg-[#2a2520]">
-            <div className="h-full bg-[#f97316] transition-all" style={{ width: `${pct}%` }} />
+            <div className="h-full bg-(--accent) transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
       </div>
@@ -202,7 +203,7 @@ export default function MiniPlayer({ activePanel, onNavigate }: Props) {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-white truncate leading-tight group-hover:text-[#f97316] transition-colors">{music.currentTrack?.title}</div>
+              <div className="text-xs font-semibold text-white truncate leading-tight group-hover:text-(--accent) transition-colors">{music.currentTrack?.title}</div>
               <div className="text-[10px] text-[#9a8f7e] font-mono truncate leading-tight mt-0.5">{music.currentTrack?.artist}</div>
             </div>
           </button>
@@ -238,17 +239,18 @@ export default function MiniPlayer({ activePanel, onNavigate }: Props) {
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-1.5 px-3 pb-3">
-          <button onClick={() => music.skipBack(10)}    className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-[9px] font-mono">−10</button>
-          <button onClick={music.prevTrack}             className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-sm">⏮</button>
+          <button onClick={() => music.skipBack(10)}    aria-label="Back 10 seconds" className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-[9px] font-mono"><span aria-hidden="true">−10</span></button>
+          <button onClick={music.prevTrack}             aria-label="Previous track" className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-sm"><span aria-hidden="true">⏮</span></button>
           <button
             onClick={music.togglePlay}
-            className="w-9 h-9 rounded-full bg-[#f97316] flex items-center justify-center text-white text-sm hover:bg-[#c2500f] transition-all hover:scale-105 active:scale-95"
+            aria-label={music.isPlaying ? "Pause" : "Play"}
+            className="w-9 h-9 rounded-full bg-(--accent) flex items-center justify-center text-white text-sm hover:bg-[#c2500f] transition-all hover:scale-105 active:scale-95"
             style={{ boxShadow: "0 4px 16px rgba(var(--accent-rgb),0.35)" }}
           >
-            {music.isPlaying ? "⏸" : "▶"}
+            <span aria-hidden="true">{music.isPlaying ? "⏸" : "▶"}</span>
           </button>
-          <button onClick={music.nextTrack}             className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-sm">⏭</button>
-          <button onClick={() => music.skipForward(10)} className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-[9px] font-mono">+10</button>
+          <button onClick={music.nextTrack}             aria-label="Next track" className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-sm"><span aria-hidden="true">⏭</span></button>
+          <button onClick={() => music.skipForward(10)} aria-label="Forward 10 seconds" className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-[9px] font-mono"><span aria-hidden="true">+10</span></button>
         </div>
       </div>
     </div>

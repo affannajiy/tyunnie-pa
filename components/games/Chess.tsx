@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // ── TYPES ──
 type Color = "w" | "b";
@@ -44,6 +45,17 @@ const PIECE_VALUES: Record<PieceType, number> = {
   B: 330,
   N: 320,
   P: 100,
+};
+
+// Spoken names for the glyph-only promotion buttons (usability contract §11 —
+// an icon is not an accessible name).
+const PIECE_NAMES: Record<PieceType, string> = {
+  K: "King",
+  Q: "Queen",
+  R: "Rook",
+  B: "Bishop",
+  N: "Knight",
+  P: "Pawn",
 };
 
 // ── PIECE SYMBOLS ──
@@ -592,6 +604,8 @@ export default function Chess() {
   });
   const [status, setStatus] = useState<GameStatus>("playing");
   const [promotion, setPromotion] = useState<PromotionState>(null);
+  // Contract §11: overlays trap Tab and hand focus back to the trigger on close.
+  const promotionTrapRef = useFocusTrap<HTMLDivElement>(!!promotion);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(
     null,
   );
@@ -1159,8 +1173,19 @@ export default function Chess() {
       {/* Promotion modal */}
       {promotion && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 border border-[#f0ece8] shadow-2xl">
-            <p className="text-xs font-mono font-bold uppercase tracking-widest text-[#b09880] mb-4 text-center">
+          {/* Forced choice — no Esc/cancel by design: a promotion must resolve. */}
+          <div
+            ref={promotionTrapRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chess-promotion-title"
+            className="bg-white rounded-3xl p-6 border border-[#f0ece8] shadow-2xl"
+          >
+            <p
+              id="chess-promotion-title"
+              className="text-xs font-mono font-bold uppercase tracking-widest text-[#b09880] mb-4 text-center"
+            >
               Promote Pawn
             </p>
             <div className="flex gap-3">
@@ -1168,9 +1193,10 @@ export default function Chess() {
                 <button
                   key={pt}
                   onClick={() => handlePromotion(pt)}
+                  aria-label={`Promote to ${PIECE_NAMES[pt]}`}
                   className="w-14 h-14 rounded-2xl border border-[#e8e2d8] hover:border-[#f97316] hover:bg-orange-50 transition-all flex items-center justify-center text-3xl"
                 >
-                  {UNICODE[`${turn}${pt}`]}
+                  <span aria-hidden="true">{UNICODE[`${turn}${pt}`]}</span>
                 </button>
               ))}
             </div>

@@ -62,7 +62,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
     }
     window.addEventListener("tyunnie-new-project", handler);
     return () => window.removeEventListener("tyunnie-new-project", handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   // ── FORM HELPERS ──
@@ -146,6 +146,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
   }
 
   async function handleDelete(id: string, projectName: string) {
+    const confirmed = window.confirm(
+      `Delete project "${projectName}"? Its dates, progress and timeline row go with it. This can't be undone.`,
+    );
+    if (!confirmed) return;
     await deleteProject(id);
     setProjects((prev) => prev.filter((p) => p.id !== id));
     if (expandedId === id) setExpandedId(null);
@@ -196,7 +200,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
     return (
       <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5 mb-5">
         <div className="flex items-center gap-3 mb-5">
-          <span className="font-serif italic text-[#f97316] text-sm">
+          <span className="font-serif italic text-(--accent) text-sm">
             Gantt Chart
           </span>
           <div className="flex-1 h-px bg-[#e8e2d8]" />
@@ -273,7 +277,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
       {showForm ? (
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5 mb-5">
           <div className="flex items-center gap-3 mb-4">
-            <span className="font-serif italic text-[#f97316] text-sm">
+            <span className="font-serif italic text-(--accent) text-sm">
               {editingId ? "Edit Project" : "New Project"}
             </span>
             <div className="flex-1 h-px bg-[#e8e2d8]" />
@@ -282,9 +286,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 resetForm();
                 setShowForm(false);
               }}
+              aria-label="Close project form"
               className="text-[#c5bdb0] hover:text-[#9a8f7e] text-sm transition-colors"
             >
-              ✕
+              <span aria-hidden="true">✕</span>
             </button>
           </div>
 
@@ -301,7 +306,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Final Year Project"
                   required
-                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                 />
               </div>
               <div className="flex-1">
@@ -313,7 +318,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   onChange={(e) =>
                     setStatus(e.target.value as Project["status"])
                   }
-                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
@@ -334,7 +339,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                 />
               </div>
               <div className="flex-1">
@@ -345,7 +350,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                 />
               </div>
               <div className="flex-1">
@@ -359,7 +364,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   min="0"
                   max="100"
                   placeholder="0"
-                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors"
+                  className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
                 />
               </div>
             </div>
@@ -374,7 +379,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 onChange={(e) => setDesc(e.target.value)}
                 placeholder="What is this project about?"
                 rows={3}
-                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#f97316] transition-colors resize-none"
+                className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors resize-none"
               />
             </div>
 
@@ -385,14 +390,14 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   resetForm();
                   setShowForm(false);
                 }}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-colors"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving || !name.trim()}
-                className="bg-[#f97316] text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+                className="bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {saving
                   ? "Saving..."
@@ -410,7 +415,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
               resetForm();
               setShowForm(true);
             }}
-            className="bg-[#f97316] text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px"
+            className="bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px"
           >
             + New Project
           </button>
@@ -458,7 +463,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 {/* Edit button */}
                 <button
                   onClick={() => openEditForm(p)}
-                  className="text-[#c5bdb0] hover:text-[#f97316] transition-colors text-xs font-mono"
+                  className="text-[#c5bdb0] hover:text-(--accent) transition-colors text-xs font-mono"
                   title="Edit project"
                 >
                   ✏
@@ -477,9 +482,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 {/* Delete */}
                 <button
                   onClick={() => handleDelete(p.id, p.name)}
+                  aria-label={`Delete project ${p.name}`}
                   className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm"
                 >
-                  ✕
+                  <span aria-hidden="true">✕</span>
                 </button>
               </div>
 
@@ -526,9 +532,9 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                       onChange={(e) =>
                         handleProgressChange(p.id, parseInt(e.target.value))
                       }
-                      className="flex-1 accent-[#f97316]"
+                      className="flex-1 accent-(--accent)"
                     />
-                    <span className="font-mono text-sm font-bold text-[#f97316] w-10 text-right">
+                    <span className="font-mono text-sm font-bold text-(--accent) w-10 text-right">
                       {p.progress}%
                     </span>
                   </div>

@@ -298,7 +298,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         <div className="flex items-center gap-1">
           <button
             onClick={() => onChange(Math.max(min, value - 1))}
-            className="w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-sm font-bold flex items-center justify-center"
+            className="w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
           >
             −
           </button>
@@ -308,12 +308,12 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             min={min}
             max={max}
             onChange={(e) => onChange(clampMins(Number(e.target.value), min, max))}
-            className="w-12 h-7 rounded-lg border border-[#e8e2d8] text-center text-xs font-mono font-bold text-[#111010] bg-white outline-none focus:border-[#f97316] transition-colors"
+            className="w-12 h-7 rounded-lg border border-[#e8e2d8] text-center text-xs font-mono font-bold text-[#111010] bg-white outline-none focus:border-(--accent) transition-colors"
           />
           <span className="text-[10px] text-[#9a8f7e] font-mono w-5">min</span>
           <button
             onClick={() => onChange(Math.min(max, value + 1))}
-            className="w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-sm font-bold flex items-center justify-center"
+            className="w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
           >
             +
           </button>
@@ -335,7 +335,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
               mode === m
                 ? "text-white"
-                : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+                : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
             }`}
             style={mode === m ? { background: color } : {}}
           >
@@ -404,7 +404,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
       <div className="flex gap-3 justify-center mb-6">
         <button
           onClick={reset}
-          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-lg flex items-center justify-center"
+          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-lg flex items-center justify-center"
         >
           ↺
         </button>
@@ -421,7 +421,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         </button>
         <button
           onClick={() => switchMode(mode === "focus" ? "short" : "focus")}
-          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-lg flex items-center justify-center"
+          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-lg flex items-center justify-center"
           title="Skip"
         >
           ⏭
@@ -432,7 +432,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
       <div className="mb-5">
         <button
           onClick={showSettings ? cancelSettings : openSettings}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all text-xs font-bold uppercase tracking-widest"
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-xs font-bold uppercase tracking-widest"
         >
           <span>Timer Settings</span>
           <span
@@ -464,7 +464,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
                       className={`py-2 px-3 rounded-xl text-xs font-bold transition-all text-left ${
                         active
                           ? "text-white"
-                          : "border border-[#e8e2d8] text-[#6b5e52] hover:border-[#f97316] hover:text-[#f97316]"
+                          : "border border-[#e8e2d8] text-[#6b5e52] hover:border-(--accent) hover:text-(--accent)"
                       }`}
                       style={active ? { background: "var(--accent)" } : {}}
                     >
@@ -522,7 +522,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             <div className="flex gap-2 pt-1">
               <button
                 onClick={cancelSettings}
-                className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs font-bold text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+                className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs font-bold text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all"
               >
                 Cancel
               </button>
@@ -553,7 +553,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
       {/* Task linking */}
       <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
         <div className="flex items-center gap-3 mb-3">
-          <span className="font-serif italic text-[#f97316] text-sm">
+          <span className="font-serif italic text-(--accent) text-sm">
             Focusing on
           </span>
           <div className="flex-1 h-px bg-[#e8e2d8]" />
@@ -566,16 +566,17 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             </div>
             <button
               onClick={() => setLinkedTask(null)}
+              aria-label="Unlink task from this session"
               className="text-[#c5bdb0] hover:text-red-400 transition-colors text-sm shrink-0"
             >
-              ✕
+              <span aria-hidden="true">✕</span>
             </button>
           </div>
         ) : (
           <select
             value=""
             onChange={(e) => setLinkedTask(e.target.value)}
-            className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-[#9a8f7e] outline-none focus:border-[#f97316] transition-colors"
+            className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-[#9a8f7e] outline-none focus:border-(--accent) transition-colors"
           >
             <option value="" disabled>
               Pick a task to focus on...

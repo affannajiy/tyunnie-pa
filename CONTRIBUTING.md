@@ -29,6 +29,9 @@ full feature set. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and
   build gotchas documented in [.claude/CLAUDE.md](.claude/CLAUDE.md) and
   [docs/DEVNOTES.md](docs/DEVNOTES.md) — please skim them.
 - **Match the surrounding style.** No new dependencies unless necessary.
+- **For UI changes, follow the usability contract** in
+  [docs/USABILITY_HEURISTICS.md](docs/USABILITY_HEURISTICS.md) — plain language,
+  keyboard + `Esc` support, dark mode, mobile widths, and real empty/error states.
 - **Bump the version** if it's a user-facing change: edit `package.json`, the
   README version badge, and add a `docs/CHANGELOG.md` entry (patch = fixes/types,
   minor = features/UI, major = architectural). Add a `### Highlights` block for

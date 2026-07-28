@@ -6,10 +6,19 @@ import type { Panel } from "@/components/Sidebar";
 import type { Todo, Draft, Project, Snip } from "@/lib/database";
 import { isMac, modKey } from "@/lib/platform";
 import { Kbd } from "@/components/ui/Kbd";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type ResultKind = "action" | "panel" | "shortcut" | "task" | "draft" | "project" | "snippet";
+
+// Kinds that carry a real record and can therefore render a preview.
+// Actions, panels and shortcuts are pure navigation — nothing to show.
+type PreviewData =
+  | { kind: "task"; record: Todo }
+  | { kind: "draft"; record: Draft }
+  | { kind: "project"; record: Project }
+  | { kind: "snippet"; record: Snip };
 
 interface PaletteResult {
   id: string;
@@ -20,6 +29,9 @@ interface PaletteResult {
   shortcut?: string[];
   panel?: Panel;
   action?: () => void;
+  // The source row, kept so the preview pane can render real content instead of
+  // re-deriving it from the display strings.
+  data?: PreviewData;
 }
 
 interface Props {
@@ -87,6 +99,153 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   );
 }
 
+// ── Preview pane ───────────────────────────────────────────────────────────
+// Spotlight-style detail for the highlighted row. Deliberately plain text —
+// no syntax highlighter, since pulling one in for a hover preview would cost
+// more bundle than the whole palette.
+
+function PreviewMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-[9px] font-mono uppercase tracking-widest text-[#c5bdb0] shrink-0">
+        {label}
+      </span>
+      <span className="text-[11px] text-[#9a8f7e] dark:text-[#b0a090] truncate">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function PalettePreview({ data }: { data?: PreviewData }) {
+  if (!data) {
+    return (
+      <div className="h-full flex items-center justify-center px-6 text-center">
+        <p className="text-[11px] text-[#c5bdb0] font-mono leading-relaxed">
+          Highlight a task, draft,
+          <br />
+          project or snippet to preview it
+        </p>
+      </div>
+    );
+  }
+
+  if (data.kind === "draft") {
+    const d = data.record;
+    const body = (d.body ?? "").trim();
+    const words = body ? body.split(/\s+/).filter(Boolean).length : 0;
+    return (
+      <div className="h-full overflow-y-auto p-5" style={{ scrollbarWidth: "thin" }}>
+        <h3 className="font-serif text-base text-[#111010] dark:text-white mb-1 leading-snug">
+          {d.title || "Untitled"}
+        </h3>
+        <div className="mb-3 space-y-0.5">
+          <PreviewMeta label="Words" value={String(words)} />
+          {d.updated_at && (
+            <PreviewMeta
+              label="Edited"
+              value={new Date(d.updated_at).toLocaleDateString()}
+            />
+          )}
+        </div>
+        {body ? (
+          <p className="font-serif text-[13px] leading-relaxed text-[#2d2416] dark:text-[#d8d0c4] whitespace-pre-wrap line-clamp-[18]">
+            {body}
+          </p>
+        ) : (
+          <p className="text-[11px] italic text-[#c5bdb0]">Empty draft</p>
+        )}
+      </div>
+    );
+  }
+
+  if (data.kind === "snippet") {
+    const s = data.record;
+    return (
+      <div className="h-full overflow-y-auto p-5" style={{ scrollbarWidth: "thin" }}>
+        <div className="flex items-center gap-2 mb-3">
+          <h3 className="text-sm font-semibold text-[#111010] dark:text-white truncate">
+            {s.name}
+          </h3>
+          <span
+            className="shrink-0 text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded"
+            style={{
+              background: "rgba(var(--accent-rgb), 0.14)",
+              color: "var(--accent-dim)",
+            }}
+          >
+            {s.language}
+          </span>
+        </div>
+        <pre className="text-[11px] font-mono leading-relaxed text-[#2d2416] dark:text-[#d8d0c4] bg-[#faf8f5] dark:bg-[#141110] border border-[#f3f0ea] dark:border-[#2a2520] rounded-lg p-3 overflow-x-auto whitespace-pre">
+          {(s.code ?? "").split("\n").slice(0, 40).join("\n") || "// empty"}
+        </pre>
+      </div>
+    );
+  }
+
+  if (data.kind === "task") {
+    const t = data.record;
+    const overdue =
+      !t.done && t.due && new Date(t.due) < new Date(new Date().toDateString());
+    return (
+      <div className="h-full overflow-y-auto p-5" style={{ scrollbarWidth: "thin" }}>
+        <div className="flex items-start gap-2 mb-3">
+          <span className="text-base leading-none shrink-0" aria-hidden="true">
+            {t.done ? "✅" : "⬜"}
+          </span>
+          <h3
+            className={`text-sm leading-snug ${
+              t.done
+                ? "line-through text-[#9a8f7e]"
+                : "text-[#111010] dark:text-white"
+            }`}
+          >
+            {t.text}
+          </h3>
+        </div>
+        <div className="space-y-0.5">
+          <PreviewMeta label="Tag" value={t.tag} />
+          <PreviewMeta label="Status" value={t.done ? "Done" : "Open"} />
+          {t.due && <PreviewMeta label="Due" value={t.due} />}
+        </div>
+        {overdue && (
+          <p className="mt-3 text-[11px] font-semibold text-[#dc2626]">
+            Overdue
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  const p = data.record;
+  return (
+    <div className="h-full overflow-y-auto p-5" style={{ scrollbarWidth: "thin" }}>
+      <h3 className="text-sm font-semibold text-[#111010] dark:text-white mb-2 leading-snug">
+        {p.name}
+      </h3>
+      <div className="h-1.5 rounded-full bg-[#f3f0ea] dark:bg-[#2a2520] overflow-hidden mb-2">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${p.progress}%`,
+            background: "var(--accent)",
+          }}
+        />
+      </div>
+      <div className="space-y-0.5 mb-3">
+        <PreviewMeta label="Progress" value={`${p.progress}%`} />
+        <PreviewMeta label="Status" value={p.status} />
+      </div>
+      {p.description && (
+        <p className="text-[12px] leading-relaxed text-[#2d2416] dark:text-[#d8d0c4] whitespace-pre-wrap line-clamp-[14]">
+          {p.description}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function CommandPalette({
@@ -107,6 +266,8 @@ export default function CommandPalette({
   const [visible, setVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // Contract §11: overlays trap Tab and hand focus back to the trigger on close.
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
 
   useEffect(() => {
     if (open) {
@@ -257,6 +418,7 @@ export default function CommandPalette({
           title: t.text,
           subtitle: `[${t.tag}]${t.due ? " · due " + t.due : ""}${t.done ? " · done" : ""}`,
           panel: "todo",
+          data: { kind: "task", record: t },
         });
       });
 
@@ -273,6 +435,7 @@ export default function CommandPalette({
           title: d.title,
           subtitle: `${words} word${words !== 1 ? "s" : ""}`,
           panel: "writing",
+          data: { kind: "draft", record: d },
         });
       });
 
@@ -288,6 +451,7 @@ export default function CommandPalette({
           title: p.name,
           subtitle: `${p.status} · ${p.progress}%`,
           panel: "projects",
+          data: { kind: "project", record: p },
         });
       });
 
@@ -303,6 +467,7 @@ export default function CommandPalette({
           title: s.name,
           subtitle: s.language,
           panel: "snippets",
+          data: { kind: "snippet", record: s },
         });
       });
 
@@ -376,6 +541,13 @@ export default function CommandPalette({
 
   const mac = isMac();
 
+  // The modal widens if the list contains ANY previewable result, and then
+  // holds that width while you arrow around. Resizing the dialog mid-keyboard-
+  // navigation would be exactly the kind of motion the usability contract warns
+  // against, so non-previewable rows get a placeholder rather than a reflow.
+  const hasPreviewable = items.some((i) => i.data);
+  const selectedData = items[selectedIdx]?.data;
+
   return (
     <div
       className="fixed inset-0 z-[70] flex items-start justify-center pt-[12vh] px-4"
@@ -386,10 +558,12 @@ export default function CommandPalette({
 
       {/* Modal */}
       <div
+        ref={trapRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className={`relative w-full max-w-lg bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10 ${open ? "animate-modal-in" : "animate-modal-out"}`}
+        className={`relative w-full ${hasPreviewable ? "max-w-3xl" : "max-w-lg"} bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10 ${open ? "animate-modal-in" : "animate-modal-out"}`}
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: "72vh", display: "flex", flexDirection: "column" }}
       >
@@ -427,12 +601,13 @@ export default function CommandPalette({
           <Kbd>ESC</Kbd>
         </div>
 
-        {/* Results */}
+        {/* Results + preview */}
+        <div className="flex flex-1 min-h-0">
         <div
           ref={listRef}
           role="listbox"
           aria-label="Search results"
-          className="overflow-y-auto flex-1"
+          className={`overflow-y-auto ${hasPreviewable ? "sm:w-[22rem] sm:shrink-0 flex-1 sm:flex-none" : "flex-1"}`}
           style={{ scrollbarWidth: "thin" }}
         >
           {items.length === 0 && query.trim().length > 0 && (
@@ -496,6 +671,17 @@ export default function CommandPalette({
           ))}
 
           <div className="h-2" />
+        </div>
+
+        {/* Preview pane — hidden below sm, where there's no room for two columns */}
+        {hasPreviewable && (
+          <div
+            aria-live="polite"
+            className="hidden sm:block flex-1 min-w-0 border-l border-[#f3f0ea] dark:border-[#2a2520] bg-[#fdfcfa] dark:bg-[#161311]"
+          >
+            <PalettePreview data={selectedData} />
+          </div>
+        )}
         </div>
 
         {/* Footer */}
