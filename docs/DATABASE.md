@@ -194,9 +194,33 @@ create index if not exists music_tracks_user on music_tracks(user_id, position);
 
 ### Music Storage Buckets
 
+The RLS policies below check *path ownership* only — they say nothing about what
+a file contains or how big it is. Size and MIME limits are bucket columns, and
+they are the authoritative gate: the client-side checks in `Music.tsx` exist to
+give a readable error, not to enforce this (anyone can call the Storage API
+directly and skip them).
+
 ```sql
-insert into storage.buckets (id, name, public) values ('music-audio', 'music-audio', true);
-insert into storage.buckets (id, name, public) values ('music-covers', 'music-covers', true);
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'music-audio', 'music-audio', true,
+  20971520, -- 20 MB
+  array['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/ogg','audio/mp4','audio/x-m4a','audio/aac']
+);
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'music-covers', 'music-covers', true,
+  5242880, -- 5 MB
+  array['image/png','image/jpeg','image/webp','image/gif']
+);
+
+-- Already have these buckets? Apply the limits in place instead:
+-- update storage.buckets set file_size_limit = 20971520,
+--   allowed_mime_types = array['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/ogg','audio/mp4','audio/x-m4a','audio/aac']
+--   where id = 'music-audio';
+-- update storage.buckets set file_size_limit = 5242880,
+--   allowed_mime_types = array['image/png','image/jpeg','image/webp','image/gif']
+--   where id = 'music-covers';
 
 create policy "music_audio_upload" on storage.objects
   for insert with check (
@@ -223,8 +247,22 @@ create policy "music_covers_delete" on storage.objects
 
 ## Avatar Storage
 
+Same as the music buckets: the policies check path ownership, the bucket columns
+enforce size and type. `Profile.tsx` mirrors these limits client-side for the
+error message only.
+
 ```sql
-insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'avatars', 'avatars', true,
+  5242880, -- 5 MB
+  array['image/png','image/jpeg','image/webp','image/gif']
+);
+
+-- Existing bucket:
+-- update storage.buckets set file_size_limit = 5242880,
+--   allowed_mime_types = array['image/png','image/jpeg','image/webp','image/gif']
+--   where id = 'avatars';
 
 create policy "avatar_upload" on storage.objects
   for insert with check (

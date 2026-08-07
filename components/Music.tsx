@@ -1,6 +1,9 @@
 // components/Music.tsx
 "use client";
 
+import { X, Music2, VolumeX, Volume1, Volume2, Image as ImageIcon } from "lucide-react";
+
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
 import { useRef, useEffect, useState } from "react";
@@ -10,6 +13,28 @@ import { isGuest } from "@/lib/guest";
 import { useAccentColor } from "@/lib/useAccentColor";
 
 type UploadState = "idle" | "uploading" | "done" | "error";
+
+// Upload limits. Storage buckets carry the authoritative
+// `allowed_mime_types`/`file_size_limit` (see docs/DATABASE.md) — keep these in
+// step with them so the user gets a readable reason instead of a rejected PUT.
+const ALLOWED_AUDIO_TYPES = new Set([
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/ogg",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/aac",
+]);
+const MAX_AUDIO_SIZE = 20 * 1024 * 1024; // 20 MB
+const ALLOWED_COVER_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
+const MAX_COVER_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export default function Music() {
   const {
@@ -105,6 +130,34 @@ export default function Music() {
       setUploadError("Uploads need an account — sign up to add your own tracks.");
       setUploadState("error");
       return;
+    }
+
+    // The `accept` attribute on the file input is a picker hint, not a control —
+    // it constrains the dialog and nothing else. Check type and size here too,
+    // matching the avatar upload in Profile.tsx. Bucket-level
+    // `allowed_mime_types`/`file_size_limit` remain the authoritative gate; this
+    // is the fast, explains-itself layer in front of it.
+    if (!ALLOWED_AUDIO_TYPES.has(audioFile.type)) {
+      setUploadError("That file isn't audio. Use an MP3, WAV, OGG, or M4A.");
+      setUploadState("error");
+      return;
+    }
+    if (audioFile.size > MAX_AUDIO_SIZE) {
+      setUploadError("Track must be under 20 MB.");
+      setUploadState("error");
+      return;
+    }
+    if (coverFile) {
+      if (!ALLOWED_COVER_TYPES.has(coverFile.type)) {
+        setUploadError("Cover must be a PNG, JPEG, WebP, or GIF image.");
+        setUploadState("error");
+        return;
+      }
+      if (coverFile.size > MAX_COVER_SIZE) {
+        setUploadError("Cover image must be under 5 MB.");
+        setUploadState("error");
+        return;
+      }
     }
 
     setUploadState("uploading");
@@ -218,7 +271,7 @@ export default function Music() {
             />
           ) : (
             <div className="w-full h-full bg-[#1a1410] flex items-center justify-center">
-              <div className="text-5xl opacity-30">🎵</div>
+              <Music2 size={46} strokeWidth={1.5} className="opacity-30" />
             </div>
           )}
         </div>
@@ -321,7 +374,7 @@ export default function Music() {
             onClick={() => setIsMuted(!isMuted)}
             className="text-[#9a8f7e] hover:text-(--accent) transition-colors text-sm w-5"
           >
-            {isMuted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
+            {isMuted || volume === 0 ? <VolumeX size={16} strokeWidth={1.75} /> : volume < 0.5 ? <Volume1 size={16} strokeWidth={1.75} /> : <Volume2 size={16} strokeWidth={1.75} />}
           </button>
           <input
             type="range"
@@ -379,7 +432,7 @@ export default function Music() {
                 : "bg-(--accent)/15 text-(--accent) hover:bg-(--accent)/25"
             }`}
           >
-            {view === "manage" ? "✕ close" : "+ add"}
+            {view === "manage" ? "close" : "+ add"}
           </button>
         </div>
 
@@ -388,7 +441,7 @@ export default function Music() {
           <>
             {tracks.length === 0 && (
               <div className="text-center py-16 text-[#4a4038]">
-                <div className="text-4xl mb-4">🎵</div>
+                <Music2 size={36} strokeWidth={1.5} className="mb-4 mx-auto" />
                 <p className="text-sm font-mono">No tracks yet.</p>
                 <button
                   onClick={() => setView("manage")}
@@ -441,7 +494,7 @@ export default function Music() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-[#3a3028] text-lg">🎵</span>
+                      <Music2 size={18} strokeWidth={1.5} className="text-[#3a3028]" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -502,7 +555,7 @@ export default function Music() {
                         : "bg-[#1a1410] border-[#2a2520] hover:border-(--accent)/30"
                     }`}
                   >
-                    <span className="text-base">🎵</span>
+                    <Music2 size={16} strokeWidth={1.75} />
                     <span className="text-xs text-[#9a8f7e] truncate flex-1">
                       {audioFile ? audioFile.name : "Choose MP3 / M4A / WAV / FLAC"}
                     </span>
@@ -517,7 +570,7 @@ export default function Music() {
                         aria-label="Clear selected audio file"
                         className="text-[#4a4038] hover:text-[#9a8f7e] text-xs shrink-0"
                       >
-                        <span aria-hidden="true">✕</span>
+                        <X size={16} strokeWidth={2} />
                       </button>
                     )}
                   </div>
@@ -543,7 +596,7 @@ export default function Music() {
                         : "bg-[#1a1410] border-[#2a2520] hover:border-(--accent)/30"
                     }`}
                   >
-                    <span className="text-base">🖼</span>
+                    <ImageIcon size={16} strokeWidth={1.75} />
                     <span className="text-xs text-[#9a8f7e] truncate flex-1">
                       {coverFile ? coverFile.name : "Choose JPG / PNG / WebP"}
                     </span>
@@ -558,7 +611,7 @@ export default function Music() {
                         aria-label="Clear selected cover image"
                         className="text-[#4a4038] hover:text-[#9a8f7e] text-xs shrink-0"
                       >
-                        <span aria-hidden="true">✕</span>
+                        <X size={16} strokeWidth={2} />
                       </button>
                     )}
                   </div>
@@ -632,7 +685,7 @@ export default function Music() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-[#3a3028] text-sm">🎵</span>
+                        <Music2 size={15} strokeWidth={1.5} className="text-[#3a3028]" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -647,19 +700,25 @@ export default function Music() {
                       onClick={() => {
                         if (!track.id) return;
                         // Also removes the uploaded audio + cover from storage.
-                        if (
-                          !window.confirm(
-                            `Remove "${track.title}"? The uploaded file is deleted for good.`,
-                          )
-                        )
-                          return;
-                        deleteUserTrack(track.id, track.file, track.cover || null);
+                        void confirmDialog({
+                          title: `Remove "${track.title}"?`,
+                          message:
+                            "The uploaded file and its cover are deleted for good.",
+                          confirmLabel: "Remove",
+                        }).then((ok) => {
+                          if (ok)
+                            deleteUserTrack(
+                              track.id!,
+                              track.file,
+                              track.cover || null,
+                            );
+                        });
                       }}
                       title="Remove track"
                       aria-label={`Remove track ${track.title ?? ""}`}
                       className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#4a4038] hover:text-red-400 hover:bg-red-400/10 transition-all text-sm shrink-0"
                     >
-                      <span aria-hidden="true">✕</span>
+                      <X size={16} strokeWidth={2} />
                     </button>
                   </div>
                 ))}

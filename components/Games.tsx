@@ -1,6 +1,8 @@
 // components/Games.tsx
 "use client";
 
+import { Hash, Grid3x3, Bomb, Spade, Crown, Blocks } from "lucide-react";
+
 import { useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -26,42 +28,42 @@ const GAME_CARDS = [
     id: "tictactoe" as Game,
     title: "Tic Tac Toe",
     desc: "Play against Tyunnie. She's better than she looks.",
-    icon: "⊞",
+    icon: Hash,
     available: true,
   },
   {
     id: "sudoku" as Game,
     title: "Sudoku",
     desc: "Fill the grid. Tyunnie believes in you.",
-    icon: "🔢",
+    icon: Grid3x3,
     available: true,
   },
   {
     id: "minesweeper" as Game,
     title: "Minesweeper",
     desc: "Don't blow up. Tyunnie is watching nervously.",
-    icon: "💣",
+    icon: Bomb,
     available: true,
   },
   {
     id: "solitaire" as Game,
     title: "Solitaire",
     desc: "Klondike. Tyunnie will judge your card choices.",
-    icon: "🃏",
+    icon: Spade,
     available: true,
   },
   {
     id: "chess" as Game,
     title: "Chess",
     desc: "Full chess vs Tyunnie or a friend. He plays dirty on Hard.",
-    icon: "♟️",
+    icon: Crown,
     available: true,
   },
   {
     id: "tetris" as Game,
     title: "Tetris",
     desc: "Clear lines. Tyunnie watches nervously as the stack grows.",
-    icon: "🟦",
+    icon: Blocks,
     available: true,
   },
 ];
@@ -208,7 +210,7 @@ export default function Games() {
                 : "border-[#e8e2d8] opacity-50 cursor-not-allowed"
             }`}
           >
-            <div className="text-3xl mb-3">{game.icon}</div>
+            <div className="mb-3" style={{ color: "var(--accent)" }}><game.icon size={26} strokeWidth={1.5} /></div>
             <div className="font-bold text-[#111010] mb-1 group-hover:text-(--accent) transition-colors">
               {game.title}
             </div>

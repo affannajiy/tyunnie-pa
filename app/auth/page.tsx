@@ -1,6 +1,8 @@
 // app/auth/page.tsx
 "use client";
 
+import { MailCheck } from "lucide-react";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -9,6 +11,28 @@ import { supabase } from "@/lib/supabase";
 import { enterGuest } from "@/lib/guest";
 import { APP_VERSION } from "@/lib/version";
 import { useAccentColor } from "@/lib/useAccentColor";
+
+/* Supabase's raw messages state what broke but never what to do about it.
+   Translate the ones users actually hit; anything unknown falls through with
+   a next step appended rather than being swallowed. */
+function friendlyAuthError(raw: string): string {
+  const m = raw.toLowerCase();
+  if (m.includes("invalid login credentials"))
+    return "That email and password don't match. Check the password, or reset it below.";
+  if (m.includes("already registered") || m.includes("already been registered"))
+    return "This email already has an account. Try logging in instead.";
+  if (m.includes("email not confirmed"))
+    return "Check your inbox — there's a confirmation link waiting for you.";
+  if (m.includes("password should be at least"))
+    return "Passwords need to be at least 6 characters.";
+  if (m.includes("unable to validate email") || m.includes("invalid email"))
+    return "That email address doesn't look right — check for a typo.";
+  if (m.includes("rate limit") || m.includes("too many"))
+    return "Too many tries just now. Give it a minute, then go again.";
+  if (m.includes("fetch") || m.includes("network"))
+    return "Couldn't reach the server. Check your connection and try again.";
+  return `${raw} — try again in a moment.`;
+}
 
 export default function AuthPage() {
   const router = useRouter();
@@ -32,7 +56,7 @@ export default function AuthPage() {
     if (mode === "signup") {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
-        setError(error.message);
+        setError(friendlyAuthError(error.message));
       } else {
         setSignupSuccess(true);
       }
@@ -42,7 +66,7 @@ export default function AuthPage() {
         password,
       });
       if (error) {
-        setError(error.message);
+        setError(friendlyAuthError(error.message));
       } else {
         router.push("/dashboard");
       }
@@ -65,7 +89,7 @@ export default function AuthPage() {
         redirectTo: `${window.location.origin}/dashboard`,
       },
     });
-    if (error) setError(error.message);
+    if (error) setError(friendlyAuthError(error.message));
   }
 
   const accent = `rgb(${accentRgb})`;
@@ -80,7 +104,7 @@ export default function AuthPage() {
             className="w-16 h-16 rounded-full flex items-center justify-center text-2xl mx-auto mb-5"
             style={{ background: accentLight, border: `1.5px solid ${accentMid}` }}
           >
-            📬
+            <MailCheck size={26} strokeWidth={1.5} style={{ color: accent }} />
           </div>
           <h2 className="font-serif italic text-2xl text-[#111010] dark:text-[#f5f0e8] mb-2">
             Check your email

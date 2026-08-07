@@ -126,13 +126,8 @@ Just one sentence, no quotes, no action blocks.`,
     <div className="min-h-screen pb-24">
       {/* ── HERO ── */}
       <div
-        className="rounded-3xl px-6 md:px-8 py-0 mb-8 flex items-center justify-between gap-4 md:gap-6 overflow-hidden relative"
-        style={{
-          background:
-            "linear-gradient(135deg, #fff8f4 0%, #fef3ec 50%, #fdf0e8 100%)",
-          border: "1px solid #fde8d8",
-          minHeight: "160px",
-        }}
+        className="desk-hero rounded-3xl px-6 md:px-8 py-0 mb-8 flex items-center justify-between gap-4 md:gap-6 overflow-hidden relative"
+        style={{ minHeight: "160px" }}
       >
         {/* Animated accent bubbles */}
         <div
@@ -186,7 +181,7 @@ Just one sentence, no quotes, no action blocks.`,
             </span>
           </div>
           <h1 className="font-serif italic text-2xl md:text-5xl text-[#1a1208] mb-2 md:mb-3 leading-tight pr-24 md:pr-0">
-            {getGreeting(profile?.display_name ?? userName)} 👋
+            {getGreeting(profile?.display_name ?? userName)}
           </h1>
           <p className="text-sm md:text-lg text-[#8a6f5a] font-serif italic leading-relaxed max-w-lg pr-20 md:pr-0">
             Welcome home 🧡

@@ -1,6 +1,8 @@
 // components/Pomodoro.tsx
 "use client";
 
+import { X } from "lucide-react";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getTodos, type Todo } from "@/lib/database";
 
@@ -298,7 +300,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         <div className="flex items-center gap-1">
           <button
             onClick={() => onChange(Math.max(min, value - 1))}
-            className="w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
+            className="tap-target w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
           >
             −
           </button>
@@ -313,7 +315,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
           <span className="text-[10px] text-[#9a8f7e] font-mono w-5">min</span>
           <button
             onClick={() => onChange(Math.min(max, value + 1))}
-            className="w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
+            className="tap-target w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
           >
             +
           </button>
@@ -569,7 +571,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
               aria-label="Unlink task from this session"
               className="text-[#c5bdb0] hover:text-red-400 transition-colors text-sm shrink-0"
             >
-              <span aria-hidden="true">✕</span>
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
         ) : (

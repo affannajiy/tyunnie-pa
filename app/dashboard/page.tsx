@@ -14,7 +14,7 @@ import Sidebar, { type Panel } from "@/components/Sidebar";
 import { MusicProvider, useMusicContext } from "@/lib/MusicContext";
 import CommandPalette from "@/components/CommandPalette";
 import ShortcutHelp from "@/components/ShortcutHelp";
-import UpdateAnnouncement from "@/components/UpdateAnnouncement";
+import { ConfirmHost } from "@/components/ui/ConfirmDialog";
 import TyunBirthday from "@/components/TyunBirthday";
 import { getProfile, type Profile as ProfileType } from "@/lib/database";
 import {
@@ -1392,8 +1392,8 @@ export default function Home() {
         onClose={() => setShowShortcuts(false)}
       />
 
-      {/* ── "SITE UPDATED" ONE-TIME ANNOUNCEMENT ── */}
-      {!guestMode && <UpdateAnnouncement />}
+      {/* ── DESTRUCTIVE-ACTION CONFIRM (single host for confirmDialog()) ── */}
+      <ConfirmHost />
 
       {/* ── TAEHYUN'S BIRTHDAY (Feb 5) — everyone, once/year ── */}
       <TyunBirthday />

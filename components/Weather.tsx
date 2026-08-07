@@ -1,34 +1,10 @@
 // components/Weather.tsx
 "use client";
 
+import { X, AlertTriangle } from "lucide-react";
+
 import { useState, useEffect } from "react";
-
-const WMO_CODES: Record<number, { label: string; icon: string }> = {
-  0: { label: "Clear", icon: "☀️" },
-  1: { label: "Mostly clear", icon: "🌤️" },
-  2: { label: "Partly cloudy", icon: "⛅" },
-  3: { label: "Overcast", icon: "☁️" },
-  45: { label: "Foggy", icon: "🌫️" },
-  48: { label: "Icy fog", icon: "🌫️" },
-  51: { label: "Light drizzle", icon: "🌦️" },
-  53: { label: "Drizzle", icon: "🌦️" },
-  55: { label: "Heavy drizzle", icon: "🌧️" },
-  61: { label: "Light rain", icon: "🌧️" },
-  63: { label: "Rain", icon: "🌧️" },
-  65: { label: "Heavy rain", icon: "🌧️" },
-  71: { label: "Light snow", icon: "🌨️" },
-  73: { label: "Snow", icon: "❄️" },
-  75: { label: "Heavy snow", icon: "❄️" },
-  80: { label: "Showers", icon: "🌦️" },
-  81: { label: "Showers", icon: "🌧️" },
-  82: { label: "Heavy showers", icon: "⛈️" },
-  95: { label: "Thunderstorm", icon: "⛈️" },
-  99: { label: "Thunderstorm", icon: "⛈️" },
-};
-
-function getWeather(code: number) {
-  return WMO_CODES[code] ?? { label: "Unknown", icon: "🌡️" };
-}
+import { getWeather } from "@/lib/weatherIcon";
 
 type WeatherData = { temp: number; code: number; city: string };
 
@@ -147,7 +123,7 @@ export default function Weather() {
           aria-label="Cancel city search"
           className="text-[10px] text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors"
         >
-          <span aria-hidden="true">✕</span>
+          <X size={16} strokeWidth={2} />
         </button>
       </div>
     );
@@ -172,7 +148,7 @@ export default function Weather() {
         title={`${error} Tap to try again.`}
         className="hidden md:flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-[10px] font-mono text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all"
       >
-        <span aria-hidden="true">⚠</span>
+        <AlertTriangle size={14} strokeWidth={2} />
         {lastAttempt.city} — tap to retry
       </button>
     );
@@ -189,14 +165,14 @@ export default function Weather() {
     );
 
   // ── DISPLAY ──
-  const { icon, label } = getWeather(data.code);
+  const { icon: WIcon, label } = getWeather(data.code);
   return (
     <button
       onClick={() => setEditing(true)}
       className="hidden md:flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-xs text-[#9a8f7e] font-mono hover:border-(--accent) transition-all"
       title={`${data.city} — click to change`}
     >
-      <span className="text-sm">{icon}</span>
+      <WIcon size={16} strokeWidth={1.75} />
       <span className="font-bold text-[#111010]">{data.temp}°C</span>
       <span className="text-[10px] hidden lg:block">{label}</span>
     </button>

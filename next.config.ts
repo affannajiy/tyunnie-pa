@@ -10,7 +10,11 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
+      // Scoped to the origins actually used: Supabase Storage (avatars, covers,
+      // music art), plus data:/blob: for cropped avatars and object URLs.
+      // A bare `https:` would let any host serve an image — a tracking-pixel and
+      // referrer-leak surface with no feature behind it.
+      "img-src 'self' https://*.supabase.co data: blob:",
       "media-src 'self' blob:",
       "font-src 'self'",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com https://geocoding-api.open-meteo.com https://vitals.vercel-insights.com https://speed.cloudflare.com",
@@ -45,7 +49,7 @@ const nextConfig: NextConfig = {
 
   experimental: {
     // Tree-shake large packages to only include what's imported
-    optimizePackageImports: ['recharts', 'date-fns'],
+    optimizePackageImports: ['recharts', 'date-fns', 'lucide-react'],
   },
 
   // Image optimization — serve AVIF/WebP instead of raw PNGs (the 560×720 hero

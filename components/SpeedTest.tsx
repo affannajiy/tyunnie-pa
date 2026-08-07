@@ -1,5 +1,7 @@
 "use client";
 
+import { Radio, ArrowDown, ArrowUp, type LucideIcon } from "lucide-react";
+
 import { useState, useRef, useEffect } from "react";
 
 type Phase = "idle" | "ping" | "download" | "upload" | "done";
@@ -194,10 +196,10 @@ function SpeedDial({ speed, phase, progress }: DialProps) {
 }
 
 // ── Small result card ──
-function ResultCard({ label, value, unit, icon }: { label: string; value: number | null; unit: string; icon: string }) {
+function ResultCard({ label, value, unit, icon: Icon }: { label: string; value: number | null; unit: string; icon: LucideIcon }) {
   return (
     <div className="flex flex-col items-center p-4 bg-white dark:bg-[#1a1612] border border-[#e8e2d8] dark:border-[#2a2520] rounded-2xl flex-1 min-w-0">
-      <span className="text-xl mb-2">{icon}</span>
+      <Icon size={20} strokeWidth={1.75} className="mb-2" style={{ color: "var(--accent)" }} />
       <p className="text-[10px] text-[#9a8f7e] font-mono uppercase tracking-wider mb-1">{label}</p>
       <p className="text-2xl font-bold tabular-nums" style={{ color: value != null ? "var(--accent)" : "#c4b9a8" }}>
         {value != null ? value : "—"}
@@ -320,9 +322,9 @@ export default function SpeedTest() {
 
       {/* Result cards */}
       <div className="flex gap-3 mb-4">
-        <ResultCard label="Ping" value={results.ping} unit="ms" icon="📡" />
-        <ResultCard label="Download" value={results.download} unit="Mbps" icon="⬇️" />
-        <ResultCard label="Upload" value={results.upload} unit="Mbps" icon="⬆️" />
+        <ResultCard label="Ping" value={results.ping} unit="ms" icon={Radio} />
+        <ResultCard label="Download" value={results.download} unit="Mbps" icon={ArrowDown} />
+        <ResultCard label="Upload" value={results.upload} unit="Mbps" icon={ArrowUp} />
       </div>
 
       {results.jitter != null && (

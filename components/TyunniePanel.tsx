@@ -1,6 +1,8 @@
 // components/TyunniePanel.tsx
 "use client";
 
+import { X } from "lucide-react";
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useMusicContext } from "@/lib/MusicContext";
 import { useWorkspace } from "@/lib/WorkspaceContext";
@@ -12,6 +14,7 @@ import { authHeader } from "@/lib/supabase";
 import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
 import { getCyclingQuote } from "@/lib/tyunnieQuotes";
 import { TYUN_CORE, isTyunBirthday } from "@/lib/tyunPersona";
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 
 /** Strip all tags except a safe whitelist — prevents XSS in AI-rendered chat bubbles. */
 function sanitizeHtml(html: string): string {
@@ -990,8 +993,16 @@ casual chat (no data action — still set a mood):
   <action>{"type":"set_mood","data":{"mood":"happy"}}</action>`;
   }
 
+  // Destructive actions reach the same handlers as the panel delete buttons, so
+  // they must clear the same bar: the UI path confirms, and so does this one.
+  // Without it a hallucinated (or prompt-injected) action deletes user data with
+  // no chance to cancel.
+  function confirmDestructive(title: string, message: string) {
+    return confirmDialog({ title, message, confirmLabel: "Delete" });
+  }
+
   // ── PARSE AND EXECUTE ACTION ──
-  function executeAction(raw: string) {
+  async function executeAction(raw: string) {
     try {
       const action = JSON.parse(
         raw
@@ -1076,6 +1087,11 @@ casual chat (no data action — still set a mood):
         case "reset_finance": {
           const viewM = appData.financeViewMonth ?? new Date().getMonth();
           const viewY = appData.financeViewYear ?? new Date().getFullYear();
+          const ok = await confirmDestructive(
+            `Clear all of ${MONTHS[viewM]} ${viewY}?`,
+            "Every income and expense entry logged that month is deleted. This can't be undone.",
+          );
+          if (!ok) break;
           onFinanceReset(viewY, viewM + 1);
           break;
         }
@@ -1094,6 +1110,15 @@ casual chat (no data action — still set a mood):
         case "clear_sticky": {
           const d = action.data;
           if (d.id && onStickyCleared) {
+            // Cheap loss exemption: an already-empty note clears silently.
+            const note = appData.stickyNotes?.find((n) => n.id === d.id);
+            if (note?.content?.trim()) {
+              const ok = await confirmDestructive(
+                "Clear this note?",
+                "Everything written on it is erased.",
+              );
+              if (!ok) break;
+            }
             onStickyCleared(d.id);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
@@ -1113,6 +1138,12 @@ casual chat (no data action — still set a mood):
         case "delete_todo": {
           const d = action.data;
           if (d.id && onTodoDeleted) {
+            const item = appData.todos.find((t) => t.id === d.id);
+            const ok = await confirmDestructive(
+              "Delete this task?",
+              item ? `"${item.text}" is removed from your list.` : "This task is removed from your list.",
+            );
+            if (!ok) break;
             onTodoDeleted(d.id);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
@@ -1147,6 +1178,14 @@ casual chat (no data action — still set a mood):
         case "delete_project": {
           const d = action.data;
           if (d.id && onProjectDeleted) {
+            const item = appData.projects.find((p) => p.id === d.id);
+            const ok = await confirmDestructive(
+              "Delete this project?",
+              item
+                ? `"${item.name}" and its progress are deleted for good.`
+                : "This project and its progress are deleted for good.",
+            );
+            if (!ok) break;
             onProjectDeleted(d.id);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
@@ -1157,6 +1196,14 @@ casual chat (no data action — still set a mood):
         case "delete_draft": {
           const d = action.data;
           if (d.id && onDraftDeleted) {
+            const item = appData.drafts.find((x) => x.id === d.id);
+            const ok = await confirmDestructive(
+              "Delete this draft?",
+              item
+                ? `"${item.title || "Untitled"}" and everything written in it is gone.`
+                : "This draft and everything written in it is gone.",
+            );
+            if (!ok) break;
             onDraftDeleted(d.id);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
@@ -1167,6 +1214,12 @@ casual chat (no data action — still set a mood):
         case "delete_snippet": {
           const d = action.data;
           if (d.id && onSnippetDeleted) {
+            const item = appData.snips.find((s) => s.id === d.id);
+            const ok = await confirmDestructive(
+              "Delete this snippet?",
+              item ? `"${item.name}" and its code are deleted.` : "This snippet and its code are deleted.",
+            );
+            if (!ok) break;
             onSnippetDeleted(d.id);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
@@ -1177,6 +1230,14 @@ casual chat (no data action — still set a mood):
         case "delete_finance": {
           const d = action.data;
           if (d.id && onFinanceDeleted) {
+            const item = appData.finance.find((f) => f.id === d.id);
+            const ok = await confirmDestructive(
+              "Delete this entry?",
+              item
+                ? `"${item.description}" is removed from your records.`
+                : "This entry is removed from your records.",
+            );
+            if (!ok) break;
             onFinanceDeleted(d.id);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
@@ -1445,10 +1506,16 @@ casual chat (no data action — still set a mood):
         { role: "assistant", content: cleanMessage },
       ]);
 
-      // Execute all actions in sequence
-      actionMatches.forEach((match, i) => {
-        setTimeout(() => executeAction(match[1]), 300 + i * 200);
-      });
+      // Execute all actions in sequence. Strictly serial, not staggered
+      // timeouts: a destructive action awaits a confirm dialog, and ConfirmHost
+      // holds one pending prompt at a time — overlapping calls would orphan the
+      // first promise and silently drop that action.
+      void (async () => {
+        for (let i = 0; i < actionMatches.length; i++) {
+          await new Promise((r) => setTimeout(r, i === 0 ? 300 : 200));
+          await executeAction(actionMatches[i][1]);
+        }
+      })();
     } catch {
       setThinking(false);
       addBubble("tyunnie", "Something broke on my end. Try me again.");
@@ -1482,7 +1549,7 @@ casual chat (no data action — still set a mood):
           aria-label="Dismiss suggestion"
           className="absolute top-2 right-2.5 text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors"
         >
-          <span aria-hidden="true">✕</span>
+          <X size={16} strokeWidth={2} />
         </button>
         <div className="flex items-center gap-2 mb-1.5 pr-4">
           <Image
@@ -1832,7 +1899,7 @@ casual chat (no data action — still set a mood):
                 aria-label="Close chat"
                 className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
               >
-                <span aria-hidden="true">✕</span>
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
           </div>
@@ -1977,7 +2044,7 @@ casual chat (no data action — still set a mood):
                       aria-label="Close chat"
                       className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
                     >
-                      <span aria-hidden="true">✕</span>
+                      <X size={16} strokeWidth={2} />
                     </button>
                   </div>
                 </div>

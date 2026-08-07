@@ -86,11 +86,11 @@ function getBotMove(board: Cell[], difficulty: Difficulty): number {
 }
 
 const WIN_QUIPS = [
-  "Did you really just let me win? 😏",
+  "Did you really just let me win?",
   "I told you I was good at this 🧡",
   "Not even close. Try again?",
   "Flawless. I'm built different.",
-  "I wasn't even trying that hard 😌",
+  "I wasn't even trying that hard.",
 ];
 
 const LOSE_QUIPS = [
@@ -98,7 +98,7 @@ const LOSE_QUIPS = [
   "...I let you win. Obviously.",
   "Rematch. Right now.",
   "Fine. You got me this time.",
-  "I was distracted by the music 🎵",
+  "I was distracted by the music.",
 ];
 
 const DRAW_QUIPS = [
@@ -185,7 +185,7 @@ export default function TicTacToe() {
   }
 
   const statusText = () => {
-    if (status === "won") return "You win! 🎉";
+    if (status === "won") return "You win!";
     if (status === "lost") return "Tyunnie wins! 🧡";
     if (status === "draw") return "It's a draw!";
     if (botThinking) return "Tyunnie is thinking...";

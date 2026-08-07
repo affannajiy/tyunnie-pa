@@ -1,5 +1,8 @@
 "use client";
 
+import { X, Wallet, BarChart3 } from "lucide-react";
+
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useEffect } from "react";
 import {
   getFinanceEntries,
@@ -66,8 +69,12 @@ const MONTHS = [
 const NEEDS_CATS = ["Food", "Transport", "Utilities", "Education"];
 const WANTS_CATS = ["Entertainment", "Shopping"];
 
+// Chart-legend colours. These are deliberately FIXED, never var(--accent):
+// one category shifting with the user's accent while the rest stay put would
+// make the legend lie. Food/Maybank used to be the literal accent orange —
+// they now have their own tones that no longer collide with it.
 const CATEGORY_COLORS: Record<string, string> = {
-  Food: "#f97316",
+  Food: "#e8843c",
   Transport: "#3b82f6",
   Education: "#8b5cf6",
   Entertainment: "#ec4899",
@@ -79,7 +86,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const ACCOUNT_COLORS: Record<string, string> = {
-  Maybank: "#f97316",
+  Maybank: "#d97757",
   MAE: "#3b82f6",
   Grab: "#16a34a",
   GXBank: "#8b5cf6",
@@ -285,7 +292,8 @@ export default function Finance({
 
   function ruleColor(actual: number, target: number, inverse = false) {
     const ratio = target > 0 ? actual / target : 0;
-    if (inverse) return ratio >= 1 ? "#16a34a" : "#f97316";
+    // Amber = "short of target", a semantic warning — not the accent.
+    if (inverse) return ratio >= 1 ? "#16a34a" : "#f59e0b";
     return ratio <= 1 ? "#16a34a" : "#ef4444";
   }
 
@@ -337,7 +345,7 @@ export default function Finance({
       setAllEntries((prev) => [newEntry, ...prev]);
       onAction(
         type === "income"
-          ? `Income added! RM${parsed.toFixed(2)} from ${description} to ${account} 💰`
+          ? `Income added! RM${parsed.toFixed(2)} from ${description} to ${account}`
           : `Expense logged — RM${parsed.toFixed(2)} on ${description} from ${account}.`,
       );
       setDesc("");
@@ -366,9 +374,12 @@ export default function Finance({
   }
 
   async function handleDeleteRule(rule: RecurringRule) {
-    const confirmed = window.confirm(
-      `Delete recurring "${rule.description}"? Entries already logged stay; no new ones will be added.`,
-    );
+    const confirmed = await confirmDialog({
+      title: `Delete recurring "${rule.description}"?`,
+      message:
+        "Entries already logged stay where they are — no new ones will be added.",
+      confirmLabel: "Delete rule",
+    });
     if (!confirmed) return;
     setRules((prev) => prev.filter((r) => r.id !== rule.id));
     await deleteRecurringRule(rule.id);
@@ -376,9 +387,10 @@ export default function Finance({
   }
 
   async function handleDelete(id: string, entry: FinanceEntry) {
-    const confirmed = window.confirm(
-      `Delete "${entry.description}" (${entry.type === "income" ? "+" : "-"}RM${entry.amount.toFixed(2)})? This can't be undone.`,
-    );
+    const confirmed = await confirmDialog({
+      title: `Delete "${entry.description}"?`,
+      message: `${entry.type === "income" ? "+" : "-"}RM${entry.amount.toFixed(2)} — this can't be undone.`,
+    });
     if (!confirmed) return;
     await deleteFinanceEntry(id);
     setAllEntries((prev) => prev.filter((e) => e.id !== id));
@@ -386,9 +398,11 @@ export default function Finance({
   }
 
   async function handleReset() {
-    const confirmed = window.confirm(
-      `Delete all entries for ${MONTHS[viewMonth]} ${viewYear}? This can't be undone.`,
-    );
+    const confirmed = await confirmDialog({
+      title: `Clear ${MONTHS[viewMonth]} ${viewYear}?`,
+      message: `All ${monthEntries.length} ${monthEntries.length === 1 ? "entry" : "entries"} for this month will be deleted. This can't be undone.`,
+      confirmLabel: "Delete all",
+    });
     if (!confirmed) return;
     setResetting(true);
     await Promise.all(monthEntries.map((e) => deleteFinanceEntry(e.id)));
@@ -750,7 +764,7 @@ export default function Finance({
                       aria-label={`Delete recurring ${rule.description}`}
                       className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
                     >
-                      <span aria-hidden="true">✕</span>
+                      <X size={16} strokeWidth={2} />
                     </button>
                   </div>
                 ))}
@@ -787,8 +801,8 @@ export default function Finance({
                 onClick={() => setAccountFilter("all")}
                 className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all ${
                   accountFilter === "all"
-                    ? "bg-[#111010] text-white"
-                    : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#111010] hover:text-[#111010]"
+                    ? "bg-[#f97316] text-white"
+                    : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
                 }`}
               >
                 All accounts
@@ -833,7 +847,7 @@ export default function Finance({
 
             {!loading && filtered.length === 0 && (
               <div className="text-center py-12 text-[#c5bdb0]">
-                <div className="text-3xl mb-3 opacity-50">💰</div>
+                <Wallet size={30} strokeWidth={1.5} className="mb-3 opacity-50 mx-auto" />
                 <p className="text-sm">
                   No entries for {MONTHS[viewMonth]} {viewYear}.
                 </p>
@@ -890,7 +904,7 @@ export default function Finance({
                       aria-label={`Delete ${entry.description}`}
                       className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                     >
-                      <span aria-hidden="true">✕</span>
+                      <X size={16} strokeWidth={2} />
                     </button>
                   </div>
                 ))}
@@ -905,7 +919,7 @@ export default function Finance({
         <div className="flex flex-col gap-5">
           {monthIncome === 0 && monthExpenses === 0 ? (
             <div className="bg-white border border-[#e8e2d8] rounded-2xl p-10 text-center text-[#c5bdb0]">
-              <div className="text-4xl mb-3 opacity-40">📊</div>
+              <BarChart3 size={36} strokeWidth={1.5} className="mb-3 opacity-40 mx-auto" />
               <p className="text-sm">
                 No data for {MONTHS[viewMonth]} {viewYear}. Add some entries
                 first.
@@ -1367,8 +1381,8 @@ export default function Finance({
                     <div className="bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-3 mt-1">
                       <p className="text-[11px] text-[#9a8f7e] leading-relaxed">
                         {needsSpent > needsTarget
-                          ? `⚠️ You've exceeded your needs budget by RM${(needsSpent - needsTarget).toFixed(2)}.`
-                          : `✅ Needs spending is within the 50% target.`}{" "}
+                          ? `You've exceeded your needs budget by RM${(needsSpent - needsTarget).toFixed(2)}.`
+                          : `Needs spending is within the 50% target.`}{" "}
                         {savingsAmt >= savingsTarget
                           ? `You're on track with savings 🧡`
                           : `You need RM${(savingsTarget - savingsAmt).toFixed(2)} more in savings to hit 20%.`}

@@ -1,6 +1,9 @@
 // components/Profile.tsx
 "use client";
 
+import { X, Camera, Trash2, MapPin, Sun, Moon, KeyRound, Lock, Link2 } from "lucide-react";
+
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useEffect, useCallback } from "react";
 import { getProfile, upsertProfile, type Profile } from "@/lib/database";
 import { useRef } from "react";
@@ -91,6 +94,54 @@ type Props = {
   toggleTheme: () => void;
 };
 
+/* ── Vault PIN throttling ──────────────────────────────────────────────────
+   PIN verification is a local decrypt of `vault_meta`, so there is no server
+   round-trip to hang a lockout off. Keeping the attempt count in React state
+   alone meant a page reload reset it — the whole limit was one F5 wide.
+   Persisting it makes the limit survive reloads, and the lockout is *timed*
+   rather than permanent so a forgetful owner isn't bricked out of their own
+   vault (a permanent client-side lock is a self-inflicted denial of service,
+   not a security control).
+   This throttles a human at the keyboard. It cannot throttle an attacker who
+   already holds the ciphertext and calls the KDF offline — only KDF cost can
+   do that. See SECURITY.md. */
+const PIN_LOCK_KEY = "tyunnie_vault_pin_lock";
+const PIN_LOCK_STEPS = [60_000, 5 * 60_000, 30 * 60_000]; // after 3, 6, 9 failures
+
+type PinLockState = { attempts: number; until: number };
+
+function readPinLock(userId: string): PinLockState {
+  if (typeof window === "undefined") return { attempts: 0, until: 0 };
+  try {
+    const raw = localStorage.getItem(`${PIN_LOCK_KEY}_${userId}`);
+    if (!raw) return { attempts: 0, until: 0 };
+    const p = JSON.parse(raw);
+    return {
+      attempts: typeof p.attempts === "number" ? p.attempts : 0,
+      until: typeof p.until === "number" ? p.until : 0,
+    };
+  } catch {
+    return { attempts: 0, until: 0 };
+  }
+}
+
+function writePinLock(userId: string, state: PinLockState) {
+  try {
+    if (!state.attempts && !state.until) {
+      localStorage.removeItem(`${PIN_LOCK_KEY}_${userId}`);
+    } else {
+      localStorage.setItem(`${PIN_LOCK_KEY}_${userId}`, JSON.stringify(state));
+    }
+  } catch {
+    /* storage full or blocked — the in-memory count still applies this session */
+  }
+}
+
+function lockLabel(ms: number): string {
+  const mins = Math.ceil(ms / 60_000);
+  return mins <= 1 ? "a minute" : `${mins} minutes`;
+}
+
 export default function Profile({
   userId,
   onClose,
@@ -151,9 +202,19 @@ export default function Profile({
   const [pinInput, setPinInput] = useState(""); // what user is typing
   const [pinConfirm, setPinConfirm] = useState(""); // confirm on setup
   const [pinStep, setPinStep] = useState<"enter" | "confirm">("enter");
-  const [pinAttempts, setPinAttempts] = useState(0);
+  // Lazy init (not a mount effect) so the persisted lockout applies to the very
+  // first keypress after a reload, not one render later.
+  const [pinLock, setPinLock] = useState<PinLockState>(() => readPinLock(userId));
   const [pinError, setPinError] = useState("");
-  const [pinLocked, setPinLocked] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const pinLocked = pinLock.until > nowTick;
+  // Tick only while a lockout is actually counting down, so the keypad
+  // re-enables itself when the timer expires without needing a reload.
+  useEffect(() => {
+    if (pinLock.until <= Date.now()) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [pinLock.until]);
   const [vaultEntries, setVaultEntries] = useState<VaultEntry[]>([]);
   const [vaultLoading, setVaultLoading] = useState(false);
   const [showAddEntry, setShowAddEntry] = useState(false);
@@ -439,9 +500,11 @@ export default function Profile({
   async function handleDeleteEntry(id: string) {
     // Vault data is AES-GCM encrypted client-side with a PIN we never store —
     // there is no recovery path whatsoever. The most irreversible delete here.
-    const confirmed = window.confirm(
-      "Delete this vault entry? It's encrypted with your PIN and cannot be recovered.",
-    );
+    const confirmed = await confirmDialog({
+      title: "Delete this vault entry?",
+      message:
+        "It's encrypted with your PIN, so there's no way to get it back — not even for us.",
+    });
     if (!confirmed) return;
     await deleteVaultEntry(id);
     setVaultEntries((prev) => prev.filter((e) => e.id !== id));
@@ -566,15 +629,26 @@ export default function Profile({
           vaultMeta.pin_salt,
         );
         if (!ok) {
-          const attempts = pinAttempts + 1;
-          setPinAttempts(attempts);
+          const attempts = pinLock.attempts + 1;
           setPinInput("");
-          if (attempts >= 3) {
-            setPinLocked(true);
-            setPinError("Too many attempts. Vault locked for this session.");
+          // Escalating cool-off every 3 failures; the count persists across
+          // reloads so refreshing the page no longer resets the limit.
+          if (attempts % 3 === 0) {
+            const step = PIN_LOCK_STEPS[
+              Math.min(Math.floor(attempts / 3) - 1, PIN_LOCK_STEPS.length - 1)
+            ];
+            const next = { attempts, until: Date.now() + step };
+            setPinLock(next);
+            writePinLock(userId, next);
+            setNowTick(Date.now());
+            setPinError(`Too many attempts. Try again in ${lockLabel(step)}.`);
           } else {
+            const next = { attempts, until: 0 };
+            setPinLock(next);
+            writePinLock(userId, next);
+            const left = 3 - (attempts % 3);
             setPinError(
-              `Wrong PIN. ${3 - attempts} attempt${3 - attempts === 1 ? "" : "s"} remaining.`,
+              `Wrong PIN. ${left} attempt${left === 1 ? "" : "s"} remaining.`,
             );
           }
           setVaultLoading(false);
@@ -609,7 +683,8 @@ export default function Profile({
         setVaultPin(next);
         setVaultLocked(false);
         setPinInput("");
-        setPinAttempts(0);
+        setPinLock({ attempts: 0, until: 0 });
+        writePinLock(userId, { attempts: 0, until: 0 });
         setPinError("");
         setVaultLoading(false);
       }
@@ -1094,7 +1169,7 @@ export default function Profile({
                   className="cursor-pointer p-1 hover:scale-110 transition-transform"
                   title="Upload photo"
                 >
-                  <span className="text-white text-sm">📷</span>
+                  <Camera size={15} strokeWidth={1.75} className="text-white" />
                   <input
                     type="file"
                     accept="image/*"
@@ -1108,7 +1183,7 @@ export default function Profile({
                     title="Remove photo"
                     className="p-1 hover:scale-110 transition-transform"
                   >
-                    <span className="text-red-300 text-sm">🗑</span>
+                    <Trash2 size={15} strokeWidth={1.75} className="text-red-300" />
                   </button>
                 )}
               </div>
@@ -1183,7 +1258,7 @@ export default function Profile({
             {city ? (
               <div className="flex items-center gap-2">
                 <div className="flex-1 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-[#111010]">
-                  📍 {city}
+                  <MapPin size={12} strokeWidth={2} className="inline -mt-0.5" /> {city}
                 </div>
                 <button
                   onClick={() => {
@@ -1194,7 +1269,7 @@ export default function Profile({
                   aria-label="Clear saved city"
                   className="text-[#c5bdb0] hover:text-red-400 transition-colors text-sm"
                 >
-                  <span aria-hidden="true">✕</span>
+                  <X size={16} strokeWidth={2} />
                 </button>
               </div>
             ) : (
@@ -1359,8 +1434,8 @@ export default function Profile({
             </label>
             <div className="flex gap-2">
               {[
-                { v: "light", label: "☀️ Light" },
-                { v: "dark", label: "🌙 Dark" },
+                { v: "light", label: "Light", icon: Sun },
+                { v: "dark", label: "Dark", icon: Moon },
               ].map(({ v, label }) => (
                 <button
                   key={v}
@@ -1677,7 +1752,7 @@ export default function Profile({
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono">
-              🔐 Password Vault
+              Password Vault
             </p>
             {!vaultLocked && (
               <div className="flex items-center gap-2">
@@ -1691,7 +1766,7 @@ export default function Profile({
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
                 >
-                  🔑 Change PIN
+                  Change PIN
                 </button>
                 <button
                   onClick={() => {
@@ -1709,7 +1784,7 @@ export default function Profile({
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-400 hover:bg-red-100 hover:border-red-300 hover:text-red-500 transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
                 >
-                  🔒 Lock
+                  Lock
                 </button>
               </div>
             )}
@@ -1895,7 +1970,7 @@ export default function Profile({
                     ? "Set a 6-digit PIN to protect your vault. This PIN is never stored — keep it safe."
                     : "Confirm your PIN."
                   : pinLocked
-                    ? "Vault locked for this session due to too many attempts."
+                    ? `Too many attempts. Try again in ${lockLabel(pinLock.until - nowTick)}.`
                     : "Enter your 6-digit PIN to unlock your vault."}
               </p>
 
@@ -2084,7 +2159,7 @@ export default function Profile({
                                 aria-label={`Delete vault entry ${entry.name}`}
                                 className="text-[10px] font-mono text-[#c5bdb0] hover:text-red-400 transition-colors"
                               >
-                                <span aria-hidden="true">✕</span>
+                                <X size={16} strokeWidth={2} />
                               </button>
                             </div>
                           </div>
@@ -2103,7 +2178,7 @@ export default function Profile({
                               rel="noopener noreferrer"
                               className="text-[10px] text-(--accent) font-mono mt-1 hover:underline block truncate"
                             >
-                              🔗 {dec.website}
+                              <Link2 size={12} strokeWidth={2} className="inline -mt-0.5" /> {dec.website}
                             </a>
                           )}
                           {revealed && dec?.notes && (

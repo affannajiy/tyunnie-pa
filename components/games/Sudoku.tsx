@@ -1,6 +1,8 @@
 // components/games/Sudoku.tsx
 "use client";
 
+import { Pencil } from "lucide-react";
+
 import { useState, useEffect, useCallback } from "react";
 
 type Difficulty = "easy" | "medium" | "hard";
@@ -75,7 +77,7 @@ const PUZZLES: Record<Difficulty, { puzzle: number[]; solution: number[] }[]> =
 
 const QUIPS: Record<Difficulty, string[]> = {
   easy: [
-    "Easy mode? Bold choice 😏",
+    "Easy mode? Bold choice.",
     "I believe in you 🧡",
     "You've got this.",
   ],
@@ -293,7 +295,7 @@ export default function Sudoku() {
               : "bg-white border border-[#e8e2d8] text-[#9a8f7e]"
           }`}
         >
-          ✏️ Notes
+          <Pencil size={12} strokeWidth={2} className="inline -mt-0.5" /> Notes
         </button>
       </div>
 

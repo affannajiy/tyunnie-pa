@@ -1,5 +1,7 @@
 "use client";
 
+import { X, Music2 } from "lucide-react";
+
 import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
@@ -357,7 +359,7 @@ export default function FocusMode({
             e.currentTarget.style.color = "#9a8f7e";
           }}
         >
-          ✕ Exit <span className="opacity-50">Esc</span>
+          <X size={13} strokeWidth={2} /> Exit <span className="opacity-50">Esc</span>
         </button>
       </div>
 
@@ -389,7 +391,7 @@ export default function FocusMode({
                 aria-label="Unlink task from this session"
                 className="text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors shrink-0"
               >
-                <span aria-hidden="true">✕</span>
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
           ) : (
@@ -435,7 +437,7 @@ export default function FocusMode({
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-5xl text-[#4a4038]">
-                  🎵
+                  <Music2 size={22} strokeWidth={1.5} />
                 </div>
               )}
             </div>
@@ -459,7 +461,7 @@ export default function FocusMode({
         {listenMode && !music.currentTrack && (
           <div className="text-center px-6 max-w-sm">
             <div className="text-4xl mb-3" aria-hidden="true">
-              🎵
+              <Music2 size={22} strokeWidth={1.5} />
             </div>
             <p className="text-sm text-[#9a8f7e] leading-relaxed">
               Nothing playing yet. Start a track from the Music panel and it&apos;ll
@@ -613,7 +615,7 @@ export default function FocusMode({
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[#4a4038]">
-                  🎵
+                  <Music2 size={22} strokeWidth={1.5} />
                 </div>
               )}
             </div>

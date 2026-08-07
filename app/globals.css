@@ -342,6 +342,71 @@ body {
   color: #4a4038 !important;
 }
 
+/* Small controls that must stay visually small but need a real touch target.
+   Grows the hit area to ~40px with a pseudo-element instead of changing the
+   button's own box, so surrounding layout is untouched. */
+.tap-target {
+  position: relative;
+}
+.tap-target::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+}
+
+/* Hover-reveal controls (delete buttons on list rows) are unreachable on a
+   touchscreen — there is no :hover to trigger them. On pointer-coarse devices
+   show them permanently, dimmed, so they can be found without a gesture
+   nobody was told about. */
+@media (hover: none) {
+  .opacity-0.group-hover\:opacity-100 {
+    opacity: 0.45 !important;
+  }
+}
+
+/* Desk hero card — warm cream in light, warm brown in dark.
+   Lives here (not as an inline style) because a CSS class can be
+   dark-mode-remapped and an inline style cannot. */
+.desk-hero {
+  background: linear-gradient(135deg, #fff8f4 0%, #fef3ec 50%, #fdf0e8 100%);
+  border: 1px solid #fde8d8;
+}
+
+.dark .desk-hero {
+  background: linear-gradient(135deg, #1a1512 0%, #1e1815 50%, #211a15 100%);
+  border-color: #2f2620;
+}
+
+/* Desk widget cards — same reason: these were inline `background: white`,
+   which no `.dark .bg-white` rule can reach. */
+.dark .desk-card {
+  background-color: #1a1714 !important;
+}
+
+.dark .border-\[\#f0ece8\] { border-color: #2a2520 !important; }
+.dark .text-\[\#1a1208\] { color: #e8ddd0 !important; }
+.dark .text-\[\#8a6f5a\] { color: #a9968a !important; }
+
+/* Dark-mode remaps for the semantic Tailwind badge palettes used by
+   Todo tags and Project statuses. Without these they stay pastel-light
+   on a dark card (fails figure/ground). */
+.dark .bg-blue-50    { background-color: #10203a !important; }
+.dark .text-blue-500 { color: #7ab0f5 !important; }
+.dark .border-blue-200 { border-color: #23406b !important; }
+.dark .bg-purple-50  { background-color: #221535 !important; }
+.dark .text-purple-500 { color: #b490f0 !important; }
+.dark .border-purple-200 { border-color: #3d2a60 !important; }
+.dark .bg-\[\#dcfce7\]     { background-color: #10291a !important; }
+.dark .text-\[\#15803d\]   { color: #6ee7a0 !important; }
+.dark .border-\[\#86efac\] { border-color: #1f5136 !important; }
+.dark .bg-\[\#eff6ff\]     { background-color: #10203a !important; }
+.dark .text-\[\#3b82f6\]   { color: #7ab0f5 !important; }
+.dark .border-\[\#bfdbfe\] { border-color: #23406b !important; }
+
 /* ── ACCENT COLOR OVERRIDES ──
    These rules replace hardcoded #f97316 / #fff0e6 / #fed7aa / #c2500f
    Tailwind classes with CSS custom properties, enabling user-selectable

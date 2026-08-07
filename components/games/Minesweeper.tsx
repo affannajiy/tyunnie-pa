@@ -1,6 +1,8 @@
 // components/games/Minesweeper.tsx
 "use client";
 
+import { Flag, Bomb, X } from "lucide-react";
+
 import { useState, useEffect, useCallback } from "react";
 
 type Difficulty = "easy" | "medium" | "hard";
@@ -34,7 +36,7 @@ const WIN_QUIPS = [
 ];
 
 const LOSE_QUIPS = [
-  "...that was the mine 😔",
+  "...that was the mine.",
   "BOOM. Try again 🧡",
   "I told you to think first.",
   "That one had mine written all over it.",
@@ -291,7 +293,7 @@ export default function Minesweeper() {
       {/* Stats */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5 bg-white border border-[#e8e2d8] rounded-xl px-3 py-1.5">
-          <span className="text-sm">🚩</span>
+          <Flag size={14} strokeWidth={2} />
           <span className="font-mono text-sm font-bold text-[#111010]">
             {mines - flagCount}
           </span>
@@ -315,7 +317,7 @@ export default function Minesweeper() {
           <p className="text-white font-bold text-sm">
             {status === "won"
               ? `Cleared! 🧡 ${formatTime(seconds)}`
-              : "💥 BOOM!"}
+              : "BOOM!"}
           </p>
         </div>
       ) : null}
@@ -345,10 +347,10 @@ export default function Minesweeper() {
               }`}
             >
               {cell.flagged && !cell.revealed ? (
-                <span>{isWrongFlag ? "✕" : "🚩"}</span>
+                isWrongFlag ? <X size={13} strokeWidth={2.5} /> : <Flag size={13} strokeWidth={2.5} />
               ) : cell.revealed ? (
                 cell.mine ? (
-                  "💣"
+                  <Bomb size={14} strokeWidth={2} />
                 ) : cell.adjacent > 0 ? (
                   <span style={{ color: NUM_COLORS[cell.adjacent] }}>
                     {cell.adjacent}

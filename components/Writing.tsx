@@ -1,6 +1,9 @@
 // components/panels/Writing.tsx
 'use client'
 
+import { X, Flame, PenLine } from "lucide-react";
+
+import { confirmDialog } from '@/components/ui/ConfirmDialog'
 import { useState, useEffect, useRef } from 'react'
 import {
   getDrafts,
@@ -144,10 +147,15 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
     setTimeout(() => bodyRef.current?.focus(), 50)
   }
 
-  function closeEditor() {
+  async function closeEditor() {
     // Warn if there are unsaved changes
     if (isDirty) {
-      const confirmed = window.confirm('You have unsaved changes. Discard them?')
+      const confirmed = await confirmDialog({
+        title: 'Discard unsaved changes?',
+        message: "What you've written since the last save will be lost.",
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep writing',
+      })
       if (!confirmed) return
     }
     setEditorOpen(false)
@@ -198,7 +206,10 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
   }
 
   async function handleDelete(id: string, draftTitle: string) {
-    const confirmed = window.confirm(`Delete "${draftTitle}"? This can't be undone.`)
+    const confirmed = await confirmDialog({
+      title: `Delete "${draftTitle}"?`,
+      message: "This draft goes for good — it can't be undone.",
+    })
     if (!confirmed) return
 
     await deleteDraft(id)
@@ -359,7 +370,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                   Streak
                 </div>
                 <div className="font-serif italic text-3xl text-[#111010]">
-                  🔥 {streak}
+                  <Flame size={13} strokeWidth={2} /> {streak}
                   <span className="text-base text-[#9a8f7e] ml-1">
                     {streak === 1 ? 'day' : 'days'}
                   </span>
@@ -381,7 +392,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
           {/* Empty state */}
           {!loading && filtered.length === 0 && (
             <div className="text-center py-16 text-[#c5bdb0]">
-              <div className="text-4xl mb-3 opacity-40">✍️</div>
+              <PenLine size={36} strokeWidth={1.5} className="mb-3 opacity-40 mx-auto" />
               <p className="text-sm">
                 {search ? 'No drafts match that search.' : "No drafts yet. Hit \"+ New Draft\" and let it flow."}
               </p>
@@ -403,7 +414,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                     aria-label={`Delete draft ${draft.title}`}
                     className="absolute top-3 right-3 text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   >
-                    <span aria-hidden="true">✕</span>
+                    <X size={16} strokeWidth={2} />
                   </button>
 
                   {/* Title */}

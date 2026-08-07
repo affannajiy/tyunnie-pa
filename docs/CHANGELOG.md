@@ -5,6 +5,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.24.0] — 2026-08-07
+
+### Highlights
+
+**Improved**
+
+- **A cleaner look, everywhere** — every icon in the app is now a crisp drawn icon instead of an emoji, and they take on your accent colour instead of ignoring it. The Home, Focus, Create and Play buttons in the dock are the most obvious change.
+- **Dark mode, finally everywhere** — the home screen's welcome card and all its widgets used to stay bright white in dark mode. They don't anymore, and task tags and project badges are readable now too.
+- **Delete buttons you can actually reach on a phone** — the small ✕ on tasks, drafts, snippets, tracks and finance entries only appeared on hover, which never happens on a touchscreen. They're always visible there now.
+- **Login problems explained in plain English** — instead of "Invalid login credentials" you get told what to check and what to do next.
+- **No more pop-up after an update** — the "what's new" box that appeared when you opened the app is gone. The full changelog still lives on the About page whenever you want it.
+
+**Fixed**
+
+- **No more accidental deletes** — removing a task, snippet or sticky note now asks first, in a proper dialog that matches the rest of the app rather than a bare browser pop-up.
+- **Your accent colour is respected in Finance** — a couple of spots stayed orange no matter which colour you picked.
+- **Easier to tap** — the +/− minute buttons on the Pomodoro timer were too small to hit reliably on a phone.
+
+### Added
+
+- **`lucide-react`** as the single icon source, with a fixed size/stroke contract (16px inline, 18px panel header, 22px dock, `strokeWidth` 1.75) recorded in `.claude/CLAUDE.md`. Registered in `optimizePackageImports` so only used icons ship.
+- **`components/ui/ConfirmDialog.tsx`** — promise-based `confirmDialog()` plus a single `<ConfirmHost />` mounted in the dashboard. Replaces all 9 `window.confirm()` call sites and adds confirmation to Todo, Snippets and StickyNote, which had none.
+- **`lib/weatherIcon.ts`** — one WMO-code → label/icon map shared by `Weather.tsx` and the Desk weather widget, which previously kept two copies that had drifted apart.
+- **`.tap-target`** utility and a `@media (hover: none)` rule in `globals.css` for touch-reachable small and hover-revealed controls.
+
+### Changed
+
+- **`UpdateAnnouncement.tsx` deleted.** No post-update modal; the changelog lives on `/about` only. `localStorage["tyunnie_last_seen_version"]` is no longer written. `TyunBirthday` is unaffected — it was never version-gated.
+- **Desk hero and widget cards** moved off inline `background` styles onto `.desk-hero` / `.desk-card` classes, because an inline style cannot be reached by a `.dark` remap rule.
+- **Dark-mode remaps added** for `blue-50`/`purple-50`/`#dcfce7`/`#eff6ff` badge palettes, `#f0ece8`, `#1a1208` and `#8a6f5a`.
+- **Finance chart colours** — `CATEGORY_COLORS.Food` and `ACCOUNT_COLORS.Maybank` no longer use the literal accent orange; `ruleColor()`'s under-target branch is now semantic amber. Legend colours stay deliberately fixed so they don't shift with the user's accent.
+- **Dock icon collision resolved** — the Productivity hub keeps `Target`/"Focus"; Focus Mode is now `Maximize2`/"Zen". They previously shared 🎯 and the label "Focus" side by side in the mobile bar.
+- **Emoji retained deliberately**: 🧡 (brand), chess/card typographic glyphs (already monochrome, `currentColor`-inheriting, no lucide equivalent), and 🐿️/🎂 inside AI prompt strings in `lib/tyunPersona.ts` and `TyunniePanel.tsx` — those are model instructions, not pixels.
+
+---
+
 ## [3.23.0] — 2026-07-23
 
 ### Highlights

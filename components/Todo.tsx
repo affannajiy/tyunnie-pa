@@ -1,6 +1,9 @@
 // components/panels/Todo.tsx
 "use client";
 
+import { X, CheckCircle2 } from "lucide-react";
+
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import {
@@ -163,11 +166,16 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
         // classes, so hardcoding here stayed orange under any custom accent.
         colors: accentConfettiColors(),
       });
-      onAction("Yes!! One down — you're unstoppable 🔥");
+      onAction("Yes!! One down — you're unstoppable!");
     }
   }
 
   async function handleDelete(id: string, todoText: string) {
+    const confirmed = await confirmDialog({
+      title: `Delete "${todoText}"?`,
+      message: "It's removed from your list for good.",
+    });
+    if (!confirmed) return;
     await deleteTodo(id);
     setTodos((prev) => prev.filter((t) => t.id !== id));
     onAction(`Removed "${todoText}" from your tasks.`);
@@ -323,12 +331,12 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
 
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16 text-[#c5bdb0]">
-          <div className="text-3xl mb-3 opacity-50">✅</div>
+          <CheckCircle2 size={30} strokeWidth={1.5} className="mb-3 opacity-50 mx-auto" />
           <p className="text-sm">
             {filter === "done"
               ? "Nothing completed yet — get to it!"
               : filter === "pending"
-                ? "All caught up! Nothing pending 🎉"
+                ? "All caught up! Nothing pending."
                 : "No tasks yet. Add something above!"}
           </p>
         </div>
@@ -389,7 +397,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
                   }
                 `}
                 >
-                  {isOverdue(todo.due) && !todo.done ? "⚠ " : ""}
+                  
                   {todo.due}
                 </span>
               )}
@@ -407,7 +415,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
                 aria-label={`Delete task ${todo.text}`}
                 className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
               >
-                <span aria-hidden="true">✕</span>
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
           ))}

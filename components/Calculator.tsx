@@ -1,5 +1,7 @@
 "use client";
 
+import { X } from "lucide-react";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { authHeader } from "@/lib/supabase";
 import { isGuest } from "@/lib/guest";
@@ -92,6 +94,21 @@ function buildEval(
   e = e.replace(/\)\s*\(/g, ")*(");
   e = e.replace(/\)\s*(Math\.)/g, ")*$1");
   return e;
+}
+
+// Expressions that arrive from outside the keypad (Tyun's `calculate` action, or
+// a restored `tyunnie_calc_pending`) are untrusted: they reach `new Function()`
+// below. The keypad can only ever emit the vocabulary allowlisted here, so
+// anything left over after stripping known tokens is not a calculation.
+// Same intent as GRAPH_SAFE, but token-based — an unknown identifier such as
+// `constructor` or `fetch` leaves letters behind and is rejected.
+const CALC_KNOWN_TOKENS =
+  /\b(?:asinh|acosh|atanh|asin|acos|atan|sinh|cosh|tanh|sin|cos|tan|log|ln|abs|nCr|nPr|Ans|Mem)\b/g;
+const CALC_SAFE_REST = /^[0-9+\-*/^().,%!×÷√∛πℯ\s]*$/;
+
+export function isSafeCalcExpr(raw: string): boolean {
+  if (typeof raw !== "string" || raw.length > 200) return false;
+  return CALC_SAFE_REST.test(raw.replace(CALC_KNOWN_TOKENS, ""));
 }
 
 function tryEval(
@@ -393,10 +410,18 @@ function ScientificCalc() {
   // Listen for Tyunnie-originated calculations
   useEffect(() => {
     function apply(e: string) {
+      sessionStorage.removeItem("tyunnie_calc_pending");
+      // Untrusted source — reject anything outside the keypad's vocabulary
+      // rather than feeding it to the evaluator.
+      if (!isSafeCalcExpr(e)) {
+        setExpr("");
+        setJustCalced(false);
+        setError("Couldn't read that expression");
+        return;
+      }
       setExpr(e);
       setJustCalced(false);
       setError(null);
-      sessionStorage.removeItem("tyunnie_calc_pending");
     }
 
     const pending = sessionStorage.getItem("tyunnie_calc_pending");
@@ -1127,7 +1152,7 @@ function GraphingCalc() {
                 aria-label={`Remove function ${fn.expr}`}
                 className="text-gray-400 dark:text-[#5a4a3a] hover:text-red-400 transition-colors text-xs"
               >
-                <span aria-hidden="true">✕</span>
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
           );

@@ -116,7 +116,7 @@ function seed(): GuestData {
     todos: [
       { id: uid(), user_id: GUEST_ID, text: "Finish data structures assignment", tag: "cs", due: dayOffset(0), done: false, created_at: nowISO() },
       { id: uid(), user_id: GUEST_ID, text: "Draft the short story ending", tag: "write", due: dayOffset(1), done: false, created_at: nowISO() },
-      { id: uid(), user_id: GUEST_ID, text: "Buy a caramel macchiato ☕", tag: "personal", due: dayOffset(0), done: false, created_at: nowISO() },
+      { id: uid(), user_id: GUEST_ID, text: "Buy a caramel macchiato", tag: "personal", due: dayOffset(0), done: false, created_at: nowISO() },
       { id: uid(), user_id: GUEST_ID, text: "Review lecture notes on graphs", tag: "cs", due: dayOffset(3), done: false, created_at: nowISO() },
       { id: uid(), user_id: GUEST_ID, text: "Water the plants", tag: "personal", due: dayOffset(-1), done: false, created_at: nowISO() },
       { id: uid(), user_id: GUEST_ID, text: "Submit scholarship form", tag: "other", due: null, done: true, created_at: nowISO() },
@@ -182,8 +182,8 @@ function seed(): GuestData {
     ],
     stickyNotes: [
       { id: uid(), user_id: GUEST_ID, content: "Don't forget to breathe.\nYou're doing fine.", x: 140, y: 140, width: 220, height: 160, color: "yellow", created_at: nowISO() },
-      { id: uid(), user_id: GUEST_ID, content: "Idea: visualizer that reacts to the beat 🎵", x: 400, y: 220, width: 220, height: 160, color: "pink", created_at: nowISO() },
-      { id: uid(), user_id: GUEST_ID, content: "Tap the squirrel. Try the demo. Sign up if it sticks. 🐿️", x: 270, y: 380, width: 220, height: 160, color: "blue", created_at: nowISO() },
+      { id: uid(), user_id: GUEST_ID, content: "Idea: visualizer that reacts to the beat", x: 400, y: 220, width: 220, height: 160, color: "pink", created_at: nowISO() },
+      { id: uid(), user_id: GUEST_ID, content: "Try the demo. Sign up if it sticks.", x: 270, y: 380, width: 220, height: 160, color: "blue", created_at: nowISO() },
     ],
     memories: [
       { id: uid(), user_id: GUEST_ID, content: "A caramel macchiato fixes most afternoons.", created_at: nowISO() },

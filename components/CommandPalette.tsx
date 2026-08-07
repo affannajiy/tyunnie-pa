@@ -2,6 +2,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Home, CheckCircle2, PenLine, FolderKanban, Code2, Wallet, Music2,
+  Timer, Gamepad2, Target, Sparkles, User, Heart, Square, Search, X,
+  type LucideIcon,
+} from "lucide-react";
 import type { Panel } from "@/components/Sidebar";
 import type { Todo, Draft, Project, Snip } from "@/lib/database";
 import { isMac, modKey } from "@/lib/platform";
@@ -23,7 +28,7 @@ type PreviewData =
 interface PaletteResult {
   id: string;
   kind: ResultKind;
-  icon: string;
+  icon: LucideIcon;
   title: string;
   subtitle?: string;
   shortcut?: string[];
@@ -49,20 +54,20 @@ interface Props {
 
 // ── Static data ────────────────────────────────────────────────────────────
 
-const PANEL_ENTRIES: { panel: Panel; icon: string; title: string; keywords: string[] }[] = [
-  { panel: "desk",         icon: "🏠", title: "Home",       keywords: ["home", "desk", "dashboard"] },
-  { panel: "todo",         icon: "✅", title: "Tasks",      keywords: ["todo", "tasks", "task", "remind", "checklist"] },
-  { panel: "writing",      icon: "✍️", title: "Writing",    keywords: ["writing", "drafts", "draft", "write", "notes"] },
-  { panel: "projects",     icon: "🗂️", title: "Projects",   keywords: ["projects", "project", "gantt"] },
-  { panel: "snippets",     icon: "⌨️", title: "Snippets",   keywords: ["snippets", "snips", "code", "snippet", "terminal"] },
-  { panel: "finance",      icon: "💰", title: "Finance",    keywords: ["finance", "money", "budget", "expenses", "income"] },
-  { panel: "music",        icon: "🎵", title: "Music",      keywords: ["music", "songs", "playlist", "player"] },
-  { panel: "pomodoro",     icon: "⏲️", title: "Pomodoro",   keywords: ["pomodoro", "focus", "timer", "study"] },
-  { panel: "games",        icon: "🎮", title: "Games",      keywords: ["games", "game", "play", "chess", "sudoku", "tetris"] },
-  { panel: "focus",        icon: "🎯", title: "Focus Hub",         keywords: ["focus", "hub", "tasks", "work", "pomodoro", "projects"] },
-  { panel: "create",       icon: "✨", title: "Create Hub",        keywords: ["create", "hub", "writing", "snippets", "finance", "calculator"] },
-  { panel: "play",         icon: "🎮", title: "Play Hub",          keywords: ["play", "hub", "music", "games", "entertainment"] },
-  { panel: "profile",      icon: "👤", title: "Profile",    keywords: ["profile", "settings", "account", "me"] },
+const PANEL_ENTRIES: { panel: Panel; icon: LucideIcon; title: string; keywords: string[] }[] = [
+  { panel: "desk",         icon: Home, title: "Home",       keywords: ["home", "desk", "dashboard"] },
+  { panel: "todo",         icon: CheckCircle2, title: "Tasks",      keywords: ["todo", "tasks", "task", "remind", "checklist"] },
+  { panel: "writing",      icon: PenLine, title: "Writing",    keywords: ["writing", "drafts", "draft", "write", "notes"] },
+  { panel: "projects",     icon: FolderKanban, title: "Projects",   keywords: ["projects", "project", "gantt"] },
+  { panel: "snippets",     icon: Code2, title: "Snippets",   keywords: ["snippets", "snips", "code", "snippet", "terminal"] },
+  { panel: "finance",      icon: Wallet, title: "Finance",    keywords: ["finance", "money", "budget", "expenses", "income"] },
+  { panel: "music",        icon: Music2, title: "Music",      keywords: ["music", "songs", "playlist", "player"] },
+  { panel: "pomodoro",     icon: Timer, title: "Pomodoro",   keywords: ["pomodoro", "focus", "timer", "study"] },
+  { panel: "games",        icon: Gamepad2, title: "Games",      keywords: ["games", "game", "play", "chess", "sudoku", "tetris"] },
+  { panel: "focus",        icon: Target, title: "Focus Hub",         keywords: ["focus", "hub", "tasks", "work", "pomodoro", "projects"] },
+  { panel: "create",       icon: Sparkles, title: "Create Hub",        keywords: ["create", "hub", "writing", "snippets", "finance", "calculator"] },
+  { panel: "play",         icon: Gamepad2, title: "Play Hub",          keywords: ["play", "hub", "music", "games", "entertainment"] },
+  { panel: "profile",      icon: User, title: "Profile",    keywords: ["profile", "settings", "account", "me"] },
 ];
 
 const SHORTCUT_ENTRIES: { title: string; shortcut: string[]; keywords: string[] }[] = [
@@ -192,7 +197,7 @@ function PalettePreview({ data }: { data?: PreviewData }) {
       <div className="h-full overflow-y-auto p-5" style={{ scrollbarWidth: "thin" }}>
         <div className="flex items-start gap-2 mb-3">
           <span className="text-base leading-none shrink-0" aria-hidden="true">
-            {t.done ? "✅" : "⬜"}
+            {t.done ? <CheckCircle2 size={16} strokeWidth={1.75} /> : <Square size={16} strokeWidth={1.75} />}
           </span>
           <h3
             className={`text-sm leading-snug ${
@@ -291,7 +296,7 @@ export default function CommandPalette({
       {
         id: "act-new-task",
         kind: "action",
-        icon: "✅",
+        icon: CheckCircle2,
         title: "New task",
         subtitle: `Navigate to Tasks + focus input`,
         shortcut: [modKey(), "⇧", "N"],
@@ -300,7 +305,7 @@ export default function CommandPalette({
       {
         id: "act-new-draft",
         kind: "action",
-        icon: "✍️",
+        icon: PenLine,
         title: "New draft",
         subtitle: "Navigate to Writing + open editor",
         shortcut: [modKey(), "⇧", "D"],
@@ -309,7 +314,7 @@ export default function CommandPalette({
       {
         id: "act-new-project",
         kind: "action",
-        icon: "🗂️",
+        icon: FolderKanban,
         title: "New project",
         subtitle: "Navigate to Projects + open form",
         shortcut: [modKey(), "⇧", "P"],
@@ -318,7 +323,7 @@ export default function CommandPalette({
       {
         id: "act-new-snippet",
         kind: "action",
-        icon: "⌨️",
+        icon: Code2,
         title: "New snippet",
         subtitle: "Navigate to Snippets + focus editor",
         shortcut: [modKey(), "⇧", "S"],
@@ -327,7 +332,7 @@ export default function CommandPalette({
       {
         id: "act-focus-mode",
         kind: "action",
-        icon: "🎯",
+        icon: Target,
         title: "Focus Mode",
         subtitle: "Enter fullscreen focus overlay",
         shortcut: [modKey(), "⇧", "F"],
@@ -336,7 +341,7 @@ export default function CommandPalette({
       {
         id: "act-music-toggle",
         kind: "action",
-        icon: "🎵",
+        icon: Music2,
         title: "Play / Pause music",
         subtitle: "Toggle music playback",
         shortcut: [modKey(), "M"],
@@ -345,7 +350,7 @@ export default function CommandPalette({
       {
         id: "act-tyunnie",
         kind: "action",
-        icon: "🧡",
+        icon: Heart,
         title: "Open Tyunnie chat",
         subtitle: "Talk to your personal AI",
         shortcut: [modKey(), "⇧", "T"],
@@ -399,7 +404,7 @@ export default function CommandPalette({
         out.push({
           id: `shortcut-${s.title}`,
           kind: "shortcut",
-          icon: "⌨️",
+          icon: Code2,
           title: s.title,
           shortcut: s.shortcut,
         });
@@ -414,7 +419,7 @@ export default function CommandPalette({
         out.push({
           id: `task-${t.id}`,
           kind: "task",
-          icon: t.done ? "✅" : "⬜",
+          icon: t.done ? CheckCircle2 : Square,
           title: t.text,
           subtitle: `[${t.tag}]${t.due ? " · due " + t.due : ""}${t.done ? " · done" : ""}`,
           panel: "todo",
@@ -431,7 +436,7 @@ export default function CommandPalette({
         out.push({
           id: `draft-${d.id}`,
           kind: "draft",
-          icon: "✍️",
+          icon: PenLine,
           title: d.title,
           subtitle: `${words} word${words !== 1 ? "s" : ""}`,
           panel: "writing",
@@ -447,7 +452,7 @@ export default function CommandPalette({
         out.push({
           id: `project-${p.id}`,
           kind: "project",
-          icon: "🗂️",
+          icon: FolderKanban,
           title: p.name,
           subtitle: `${p.status} · ${p.progress}%`,
           panel: "projects",
@@ -463,7 +468,7 @@ export default function CommandPalette({
         out.push({
           id: `snip-${s.id}`,
           kind: "snippet",
-          icon: "⌨️",
+          icon: Code2,
           title: s.name,
           subtitle: s.language,
           panel: "snippets",
@@ -595,7 +600,7 @@ export default function CommandPalette({
               aria-label="Clear search"
               className="w-8 h-8 flex items-center justify-center text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors shrink-0 rounded-lg"
             >
-              ✕
+              <X size={16} strokeWidth={2} />
             </button>
           )}
           <Kbd>ESC</Kbd>
@@ -612,7 +617,7 @@ export default function CommandPalette({
         >
           {items.length === 0 && query.trim().length > 0 && (
             <div className="px-4 py-10 text-center">
-              <div className="text-2xl mb-2">🔍</div>
+              <Search size={24} strokeWidth={1.5} className="mb-2 mx-auto opacity-60" />
               <p className="text-sm text-[#9a8f7e]">
                 No results for <strong>&ldquo;{query}&rdquo;</strong>
               </p>
@@ -640,7 +645,7 @@ export default function CommandPalette({
                     }}
                   >
                     <span className="text-base shrink-0 w-5 text-center leading-none">
-                      {item.icon}
+                      <item.icon size={16} strokeWidth={1.75} />
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate text-[#111010]">

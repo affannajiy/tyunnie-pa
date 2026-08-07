@@ -1,6 +1,8 @@
 // components/ShortcutHelp.tsx
 "use client";
 
+import { X } from "lucide-react";
+
 import { useEffect } from "react";
 import { isMac } from "@/lib/platform";
 import { Kbd } from "@/components/ui/Kbd";
@@ -127,7 +129,7 @@ export default function ShortcutHelp({ open, onClose }: Props) {
               aria-label="Close keyboard shortcuts"
               className="w-8 h-8 flex items-center justify-center text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors rounded-lg ml-1"
             >
-              ✕
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
         </div>

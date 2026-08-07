@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckCircle2, FolderKanban, Timer } from "lucide-react";
+
 type Props = {
   onNavigate: (panel: string) => void;
 };
@@ -7,21 +9,21 @@ type Props = {
 const CARDS = [
   {
     panel: "todo",
-    icon: "✅",
+    icon: CheckCircle2,
     title: "Tasks",
     desc: "Your to-do list and reminders",
     color: "#22c55e",
   },
   {
     panel: "projects",
-    icon: "🗂️",
+    icon: FolderKanban,
     title: "Projects",
     desc: "Track progress and timelines",
     color: "#a855f7",
   },
   {
     panel: "pomodoro",
-    icon: "⏲️",
+    icon: Timer,
     title: "Pomodoro",
     desc: "Focus sessions and study timer",
     color: "#ef4444",
@@ -50,7 +52,7 @@ export default function ProductivityHub({ onNavigate }: Props) {
               className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
               style={{ backgroundColor: `${card.color}18` }}
             >
-              {card.icon}
+              <card.icon size={20} strokeWidth={1.75} style={{ color: card.color }} />
             </div>
             <div className="font-bold text-[#111010] dark:text-[#f0ebe3] mb-1 group-hover:text-(--accent) transition-colors">
               {card.title}

@@ -1,5 +1,7 @@
 "use client";
 
+import { Cake } from "lucide-react";
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { isTyunBirthday } from "@/lib/tyunPersona";
@@ -77,7 +79,7 @@ export default function TyunBirthday() {
           className="text-[10px] font-bold uppercase tracking-[3px] font-mono mt-3 mb-1"
           style={{ color: accent }}
         >
-          February 5 · 🐿️
+          February 5
         </p>
         <h2
           id="tyun-birthday-title"
@@ -95,7 +97,7 @@ export default function TyunBirthday() {
           className="w-full py-2.5 rounded-xl text-white font-bold text-sm tracking-wide transition-all"
           style={{ background: accent }}
         >
-          Happy birthday, Taehyun 🎂
+          Happy birthday, Taehyun
         </button>
       </div>
     </div>

@@ -2,6 +2,15 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Home,
+  Target,
+  Sparkles,
+  Gamepad2,
+  Pin,
+  Maximize2,
+  type LucideIcon,
+} from "lucide-react";
 
 export type Panel =
   | "desk"
@@ -30,11 +39,14 @@ type Props = {
   hiddenPanels?: Set<string>;
 };
 
-const NAV_ITEMS: { panel: Panel; icon: string; label: string }[] = [
-  { panel: "desk",   icon: "🏠", label: "Home" },
-  { panel: "focus",  icon: "🎯", label: "Focus" },
-  { panel: "create", icon: "✨", label: "Create" },
-  { panel: "play",   icon: "🎮", label: "Play" },
+const NAV_ITEMS: { panel: Panel; icon: LucideIcon; label: string }[] = [
+  { panel: "desk",   icon: Home,     label: "Home" },
+  // "Focus" here is the Productivity hub. Focus *Mode* (the fullscreen timer)
+  // is a separate button below and MUST NOT share this icon or label — they
+  // used to both be 🎯 "Focus", which read as one control with two behaviours.
+  { panel: "focus",  icon: Target,   label: "Focus" },
+  { panel: "create", icon: Sparkles, label: "Create" },
+  { panel: "play",   icon: Gamepad2, label: "Play" },
 ];
 
 // macOS dock magnification: returns scale based on distance from hovered index
@@ -95,7 +107,7 @@ export default function Sidebar({
         <div className="w-px h-5 bg-white/10 mx-1 self-center shrink-0" />
 
         {/* Nav items */}
-        {visibleNavItems.map(({ panel, icon, label }, idx) => {
+        {visibleNavItems.map(({ panel, icon: Icon, label }, idx) => {
           const isActive = active === panel;
           const scale = dockScale(idx, hoveredIdx);
           return (
@@ -142,7 +154,13 @@ export default function Sidebar({
                       : "none",
                 }}
               >
-                <span className="text-xl leading-none">{icon}</span>
+                {/* Stroke icons carry no colour of their own, so the accent
+                    does the hierarchy the old emoji couldn't. */}
+                <Icon
+                  size={22}
+                  strokeWidth={1.75}
+                  color={isActive ? "var(--accent)" : "rgba(255,255,255,0.62)"}
+                />
               </button>
 
               {/* Active dot */}
@@ -262,7 +280,7 @@ export default function Sidebar({
                   : "none",
             }}
           >
-            <span className="text-xl leading-none">📌</span>
+            <Pin size={22} strokeWidth={1.75} color="rgba(255,255,255,0.62)" />
           </button>
           <div className="w-1 h-1 mt-1" />
         </div>
@@ -306,7 +324,8 @@ export default function Sidebar({
                   : "none",
             }}
           >
-            <span className="text-xl leading-none">🎯</span>
+            {/* Deliberately NOT Target — that belongs to the Productivity hub. */}
+            <Maximize2 size={22} strokeWidth={1.75} color="rgba(255,255,255,0.62)" />
           </button>
           <div className="w-1 h-1 mt-1" />
         </div>
@@ -325,7 +344,7 @@ export default function Sidebar({
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        {visibleNavItems.map(({ panel, icon, label }) => {
+        {visibleNavItems.map(({ panel, icon: Icon, label }) => {
           const isActive = active === panel;
           return (
             <button
@@ -338,14 +357,14 @@ export default function Sidebar({
               }}
             >
               <span
-                className="text-[22px] leading-none"
+                className="leading-none"
                 style={{
                   display: "block",
                   transform: isActive ? "scale(1.18) translateY(-1px)" : "scale(1) translateY(0)",
                   transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
                 }}
               >
-                {icon}
+                <Icon size={22} strokeWidth={1.75} />
               </span>
               <span
                 className="text-[9px] font-bold uppercase tracking-wide font-mono"
@@ -412,7 +431,9 @@ export default function Sidebar({
           className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
           style={{ color: "rgba(255,255,255,0.45)" }}
         >
-          <span className="text-[22px] leading-none" style={{ display: "block", transition: "transform 0.15s ease" }}>📌</span>
+          <span className="leading-none" style={{ display: "block", transition: "transform 0.15s ease" }}>
+            <Pin size={22} strokeWidth={1.75} />
+          </span>
           <span className="text-[9px] font-bold uppercase tracking-wide font-mono opacity-55">Sticky</span>
           <div className="w-1.5 h-1.5" />
         </button>
@@ -423,8 +444,12 @@ export default function Sidebar({
           className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
           style={{ color: "rgba(255,255,255,0.45)" }}
         >
-          <span className="text-[22px] leading-none" style={{ display: "block", transition: "transform 0.15s ease" }}>🎯</span>
-          <span className="text-[9px] font-bold uppercase tracking-wide font-mono opacity-55">Focus</span>
+          {/* Distinct icon AND distinct label from the "Focus" hub tab above —
+              on mobile they sit in the same bar with nothing else to tell them apart. */}
+          <span className="leading-none" style={{ display: "block", transition: "transform 0.15s ease" }}>
+            <Maximize2 size={22} strokeWidth={1.75} />
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-wide font-mono opacity-55">Zen</span>
           <div className="w-1.5 h-1.5" />
         </button>
 

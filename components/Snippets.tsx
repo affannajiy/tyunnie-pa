@@ -1,6 +1,9 @@
 // components/panels/Snippets.tsx
 "use client";
 
+import { X } from "lucide-react";
+
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useEffect, useRef } from "react";
 import {
   getSnips,
@@ -80,9 +83,14 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
   // Writing.tsx:148 already had the right pattern. Guards only the two
   // user-initiated navigations; the mount effect and post-delete reload call
   // loadSnip/newSnip directly, where a prompt would make no sense.
-  function confirmDiscard(): boolean {
+  async function confirmDiscard(): Promise<boolean> {
     if (!isDirty) return true;
-    return window.confirm("You have unsaved changes. Discard them?");
+    return confirmDialog({
+      title: "Discard unsaved changes?",
+      message: "The edits you've made since the last save will be lost.",
+      confirmLabel: "Discard",
+      cancelLabel: "Keep editing",
+    });
   }
 
   function loadSnip(snip: Snip) {
@@ -107,7 +115,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
 
   // Listen for global "tyunnie-new-snippet" — open a blank new snippet
   useEffect(() => {
-    function handler() { if (confirmDiscard()) newSnip(); }
+    function handler() { void confirmDiscard().then((ok) => { if (ok) newSnip(); }); }
     window.addEventListener("tyunnie-new-snippet", handler);
     return () => window.removeEventListener("tyunnie-new-snippet", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,7 +179,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
             : s,
         ),
       );
-      onAction(`Snip saved — "${fileName}" is updated 💻`);
+      onAction(`Snip saved — "${fileName}" is updated.`);
     } else {
       // Create new snip
       const newSnip = await addSnip(userId, {
@@ -183,7 +191,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
         setSnips((prev) => [newSnip, ...prev]);
         setActiveId(newSnip.id);
         onAction(
-          `New snip saved — "${fileName}". Good code deserves a good home 💻`,
+          `New snip saved — "${fileName}". Good code deserves a good home.`,
         );
       }
     }
@@ -193,6 +201,11 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
   }
 
   async function handleDelete(id: string, snipName: string) {
+    const confirmed = await confirmDialog({
+      title: `Delete "${snipName}"?`,
+      message: "The code in this snippet can't be recovered afterwards.",
+    });
+    if (!confirmed) return;
     await deleteSnip(id);
     const updated = snips.filter((s) => s.id !== id);
     setSnips(updated);
@@ -286,7 +299,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
       <div className="flex flex-row md:flex-col gap-2 md:w-50 shrink-0 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
         {/* New snip button */}
         <button
-          onClick={() => { if (confirmDiscard()) newSnip(); }}
+          onClick={() => { void confirmDiscard().then((ok) => { if (ok) newSnip(); }); }}
           className="shrink-0 bg-(--accent) text-white font-bold rounded-xl py-2.5 px-4 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px whitespace-nowrap"
         >
           + New Snip
@@ -319,7 +332,8 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
             <div
               key={snip.id}
               onClick={() => {
-                if (snip.id !== activeId && confirmDiscard()) loadSnip(snip);
+                if (snip.id !== activeId)
+                  void confirmDiscard().then((ok) => { if (ok) loadSnip(snip); });
               }}
               className={`
                 flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer
@@ -351,7 +365,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
                 aria-label={`Delete snippet ${snip.name}`}
                 className="text-[#c5bdb0] hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all shrink-0"
               >
-                <span aria-hidden="true">✕</span>
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
           ))}
@@ -489,7 +503,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
                 aria-label="Close output terminal"
                 className="text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors"
               >
-                <span aria-hidden="true">✕</span>
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
 

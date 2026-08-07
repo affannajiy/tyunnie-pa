@@ -870,8 +870,8 @@ export default function Chess() {
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
-                  ["vs-bot", "🤖 vs Tyunnie"],
-                  ["2-player", "👥 2 Players"],
+                  ["vs-bot", "vs Tyunnie"],
+                  ["2-player", "2 Players"],
                 ] as [GameMode, string][]
               ).map(([mode, label]) => (
                 <button
@@ -920,7 +920,7 @@ export default function Chess() {
               <div className="grid grid-cols-2 gap-2">
                 {(
                   [
-                    ["w", "♔ White"],
+                    ["w", "White"],
                     ["b", "♚ Black"],
                   ] as [Color, string][]
                 ).map(([color, label]) => (
@@ -981,10 +981,10 @@ export default function Chess() {
       const winner =
         turn === "w"
           ? gameMode === "vs-bot"
-            ? "Tyunnie wins! 🤖"
+            ? "Tyunnie wins!"
             : "Black wins!"
           : gameMode === "vs-bot"
-            ? "You win! 🎉"
+            ? "You win!"
             : "White wins!";
       return winner;
     }

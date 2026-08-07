@@ -1,5 +1,25 @@
 "use client";
 
+import {
+  X,
+  CheckCircle2,
+  BarChart3,
+  Timer,
+  Music2,
+  FolderClock,
+  MessageSquareQuote,
+  Clock,
+  CloudSun,
+  Home,
+  Target,
+  Sparkles,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  type LucideIcon,
+} from "lucide-react";
+import { getWeather } from "@/lib/weatherIcon";
+
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
@@ -50,15 +70,15 @@ const CELL_H = 100; // px per row unit
 const GAP = 12;     // px gap between cells
 const LS_KEY = "tyunnie_widgets";
 
-const WIDGET_META: Record<WidgetId, { label: string; icon: string }> = {
-  tasks:    { label: "Today's Focus",   icon: "✅" },
-  progress: { label: "Life Progress",   icon: "📊" },
-  pomodoro: { label: "Focus Timer",     icon: "⏲️" },
-  music:    { label: "Now Playing",     icon: "🎵" },
-  activity: { label: "Recent Activity", icon: "🗂️" },
-  quote:    { label: "Tyunnie Says",    icon: "💬" },
-  clock:    { label: "Clock",           icon: "🕐" },
-  weather:  { label: "Weather",         icon: "🌤️" },
+const WIDGET_META: Record<WidgetId, { label: string; icon: LucideIcon }> = {
+  tasks:    { label: "Today's Focus",   icon: CheckCircle2 },
+  progress: { label: "Life Progress",   icon: BarChart3 },
+  pomodoro: { label: "Focus Timer",     icon: Timer },
+  music:    { label: "Now Playing",     icon: Music2 },
+  activity: { label: "Recent Activity", icon: FolderClock },
+  quote:    { label: "Tyunnie Says",    icon: MessageSquareQuote },
+  clock:    { label: "Clock",           icon: Clock },
+  weather:  { label: "Weather",         icon: CloudSun },
 };
 
 const DEFAULT_LAYOUT: WLayout[] = [
@@ -106,10 +126,10 @@ function resolveCollisions(layouts: WLayout[], movedId: WidgetId): WLayout[] {
 
 // ── Templates ──────────────────────────────────────────────────────────────
 
-const TEMPLATES: { name: string; icon: string; layouts: WLayout[]; hidden: WidgetId[] }[] = [
+const TEMPLATES: { name: string; icon: LucideIcon; layouts: WLayout[]; hidden: WidgetId[] }[] = [
   {
     name: "Dashboard",
-    icon: "🏠",
+    icon: Home,
     layouts: [
       { id: "tasks",    x: 0, y: 0, w: 1, h: 3 },
       { id: "progress", x: 1, y: 0, w: 1, h: 3 },
@@ -124,7 +144,7 @@ const TEMPLATES: { name: string; icon: string; layouts: WLayout[]; hidden: Widge
   },
   {
     name: "Focus",
-    icon: "🎯",
+    icon: Target,
     layouts: [
       { id: "tasks",    x: 0, y: 0, w: 2, h: 4 },
       { id: "pomodoro", x: 2, y: 0, w: 2, h: 4 },
@@ -134,7 +154,7 @@ const TEMPLATES: { name: string; icon: string; layouts: WLayout[]; hidden: Widge
   },
   {
     name: "Minimal",
-    icon: "✨",
+    icon: Sparkles,
     layouts: [
       { id: "tasks",    x: 0, y: 0, w: 2, h: 3 },
       { id: "clock",    x: 2, y: 0, w: 1, h: 2 },
@@ -145,7 +165,7 @@ const TEMPLATES: { name: string; icon: string; layouts: WLayout[]; hidden: Widge
   },
   {
     name: "Finance",
-    icon: "💰",
+    icon: Wallet,
     layouts: [
       { id: "progress", x: 0, y: 0, w: 2, h: 4 },
       { id: "activity", x: 2, y: 0, w: 2, h: 4 },
@@ -268,7 +288,7 @@ export default function DeskWidgets({
   const [weather, setWeather] = useState<{
     temp: number;
     condition: string;
-    icon: string;
+    icon: LucideIcon;
   } | null>(null);
 
   // Load from DB (preferred) or localStorage
@@ -402,12 +422,8 @@ export default function DeskWidgets({
         .then((d) => {
           const code = d.current_weather?.weathercode ?? 0;
           const temp = Math.round(d.current_weather?.temperature ?? 0);
-          const condition =
-            code === 0 ? "Clear" : code <= 3 ? "Cloudy" : code <= 48 ? "Foggy" :
-            code <= 67 ? "Rainy" : code <= 77 ? "Snowy" : code <= 82 ? "Showers" : "Stormy";
-          const icon =
-            code === 0 ? "☀️" : code <= 3 ? "⛅" : code <= 48 ? "🌫️" :
-            code <= 67 ? "🌧️" : code <= 77 ? "❄️" : code <= 82 ? "🌦️" : "⛈️";
+          // Shared WMO map — this widget used to keep its own coarser copy.
+          const { label: condition, icon } = getWeather(code);
           setWeather({ temp, condition, icon });
         })
         .catch(() => {}); // weather widget is optional — silently skip on failure
@@ -558,9 +574,9 @@ export default function DeskWidgets({
     ...todos
       .filter((t) => t.done)
       .slice(0, 2)
-      .map((t) => ({ icon: "✅", label: t.text, sub: "Task completed" })),
+      .map((t) => ({ icon: CheckCircle2, label: t.text, sub: "Task completed" })),
     ...finance.slice(0, 2).map((f) => ({
-      icon: f.type === "income" ? "💰" : "💸",
+      icon: f.type === "income" ? TrendingUp : TrendingDown,
       label: f.description,
       sub: `${f.type === "income" ? "+" : "-"}${currency}${f.amount.toFixed(2)}`,
     })),
@@ -578,7 +594,7 @@ export default function DeskWidgets({
                 Today's Focus
               </p>
               <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
-                ✅
+                <CheckCircle2 size={26} strokeWidth={1.5} />
               </div>
             </div>
             {dueSoonTodos.length === 0 ? (
@@ -627,7 +643,7 @@ export default function DeskWidgets({
                           }
                         >
                           {t.due < today
-                            ? "⚠ overdue"
+                            ? "overdue"
                             : t.due === today
                             ? "due today"
                             : t.due}
@@ -656,7 +672,7 @@ export default function DeskWidgets({
                 Life Progress
               </p>
               <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
-                📊
+                <BarChart3 size={26} strokeWidth={1.5} />
               </div>
             </div>
             <div className="flex items-center justify-around flex-1">
@@ -716,8 +732,8 @@ export default function DeskWidgets({
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono">
                 Focus Timer
               </p>
-              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
-                ⏲️
+              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center" style={{ color: "var(--accent)" }}>
+                <Timer size={16} strokeWidth={1.75} />
               </div>
             </div>
             <div className="flex flex-col items-center gap-3 flex-1 justify-center">
@@ -779,7 +795,7 @@ export default function DeskWidgets({
                 Now Playing
               </p>
               <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
-                🎵
+                <Music2 size={26} strokeWidth={1.5} />
               </div>
             </div>
             {music.currentTrack ? (
@@ -804,7 +820,7 @@ export default function DeskWidgets({
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xl">
-                        🎵
+                        <Music2 size={20} strokeWidth={1.5} />
                       </div>
                     )}
                   </div>
@@ -861,7 +877,7 @@ export default function DeskWidgets({
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4">
-                <div className="text-3xl opacity-20">🎵</div>
+                <Music2 size={30} strokeWidth={1.5} className="opacity-20" />
                 <p className="text-xs text-[#c5bdb0] italic text-center">
                   Nothing playing.
                 </p>
@@ -899,7 +915,7 @@ export default function DeskWidgets({
                   <div key={i} className="flex gap-3">
                     <div className="flex flex-col items-center shrink-0 w-8">
                       <div className="w-8 h-8 rounded-xl bg-orange-50 border border-[#fde8d0] flex items-center justify-center text-sm shrink-0">
-                        {item.icon}
+                        <item.icon size={15} strokeWidth={1.75} style={{ color: "var(--accent)" }} />
                       </div>
                       {i < Math.min(recentActivity.length, 3) - 1 && (
                         <div className="w-px flex-1 bg-[#f0ece8] my-1 min-h-3" />
@@ -988,7 +1004,7 @@ export default function DeskWidgets({
                 <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">
                   Weather
                 </p>
-                <p className="text-3xl leading-none">{weather.icon}</p>
+                <weather.icon size={30} strokeWidth={1.5} style={{ color: "var(--accent)" }} />
                 <p className="text-xl font-bold text-[#1a1208] font-mono leading-none">
                   {weather.temp}°C
                 </p>
@@ -1001,7 +1017,7 @@ export default function DeskWidgets({
                 <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">
                   Weather
                 </p>
-                <div className="text-2xl opacity-20">🌤️</div>
+                <CloudSun size={24} strokeWidth={1.5} className="opacity-20" />
                 <p className="text-[9px] text-[#c5bdb0] font-mono">No city set</p>
               </>
             )}
@@ -1100,7 +1116,7 @@ export default function DeskWidgets({
                 aria-label="Close layout templates"
                 className="text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors text-sm"
               >
-                <span aria-hidden="true">✕</span>
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
             <div className="p-4 flex flex-col gap-2">
@@ -1114,7 +1130,7 @@ export default function DeskWidgets({
                   }}
                   className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl border border-[#f0ece8] hover:border-(--accent) hover:bg-orange-50 transition-all group"
                 >
-                  <span className="text-xl">{t.icon}</span>
+                  <t.icon size={18} strokeWidth={1.75} style={{ color: "var(--accent)" }} />
                   <div>
                     <p className="text-sm font-bold text-[#2d2416] group-hover:text-(--accent) transition-colors">
                       {t.name}
@@ -1143,12 +1159,15 @@ export default function DeskWidgets({
                 key={l.id}
                 className={`rounded-3xl border border-[#f0ece8] shadow-sm overflow-hidden ${
                   isQuote || isActivity ? "col-span-2" : ""
-                }`}
+                } ${isQuote ? "" : "bg-white desk-card"}`}
                 style={{
                   minHeight: "160px",
-                  background: isQuote
-                    ? "linear-gradient(160deg, #1e1510 0%, #111010 100%)"
-                    : "white",
+                  ...(isQuote
+                    ? {
+                        background:
+                          "linear-gradient(160deg, #1e1510 0%, #111010 100%)",
+                      }
+                    : {}),
                 }}
               >
                 {isQuote && (
@@ -1210,16 +1229,21 @@ export default function DeskWidgets({
             return (
               <div
                 key={l.id}
-                className="absolute overflow-hidden rounded-3xl border border-[#f0ece8]"
+                className={`absolute overflow-hidden rounded-3xl border border-[#f0ece8] ${
+                  isQuote ? "" : "bg-white desk-card"
+                }`}
                 style={{
                   left,
                   top,
                   width,
                   height,
                   zIndex: active ? 100 : 1,
-                  background: isQuote
-                    ? "linear-gradient(160deg, #1e1510 0%, #111010 100%)"
-                    : "white",
+                  ...(isQuote
+                    ? {
+                        background:
+                          "linear-gradient(160deg, #1e1510 0%, #111010 100%)",
+                      }
+                    : {}),
                   boxShadow: isDragging
                     ? "0 24px 64px rgba(0,0,0,0.20)"
                     : isResizing
@@ -1345,7 +1369,7 @@ export default function DeskWidgets({
                   e.currentTarget.style.color = "#8a6f5a";
                 }}
               >
-                <span>{WIDGET_META[id].icon}</span>
+                {(() => { const I = WIDGET_META[id].icon; return <I size={16} strokeWidth={1.75} />; })()}
                 {WIDGET_META[id].label}
               </button>
             ))}

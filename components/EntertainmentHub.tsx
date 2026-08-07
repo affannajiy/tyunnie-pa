@@ -1,5 +1,7 @@
 "use client";
 
+import { Music2, Gamepad2 } from "lucide-react";
+
 type Props = {
   onNavigate: (panel: string) => void;
 };
@@ -7,14 +9,14 @@ type Props = {
 const CARDS = [
   {
     panel: "music",
-    icon: "🎵",
+    icon: Music2,
     title: "Music",
     desc: "Your playlist, album art and controls",
     color: "#ec4899",
   },
   {
     panel: "games",
-    icon: "🎮",
+    icon: Gamepad2,
     title: "Games",
     desc: "Chess, Tetris, Sudoku and more",
     color: "#f97316",
@@ -41,7 +43,7 @@ export default function EntertainmentHub({ onNavigate }: Props) {
               className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
               style={{ backgroundColor: card.color === "#f97316" ? "rgba(var(--accent-rgb),0.094)" : `${card.color}18` }}
             >
-              {card.icon}
+              <card.icon size={20} strokeWidth={1.75} style={{ color: card.color }} />
             </div>
             <div className="font-bold text-[#111010] dark:text-[#f0ebe3] mb-1 group-hover:text-(--accent) transition-colors">
               {card.title}

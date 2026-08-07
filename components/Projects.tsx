@@ -1,6 +1,9 @@
 // components/panels/Projects.tsx
 "use client";
 
+import { X, FolderKanban, Pencil } from "lucide-react";
+
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useEffect } from "react";
 import {
   getProjects,
@@ -121,7 +124,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
             : p,
         ),
       );
-      onAction(`Updated "${name}" — looking good 🗂️`);
+      onAction(`Updated "${name}" — looking good.`);
     } else {
       // Add new
       const newProject = await addProject(userId, {
@@ -135,7 +138,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
       if (newProject) {
         setProjects((prev) => [newProject, ...prev]);
         onAction(
-          `New project locked in — "${name}". Let's build something great 🗂️`,
+          `New project locked in — "${name}". Let's build something great.`,
         );
       }
     }
@@ -146,9 +149,11 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
   }
 
   async function handleDelete(id: string, projectName: string) {
-    const confirmed = window.confirm(
-      `Delete project "${projectName}"? Its dates, progress and timeline row go with it. This can't be undone.`,
-    );
+    const confirmed = await confirmDialog({
+      title: `Delete project "${projectName}"?`,
+      message:
+        "Its dates, progress and timeline row go with it. This can't be undone.",
+    });
     if (!confirmed) return;
     await deleteProject(id);
     setProjects((prev) => prev.filter((p) => p.id !== id));
@@ -289,7 +294,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
               aria-label="Close project form"
               className="text-[#c5bdb0] hover:text-[#9a8f7e] text-sm transition-colors"
             >
-              <span aria-hidden="true">✕</span>
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
 
@@ -434,7 +439,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
 
       {!loading && projects.length === 0 && (
         <div className="text-center py-16 text-[#c5bdb0]">
-          <div className="text-3xl mb-3 opacity-50">🗂️</div>
+          <FolderKanban size={30} strokeWidth={1.5} className="mb-3 opacity-50 mx-auto" />
           <p className="text-sm">
             No projects yet. Hit + New Project to get started.
           </p>
@@ -466,7 +471,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   className="text-[#c5bdb0] hover:text-(--accent) transition-colors text-xs font-mono"
                   title="Edit project"
                 >
-                  ✏
+                  <Pencil size={14} strokeWidth={2} />
                 </button>
 
                 {/* Expand / collapse */}
@@ -485,7 +490,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   aria-label={`Delete project ${p.name}`}
                   className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm"
                 >
-                  <span aria-hidden="true">✕</span>
+                  <X size={16} strokeWidth={2} />
                 </button>
               </div>
 

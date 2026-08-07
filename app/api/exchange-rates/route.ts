@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
     });
     if (!res.ok) throw new Error(`Frankfurter error ${res.status}`);
     const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: { "Cache-Control": "private, max-age=3600" },
+    });
   } catch {
     return NextResponse.json({ error: "Failed to fetch rates" }, { status: 502 });
   }

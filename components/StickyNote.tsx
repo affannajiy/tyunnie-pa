@@ -1,5 +1,8 @@
 "use client";
 
+import { X } from "lucide-react";
+
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import { useRef, useState, useEffect } from "react";
 import type { StickyNote as StickyNoteType } from "@/lib/database";
 
@@ -260,12 +263,24 @@ export default function StickyNote({ note, onUpdate, onDelete }: Props) {
             )}
           </div>
           <button
-            onClick={() => onDelete(note.id)}
+            onClick={() => {
+              // An empty note costs nothing to lose — don't nag for it.
+              if (!content.trim()) {
+                onDelete(note.id);
+                return;
+              }
+              void confirmDialog({
+                title: "Delete this note?",
+                message: `"${content.trim().slice(0, 60)}${content.trim().length > 60 ? "…" : ""}" goes with it.`,
+              }).then((ok) => {
+                if (ok) onDelete(note.id);
+              });
+            }}
             aria-label="Delete sticky note"
             className="w-4 h-4 flex items-center justify-center text-[10px] opacity-40 hover:opacity-100 focus-visible:opacity-100 transition-opacity"
             style={{ color: c.text }}
           >
-            <span aria-hidden="true">✕</span>
+            <X size={16} strokeWidth={2} />
           </button>
         </div>
 

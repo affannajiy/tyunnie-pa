@@ -1,5 +1,7 @@
 "use client";
 
+import { PenLine, Wallet, Calculator, Gauge, Code2 } from "lucide-react";
+
 type Props = {
   onNavigate: (panel: string) => void;
 };
@@ -7,35 +9,35 @@ type Props = {
 const CARDS = [
   {
     panel: "writing",
-    icon: "✍️",
+    icon: PenLine,
     title: "Writing",
     desc: "Drafts and long-form notes",
     color: "#3b82f6",
   },
   {
     panel: "snippets",
-    icon: "⌨️",
+    icon: Code2,
     title: "Snippets",
     desc: "Code files and live execution",
     color: "#f97316",
   },
   {
     panel: "finance",
-    icon: "💰",
+    icon: Wallet,
     title: "Finance",
     desc: "Income, expenses and analytics",
     color: "#eab308",
   },
   {
     panel: "calculator",
-    icon: "🔢",
+    icon: Calculator,
     title: "Calculator",
     desc: "All the calculation types",
     color: "#6366f1",
   },
   {
     panel: "speedtest",
-    icon: "📡",
+    icon: Gauge,
     title: "Speed Test",
     desc: "Ping, download, and upload speed",
     color: "#0ea5e9",
@@ -67,7 +69,7 @@ export default function CreateHub({ onNavigate }: Props) {
                     : `${card.color}18`,
               }}
             >
-              {card.icon}
+              <card.icon size={20} strokeWidth={1.75} style={{ color: card.color }} />
             </div>
             <div className="font-bold text-[#111010] dark:text-[#f0ebe3] mb-1 group-hover:text-(--accent) transition-colors">
               {card.title}

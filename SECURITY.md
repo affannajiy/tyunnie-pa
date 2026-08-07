@@ -21,6 +21,22 @@ Security posture, audit history, known limitations, and backup plans. Last full 
 | Upstream timeouts | JDoodle fetch `AbortSignal.timeout(15s)`; client weather fetches 5s timeouts with fallbacks |
 | Guest mode | No JWT → all paid endpoints reject guests server-side, not just in UI |
 
+### External APIs and their risk surface
+
+| API | Auth | Risk surface |
+|---|---|---|
+| Gemini 2.0 Flash (primary chat) | `GEMINI_API_KEY` server-only | Prompt injection; token-cost abuse (capped 300/day per user) |
+| Groq Llama 3.3 70B (chat fallback + daily-quote) | `GROQ_API_KEY` server-only | Same as Gemini |
+| JDoodle (py/js/ts/bash) | `JDOODLE_CLIENT_ID/SECRET` server-only | Sandboxed exec; credit exhaustion (capped 100/day per user + 15s timeout) |
+| Resend | `RESEND_API_KEY` server-only | Mail-relay abuse — prevented by binding the recipient to the JWT email |
+| Open-Meteo | None | Public, read-only, low risk |
+| Frankfurter (exchange rates) | None | Proxied via `/api/exchange-rates`, cached 1h (CDN + browser) |
+| Cloudflare Speed Test | None | Client-side fetch, CORS-safe |
+| Supabase | Anon key (public) + service role (server) | RLS must be tight; service role never client-side |
+
+Any new external origin needs a CSP `connect-src` entry *and* a `preconnect` hint —
+see the `tyun-security` and `tyun-network` skills.
+
 ---
 
 ## Audit Log — 2026-06-10 (pre-launch)
@@ -88,9 +104,13 @@ Production dependencies audit clean at **0**. The dev-only advisories were accep
 3. **CSP `unsafe-eval`** — required by the Calculator's `new Function()` evaluator.
    **Plan:** replace with a shunting-yard expression parser, then drop `unsafe-eval` from `script-src`.
 
-4. **Resend `onboarding@resend.dev` sender** — fine for testing; verify a real domain in Resend before relying on vault emails (recipients other than the account owner are no longer possible, but deliverability suffers on the shared sender).
+4. **Vault PIN is weak against offline cracking (accepted, 2026-08-07)** — 6 digits (~20 bits) at PBKDF2-SHA256 100k iterations. PIN verification is a *local* decrypt of `vault_meta`, so the attempt limit in `Profile.tsx` can only throttle a human at the keyboard: it now persists across reloads with an escalating timed cool-off (3/6/9 failures → 1/5/30 min, `localStorage['tyunnie_vault_pin_lock_<uid>']`), but an attacker holding the ciphertext just calls the KDF offline and no client-side counter — nor a server-side one — can stop that. Only KDF cost or PIN entropy can.
+   **Accepted because** the vault currently holds test/low-value data, and the attacker already needs the user's JWT or DB access to obtain `vault_meta`.
+   **Plan when it holds anything real:** versioned KDF — raise to 600k iterations, decrypt existing entries at 100k and re-encrypt at the new cost on next successful unlock, regenerating the verifier. This re-keys every entry, so it needs a version marker and testing on a throwaway entry first. A longer/alphanumeric PIN buys more entropy per unit of work if the unlock friction is acceptable.
 
-5. **Kill switches if something goes wrong post-launch:**
+5. **Resend `onboarding@resend.dev` sender** — fine for testing; verify a real domain in Resend before relying on vault emails (recipients other than the account owner are no longer possible, but deliverability suffers on the shared sender).
+
+6. **Kill switches if something goes wrong post-launch:**
    - Supabase → Auth → disable new signups (stops new abusers instantly)
    - Vercel → Environment Variables → remove `JDOODLE_*` / `GEMINI_API_KEY` / `GROQ_API_KEY` and redeploy (paid endpoints fail gracefully with generic errors)
    - Vercel → Deployment Protection → password-protect the deployment to take the app private without taking it down
@@ -99,4 +119,6 @@ Production dependencies audit clean at **0**. The dev-only advisories were accep
 
 ## Re-audit Procedure
 
-Run the `tyun-network-and-security` agent (`.claude/agents/tyun-network-and-security.md`) — "Full pre-deploy security pass" — before any deploy that adds an API route, a new external origin, or any email/LLM/code-execution surface. Update this file's audit log with the date and findings.
+Invoke the **`tyun-security`** skill (`.claude/skills/tyun-security/SKILL.md`) — "Full pre-deploy sweep" — before any deploy that adds an API route, a new external origin, or any email/LLM/code-execution surface. Findings are tagged against `docs/SECURITY_Rulebook.md` sections. Update this file's audit log with the date and findings.
+
+For caching, bundle, and latency work, the companion skill is **`tyun-network`**. Both replaced the old `tyun-network-and-security` agent — a skill runs in the current session and can use what's already known about the change under review, where a subagent restarted cold. The security sweep still delegates its bulk file-reading to a subagent, since that phase reads far more than it reports.

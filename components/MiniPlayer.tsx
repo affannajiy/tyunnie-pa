@@ -1,6 +1,8 @@
 // components/MiniPlayer.tsx
 "use client";
 
+import { X, Music2 } from "lucide-react";
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
@@ -147,7 +149,7 @@ export default function MiniPlayer({ activePanel, onNavigate }: Props) {
                 {music.currentTrack?.cover ? (
                   <Image src={music.currentTrack.cover} alt="" width={32} height={32} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs">🎵</div>
+                  <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs"><Music2 size={13} strokeWidth={1.5} /></div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -169,7 +171,7 @@ export default function MiniPlayer({ activePanel, onNavigate }: Props) {
               aria-label="Close player"
               className="w-6 h-6 flex items-center justify-center text-[#4a4038] hover:text-[#9a8f7e] transition-colors shrink-0 text-[10px]"
             >
-              <span aria-hidden="true">✕</span>
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
           {/* Thin progress bar at bottom */}
@@ -199,7 +201,7 @@ export default function MiniPlayer({ activePanel, onNavigate }: Props) {
               {music.currentTrack?.cover ? (
                 <Image src={music.currentTrack.cover} alt="" width={40} height={40} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-sm">🎵</div>
+                <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-sm"><Music2 size={15} strokeWidth={1.5} /></div>
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -212,7 +214,7 @@ export default function MiniPlayer({ activePanel, onNavigate }: Props) {
             className="w-6 h-6 flex items-center justify-center text-[#4a4038] hover:text-[#9a8f7e] transition-colors shrink-0 text-xs"
             aria-label="Close player"
           >
-            ✕
+            <X size={14} strokeWidth={2} />
           </button>
         </div>
 
