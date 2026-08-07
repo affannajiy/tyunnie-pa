@@ -570,20 +570,11 @@ export default function CommandPalette({
         aria-label="Command palette"
         className={`relative w-full ${hasPreviewable ? "max-w-3xl" : "max-w-lg"} bg-white dark:bg-[#1a1714] rounded-2xl shadow-2xl border border-[#e8e2d8] dark:border-[#2a2520] overflow-hidden z-10 ${open ? "animate-modal-in" : "animate-modal-out"}`}
         onClick={(e) => e.stopPropagation()}
-        style={{ maxHeight: "72vh", display: "flex", flexDirection: "column" }}
+        style={{ maxHeight: "72dvh", display: "flex", flexDirection: "column" }}
       >
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#e8e2d8] dark:border-[#2a2520] shrink-0">
-          <svg
-            className="w-4 h-4 text-[#9a8f7e] shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden="true"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-          </svg>
+          <Search size={16} strokeWidth={1.75} className="text-[#9a8f7e] shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"

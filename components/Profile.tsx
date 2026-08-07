@@ -195,6 +195,13 @@ export default function Profile({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cropImgRef = useRef<HTMLImageElement | null>(null);
   // Vault
+  // Guests get a sign-up card instead of the keypad. Every vault write in
+  // lib/database.ts returns null/void on GUEST_ID, so without this a guest could
+  // set a PIN, "unlock", type a password in and watch Save do nothing at all —
+  // no entry, no error, the form still full. Everywhere else a guest hits a
+  // paid or account-bound feature we say so (chat, music upload, live rates);
+  // this was the one place that failed silently.
+  const guest = isGuest();
   const [vaultMeta, setVaultMeta] = useState<VaultMeta | null>(null);
   const [vaultMetaLoading, setVaultMetaLoading] = useState(true);
   const [vaultLocked, setVaultLocked] = useState(true);
@@ -1119,7 +1126,8 @@ export default function Profile({
     );
 
   return (
-    <div className="max-w-xl mx-auto">
+    // Width now comes from PANEL_MEASURE in the dashboard, not from here.
+    <div>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button
@@ -1193,9 +1201,12 @@ export default function Profile({
                 {displayName || "Your name"}
               </p>
               <p className="text-[10px] text-[#9a8f7e]">
+                {/* Not "hover" — the controls are permanently visible at 0.45
+                    on a touchscreen (the `@media (hover: none)` rule in
+                    globals.css), and hovering is not a thing a phone can do. */}
                 {avatarUrl
-                  ? "Hover avatar to change or remove"
-                  : "Hover avatar to upload a photo"}
+                  ? "Tap the avatar to change or remove"
+                  : "Tap the avatar to upload a photo"}
               </p>
             </div>
           </div>
@@ -1727,7 +1738,11 @@ export default function Profile({
               />
             </button>
           </div>
-          {/* Daily Quote Email */}
+          {/* Daily Quote Email — hidden for guests. The cron reads profiles from
+              the DB and mails the account's address; a guest profile lives in
+              localStorage and has no email, so the toggle would flip on and
+              nothing would ever arrive. Same reasoning as the vault below. */}
+          {!guest && (
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#e8e2d8]">
             <div>
               <p className="text-sm font-semibold text-[#111010]">
@@ -1746,6 +1761,7 @@ export default function Profile({
               />
             </button>
           </div>
+          )}
         </div>
 
         {/* Vault */}
@@ -1754,7 +1770,7 @@ export default function Profile({
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono">
               Password Vault
             </p>
-            {!vaultLocked && (
+            {!guest && !vaultLocked && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
@@ -1957,7 +1973,24 @@ export default function Profile({
               )}
             </div>
           )}
-          {vaultMetaLoading ? (
+          {guest ? (
+            <div className="text-center py-6 px-4 rounded-xl bg-[#faf8f5] border border-[#e8e2d8]">
+              <p className="text-xs text-[#111010] font-semibold">
+                The vault needs an account.
+              </p>
+              <p className="text-[11px] text-[#9a8f7e] leading-relaxed mt-1 mb-3">
+                Everything in here is encrypted with a PIN we never see, so it
+                can&rsquo;t live in a browser-only demo.
+              </p>
+              <a
+                href="/auth"
+                className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-white text-[12px] font-bold transition-colors"
+                style={{ background: "var(--accent)" }}
+              >
+                Sign up to use the vault
+              </a>
+            </div>
+          ) : vaultMetaLoading ? (
             <p className="text-xs text-[#c5bdb0] font-mono text-center py-4">
               Loading...
             </p>
@@ -2269,14 +2302,14 @@ export default function Profile({
         </button>
       </div>
       {showCropModal && cropSrc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60">
           <div
             ref={cropTrapRef}
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="crop-photo-title"
-            className="bg-white rounded-2xl p-6 w-85 shadow-xl"
+            className="bg-white rounded-2xl p-6 w-full max-w-85 shadow-xl"
           >
             <p
               id="crop-photo-title"

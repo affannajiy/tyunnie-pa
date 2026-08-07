@@ -1,8 +1,11 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Nunito } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+// Music has to keep playing across a route change, so its provider lives here
+// rather than under /dashboard. See AppProviders for why.
+import AppProviders from "@/components/AppProviders";
 import "./globals.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -36,6 +39,25 @@ export const metadata: Metadata = {
     ],
     shortcut: "/favicon.ico",
   },
+};
+
+// Next's default viewport omits `viewport-fit`, which means every
+// `env(safe-area-inset-*)` in the app silently resolves to 0 — the mobile dock's
+// bottom padding and the dashboard's scroll padding were both no-ops on any
+// notched phone. `cover` is what turns those on.
+//
+// Deliberately NO `maximumScale` / `userScalable: false`: capping zoom is the
+// other common way to stop iOS auto-zooming small inputs, and it takes pinch-zoom
+// away from everyone to do it. The 16px input rule in globals.css solves the same
+// problem without removing the gesture.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf8f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e0d0b" },
+  ],
 };
 
 export default function RootLayout({
@@ -113,7 +135,7 @@ export default function RootLayout({
         `,
           }}
         />
-        {children}
+        <AppProviders>{children}</AppProviders>
         <Analytics />
         <SpeedInsights />
       </body>

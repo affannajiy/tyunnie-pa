@@ -172,9 +172,31 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Safe area for iPhone home indicator */
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom);
+/* ── MOBILE TYPE FLOOR ───────────────────────────────────
+   Two rules, both scoped below the md: breakpoint so desktop density is
+   untouched.
+
+   1. Form fields at 16px. iOS Safari auto-zooms the whole page when you focus an
+      input whose computed font-size is under 16px, and it does not zoom back out
+      — every form in the app did this. The other fix is `maximum-scale=1` in the
+      viewport, which works by taking pinch-zoom away from everyone; this doesn't.
+      `!important` because the utility classes it overrides (`text-sm`, `text-xs`)
+      are what set the too-small size in the first place.
+
+   2. The 9px caption tier up to 10px. 10px is the app's deliberate mono-label
+      size and stays as it is; 9px is the tier where a label stops being small and
+      starts being unreadable on a 360px phone. Not applied to `text-[8px]` — both
+      uses are decorative marks, not text anyone reads. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  .text-\[9px\] {
+    font-size: 10px;
+  }
 }
 
 /* ── ANIMATIONS ──────────────────────────────────────── */

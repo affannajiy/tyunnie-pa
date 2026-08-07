@@ -36,6 +36,8 @@ type MusicContextType = {
   shuffle: boolean;
   repeat: RepeatMode;
   currentTrack: Track | undefined;
+  /** True once the user has started playback at least this session. */
+  hasEverPlayed: boolean;
   analyser: React.RefObject<AnalyserNode | null>;
   togglePlay: () => void;
   playTrack: (index: number) => void;
@@ -93,6 +95,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     return isNaN(saved) ? 0.5 : Math.min(1, Math.max(0, saved));
   });
   const [isMuted, setIsMuted] = useState(false);
+  // Gates the MiniPlayer: it earns its place only after a first play. Lives
+  // here, not in MiniPlayer, because component state resets on remount and the
+  // MiniPlayer now remounts on every route change.
+  const [hasEverPlayed, setHasEverPlayed] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("none");
   const [shuffledOrder, setShuffledOrder] = useState<number[]>([]);
@@ -217,7 +223,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const savedVol = parseFloat(localStorage.getItem("tyunnie_music_volume") ?? "");
     audio.volume = isNaN(savedVol) ? 0.5 : Math.min(1, Math.max(0, savedVol));
 
-    audio.onplay = () => setIsPlaying(true);
+    audio.onplay = () => {
+      setIsPlaying(true);
+      setHasEverPlayed(true);
+    };
     audio.onpause = () => setIsPlaying(false);
     audio.ontimeupdate = () => {
       setProgress(audio.currentTime);
@@ -484,6 +493,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         repeat,
         forcePrevTrack,
         currentTrack: tracks[currentIndex],
+        hasEverPlayed,
         analyser: analyserRef,
         togglePlay,
         playTrack,

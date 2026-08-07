@@ -16,6 +16,11 @@ import {
   Wallet,
   TrendingUp,
   TrendingDown,
+  SkipBack,
+  SkipForward,
+  Play,
+  Pause,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 import { getWeather } from "@/lib/weatherIcon";
@@ -754,14 +759,22 @@ export default function DeskWidgets({
               <div className="flex gap-2 w-full">
                 <button
                   onClick={() => setPomRunning((p) => !p)}
-                  className={`flex-1 py-2 rounded-2xl text-xs font-bold transition-all ${
+                  className={`flex-1 py-2 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     pomRunning
                       ? "bg-[#f0ece8] text-[#8a6f5a] hover:bg-[#e8e2d8]"
                       : "text-white shadow-sm"
                   }`}
                   style={!pomRunning ? { background: "var(--accent)" } : {}}
                 >
-                  {pomRunning ? "⏸ Pause" : "▶ Start"}
+                  {pomRunning ? (
+                    <>
+                      <Pause size={14} strokeWidth={1.75} fill="currentColor" /> Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play size={14} strokeWidth={1.75} fill="currentColor" /> Start
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => {
@@ -769,9 +782,10 @@ export default function DeskWidgets({
                     setPomMode("focus");
                     setPomSeconds(pomSettings.focusMins * 60);
                   }}
-                  className="w-9 h-9 rounded-2xl border border-[#f0ece8] text-[#b09880] text-sm hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
+                  aria-label="Reset timer"
+                  className="w-9 h-9 rounded-2xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
                 >
-                  ↺
+                  <RotateCcw size={16} strokeWidth={1.75} />
                 </button>
               </div>
             </div>
@@ -849,22 +863,32 @@ export default function DeskWidgets({
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={music.prevTrack}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all text-xs"
+                    aria-label="Previous track"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all"
                   >
-                    ⏮
+                    <SkipBack size={16} strokeWidth={1.75} fill="currentColor" />
                   </button>
                   <button
                     onClick={music.togglePlay}
-                    className="flex-1 py-2 rounded-2xl text-white text-xs font-bold shadow-sm"
+                    className="flex-1 py-2 rounded-2xl text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5"
                     style={{ background: "var(--accent)" }}
                   >
-                    {music.isPlaying ? "⏸ Pause" : "▶ Play"}
+                    {music.isPlaying ? (
+                      <>
+                        <Pause size={14} strokeWidth={1.75} fill="currentColor" /> Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play size={14} strokeWidth={1.75} fill="currentColor" /> Play
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={music.nextTrack}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all text-xs"
+                    aria-label="Next track"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all"
                   >
-                    ⏭
+                    <SkipForward size={16} strokeWidth={1.75} fill="currentColor" />
                   </button>
                 </div>
                 <button

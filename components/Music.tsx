@@ -1,7 +1,21 @@
 // components/Music.tsx
 "use client";
 
-import { X, Music2, VolumeX, Volume1, Volume2, Image as ImageIcon } from "lucide-react";
+import {
+  X,
+  Music2,
+  VolumeX,
+  Volume1,
+  Volume2,
+  Image as ImageIcon,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Play,
+  Pause,
+  Repeat,
+  Repeat1,
+} from "lucide-react";
 
 import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import Image from "next/image";
@@ -246,7 +260,11 @@ export default function Music() {
   const userTracks = tracks.filter((t) => t.isUserTrack);
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)] bg-[#111010] rounded-2xl overflow-hidden border border-[#2a2520] relative">
+    // `dvh`, not `vh`: on mobile `100vh` is the viewport with the URL bar
+    // *hidden*, so the bottom of the panel sits under the browser chrome and the
+    // dock. `min-h-` below lg because the two columns stack there — a fixed
+    // height would have to fit both, and it can't.
+    <div className="flex flex-col lg:flex-row min-h-[calc(100dvh-120px)] lg:h-[calc(100dvh-120px)] bg-[#111010] rounded-2xl overflow-hidden border border-[#2a2520] relative">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -256,7 +274,9 @@ export default function Music() {
       />
 
       {/* ── LEFT: NOW PLAYING ── */}
-      <div className="flex flex-col items-center justify-center p-8 lg:w-95 lg:shrink-0 z-10">
+      {/* shrink-0: stacked below lg, this block must keep its natural height or
+          the playlist's flex-1 compresses the art and transport into nothing. */}
+      <div className="flex flex-col items-center justify-center p-6 sm:p-8 shrink-0 lg:w-95 z-10">
         <div
           ref={coverRef}
           className="w-48 h-48 rounded-2xl mb-6 overflow-hidden"
@@ -323,9 +343,9 @@ export default function Music() {
           <button
             onClick={toggleShuffle}
             title="Shuffle"
-            className={`text-lg transition-all ${shuffle ? "text-(--accent)" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
+            className={`transition-all ${shuffle ? "text-(--accent)" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
           >
-            ⇄
+            <Shuffle size={16} strokeWidth={1.75} />
           </button>
           <button
             onClick={() => skipBack(10)}
@@ -336,22 +356,27 @@ export default function Music() {
           </button>
           <button
             onClick={prevTrack}
-            className="w-9 h-9 flex items-center justify-center text-white hover:text-(--accent) transition-colors text-xl"
+            className="w-9 h-9 flex items-center justify-center text-white hover:text-(--accent) transition-colors"
           >
-            ⏮
+            <SkipBack size={18} strokeWidth={1.75} fill="currentColor" />
           </button>
           <button
             onClick={togglePlay}
-            className="w-14 h-14 rounded-full bg-(--accent) flex items-center justify-center text-white text-2xl hover:bg-[#c2500f] transition-all hover:scale-105 active:scale-95"
+            aria-label={isPlaying ? "Pause" : "Play"}
+            className="w-14 h-14 rounded-full bg-(--accent) flex items-center justify-center text-white hover:bg-[#c2500f] transition-all hover:scale-105 active:scale-95"
             style={{ boxShadow: "0 4px 20px rgba(var(--accent-rgb),0.4)" }}
           >
-            {isPlaying ? "⏸" : "▶"}
+            {isPlaying ? (
+              <Pause size={22} strokeWidth={1.75} fill="currentColor" />
+            ) : (
+              <Play size={22} strokeWidth={1.75} fill="currentColor" className="ml-0.5" />
+            )}
           </button>
           <button
             onClick={nextTrack}
-            className="w-9 h-9 flex items-center justify-center text-white hover:text-(--accent) transition-colors text-xl"
+            className="w-9 h-9 flex items-center justify-center text-white hover:text-(--accent) transition-colors"
           >
-            ⏭
+            <SkipForward size={18} strokeWidth={1.75} fill="currentColor" />
           </button>
           <button
             onClick={() => skipForward(10)}
@@ -363,9 +388,13 @@ export default function Music() {
           <button
             onClick={cycleRepeat}
             title={`Repeat: ${repeat}`}
-            className={`text-lg transition-all ${repeat !== "none" ? "text-(--accent)" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
+            className={`transition-all ${repeat !== "none" ? "text-(--accent)" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
           >
-            {repeat === "one" ? "↺¹" : "↺"}
+            {repeat === "one" ? (
+              <Repeat1 size={16} strokeWidth={1.75} />
+            ) : (
+              <Repeat size={16} strokeWidth={1.75} />
+            )}
           </button>
         </div>
 
@@ -400,7 +429,7 @@ export default function Music() {
 
       {/* ── RIGHT: QUEUE / MANAGE ── */}
       <div
-        className="flex-1 overflow-y-auto p-6 border-t lg:border-t-0 lg:border-l border-[#2a2520] z-10"
+        className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 border-t lg:border-t-0 lg:border-l border-[#2a2520] z-10"
         style={{ scrollbarWidth: "thin", scrollbarColor: "#2a2520 transparent" }}
       >
         {/* Header */}

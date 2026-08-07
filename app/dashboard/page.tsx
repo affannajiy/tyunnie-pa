@@ -11,7 +11,9 @@ import dynamic from "next/dynamic";
 import Desk from "@/components/Desk";
 import { getCyclingQuote, getRandomQuote } from "@/lib/tyunnieQuotes";
 import Sidebar, { type Panel } from "@/components/Sidebar";
-import { MusicProvider, useMusicContext } from "@/lib/MusicContext";
+import { useMusicContext } from "@/lib/MusicContext";
+import { publishActivePanel, clearActivePanel } from "@/lib/activePanel";
+import { Search } from "lucide-react";
 import CommandPalette from "@/components/CommandPalette";
 import ShortcutHelp from "@/components/ShortcutHelp";
 import { ConfirmHost } from "@/components/ui/ConfirmDialog";
@@ -71,6 +73,40 @@ const SpeedTest = dynamic(() => import("@/components/SpeedTest"), {
   loading: PanelSkeleton,
 });
 const Weather = dynamic(() => import("@/components/Weather"), { ssr: false });
+
+/**
+ * How wide each panel is allowed to get.
+ *
+ * Before this, six panels were bare `<div>`s that ran the full width of any
+ * monitor while five capped themselves at anything from `max-w-md` to
+ * `max-w-2xl`. Switching tabs changed the measure by 2000px on a wide screen —
+ * §2.3 continuity and §2.6 prägnanz both read that as two different products.
+ *
+ * The split is by content, not by taste:
+ *   wide   — tables, boards, grids and timelines that genuinely use the width
+ *   read   — lists and prose, where a long line is harder to scan, not easier
+ *   tool   — a single focused control; more width just pushes it apart
+ *
+ * Panels must NOT set their own top-level max-width any more. Board-level caps
+ * inside the games panel are fine — those size a board, not a page.
+ */
+const PANEL_MEASURE: Record<Panel, string> = {
+  desk: "max-w-7xl",
+  finance: "max-w-7xl",
+  projects: "max-w-7xl",
+  snippets: "max-w-7xl",
+  music: "max-w-7xl",
+  writing: "max-w-7xl",
+  games: "max-w-7xl",
+  focus: "max-w-5xl",
+  create: "max-w-5xl",
+  play: "max-w-5xl",
+  todo: "max-w-3xl",
+  speedtest: "max-w-3xl",
+  profile: "max-w-3xl",
+  calculator: "max-w-2xl",
+  pomodoro: "max-w-lg",
+};
 const Profile = dynamic(() => import("@/components/Profile"), { ssr: false, loading: PanelSkeleton });
 const ProductivityHub = dynamic(() => import("@/components/ProductivityHub"), {
   ssr: false,
@@ -88,9 +124,6 @@ const StickyLayer = dynamic(() => import("@/components/StickyLayer"), {
   ssr: false,
 });
 const FocusMode = dynamic(() => import("@/components/FocusMode"), {
-  ssr: false,
-});
-const MiniPlayer = dynamic(() => import("@/components/MiniPlayer"), {
   ssr: false,
 });
 
@@ -206,6 +239,27 @@ export default function Home() {
     }
     return "desk";
   });
+
+  // The MiniPlayer lives in the root layout now, so it can't read this as a
+  // prop. It still has to hide itself when the full Music panel is on screen.
+  // Cleared on unmount — a route change means no panel is open at all.
+  useEffect(() => {
+    publishActivePanel(activePanel);
+  }, [activePanel]);
+  useEffect(() => clearActivePanel, []);
+
+  // The MiniPlayer's art/title asks to be taken to the player; from /about that
+  // means a route change first, so it arrives as an event rather than a call.
+  useEffect(() => {
+    function open(e: Event) {
+      const panel = (e as CustomEvent<string>).detail;
+      if (panel && Object.keys(PANEL_LABELS).includes(panel)) {
+        setActivePanel(panel as Panel);
+      }
+    }
+    window.addEventListener("tyunnie-open-panel", open);
+    return () => window.removeEventListener("tyunnie-open-panel", open);
+  }, []);
 
   // ── USERNAME ──
   const [userName, setUserName] = useState<string>(() => {
@@ -923,7 +977,6 @@ export default function Home() {
   // ── MAIN APP ──
   return (
     <WorkspaceProvider>
-    <MusicProvider>
       <div className="flex h-dvh w-screen overflow-hidden bg-[#faf8f5]">
         <Sidebar
           active={activePanel}
@@ -1012,9 +1065,7 @@ export default function Home() {
                 aria-label="Open command palette"
                 className="flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-1.5 text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono w-48 lg:w-64 xl:w-80"
               >
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                </svg>
+                <Search size={16} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
                 <span>Search</span>
                 <span className="bg-[#e8e2d8] rounded px-1.5 py-0.5 text-[9px] font-bold ml-auto">
                   {isMac() ? "⌘K" : "Ctrl K"}
@@ -1182,7 +1233,7 @@ export default function Home() {
             onTouchMove={onContentTouchMove}
             onTouchEnd={onContentTouchEnd}
           >
-            <div key={activePanel} className="animate-panel-in">
+            <div key={activePanel} className={`animate-panel-in mx-auto w-full ${PANEL_MEASURE[activePanel]}`}>
               {activePanel === "desk" && (
                 <Desk
                   profile={profile}
@@ -1361,11 +1412,8 @@ export default function Home() {
         }}
         isGuest={guestMode}
       />
-      {/* Floating mini player — appears when playing music outside the Music panel */}
-      <MiniPlayer
-        activePanel={activePanel}
-        onNavigate={(p) => setActivePanel(p as Panel)}
-      />
+      {/* The MiniPlayer is rendered by AppProviders in the root layout — it has
+          to outlive a route change, so it can't be mounted here. */}
 
       {/* Music keyboard bridge — listens for tyunnie-music-toggle inside MusicProvider */}
       <MusicKeyboardBridge />
@@ -1411,7 +1459,6 @@ export default function Home() {
         notes={stickyNotes}
         onNotesChange={setStickyNotes}
       />
-    </MusicProvider>
     </WorkspaceProvider>
   );
 }

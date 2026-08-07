@@ -11,7 +11,18 @@ type Position = { x: number; y: number };
 // ── CONSTANTS ──
 const COLS = 10;
 const ROWS = 20;
-const CELL_SIZE = 28;
+// Cell geometry is derived at runtime, not fixed. A hardcoded 28 gave a 280px
+// board on every screen: it fits a 360px phone with 44px to spare, but it's a
+// postage stamp on a desktop monitor. Bounds are deliberate — 22 keeps the grid
+// lines from merging, 34 keeps a 20-row board inside a laptop viewport.
+const CELL_MIN = 22;
+const CELL_MAX = 34;
+
+function fitCellSize(viewportWidth: number): number {
+  // 32px of dashboard padding, 24px of breathing room, then divide by the grid.
+  const usable = viewportWidth - 56;
+  return Math.max(CELL_MIN, Math.min(CELL_MAX, Math.floor(usable / COLS)));
+}
 
 const TETROMINOES: Record<TetrominoType, number[][]> = {
   I: [[1, 1, 1, 1]],
@@ -134,6 +145,18 @@ export default function Tetris() {
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
   const [paused, setPaused] = useState(false);
+
+  // Lazy init (not a mount effect) so the first paint is already the right size.
+  const [CELL_SIZE, setCellSize] = useState(() =>
+    typeof window === "undefined" ? 28 : fitCellSize(window.innerWidth),
+  );
+  useEffect(() => {
+    // No synchronous call here — the lazy initialiser above already has the
+    // right size on first paint, so calling it again would just cost a render.
+    const onResize = () => setCellSize(fitCellSize(window.innerWidth));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const stateRef = useRef({
     grid,

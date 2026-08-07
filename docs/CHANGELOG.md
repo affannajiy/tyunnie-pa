@@ -5,6 +5,83 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.25.0] — 2026-08-07
+
+### Highlights
+
+**New**
+
+- **A new collection of TXT songs.** The built-in playlist is now 31 tracks deep — TXT, plus solo cuts from Yeonjun and Beomgyu: 21st Century Romance, So What, Stick With You, Danger, Deja Vu, The Killa (I Belong to You), Miracle, Happily Ever After, Growing Pain, Dreamer, Back for More (TXT Ver.), Chasing That Feeling, Do It Like That, Sugar Rush Ride, Farewell Neverland, Devil by the Window, Beautiful Strangers, Upside Down Kiss, Baby Wassup (Yeonjun), Long Way Long Ride (Yeonjun), Coma (Yeonjun), Talk To You (Yeonjun), Let Me Tell You (Yeonjun), GGUM (Yeonjun), and Panic (Beomgyu).
+
+**Fixed**
+
+- **The password vault no longer pretends to work in the demo.** You could set a PIN and save a password and it would quietly vanish. It now says up front that the vault needs an account.
+- **The music no longer stops when you open the About page.** Opening About was silently ending the song and rewinding it. It now keeps playing, and the mini player comes with you.
+- **The play and pause buttons finally match everything else** — the music player, Zen mode, the mini player, the home-screen widgets and the Pomodoro timer were all still using typed symbols for play, pause, skip, shuffle, repeat and reset. They're proper icons now, in the same style as the rest of the app.
+- **Typing on a phone no longer zooms the whole page.** Tapping any text box — a task, a note, the vault, the search bar — made iPhones zoom in and stay there. Every field is now big enough that they don't.
+- **The bottom bar sits above the home indicator.** On iPhones with no home button, the bottom row of buttons was partly underneath it. It isn't anymore.
+- **Nothing hides under the browser bar.** The music player, code snippets and the writing editor all ran slightly too tall on a phone, so their last row sat behind the browser's own bar.
+- **The music player is usable on a phone.** The album art and controls used to get squashed by the track list below them.
+- **The project timeline works on a narrow screen.** The bars had about 60 pixels to draw in. Names now sit above their own full-width bar.
+
+**Improved**
+
+- **The mini player stays where you put it.** Drag it anywhere and it's still there next visit, instead of snapping back to the bottom-right corner every time — and it can't get stranded off the edge of the screen when you turn your phone sideways.
+- **Closing the mini player just hides it.** It used to stop the music too. Now the song keeps going and the player comes back on the next track.
+- **The mini player's scrub bar is actually grabbable.** It was a two-pixel line.
+- **Panels are a consistent width on a big screen.** Some pages ran the full width of the monitor while others stopped at a narrow column, so switching tabs made the app change shape. Every page now has a width chosen for the kind of content it holds.
+- **Tetris scales to your screen** instead of being the same small board everywhere.
+- **The smallest labels are a little bigger on phones.** Same size on desktop.
+
+### Added
+
+- **`public/music/playlist.json` rebuilt around a TXT-focused collection** — 25 tracks added (see Highlights), 12 unrelated tracks removed. Covers moved from `.jpg` to `.png` throughout.
+- **`TXT - Chasing That Feeling.mp3` wired into the playlist** — the file was already in `public/music` but had no entry, so it never played.
+
+### Fixed
+
+- **`public/music/playlist.json` referenced `Yeonjun - Talk To You.mp3`**; the file on disk is `Yeonjun - Talk to You.mp3`. Windows resolves it either way, so it played locally and would 404 on any case-sensitive host.
+- **The vault failed silently in guest mode.** It was the only account-bound feature with no guest branch: every vault write in `lib/database.ts` returns `null`/`void` on `GUEST_ID`, so a guest could set a PIN, watch it "unlock", type a password in and press Save — and get nothing. No entry, no error, the form still full, and the PIN gone on reload. Guests now get a sign-up card in place of the keypad, matching how chat, music upload and live rates already behave.
+- **The Daily Quote Email toggle was shown to guests.** The cron reads profiles from the database and mails the account's address; a guest profile lives in localStorage and has no email, so the toggle flipped on and nothing would ever arrive. Hidden for guests.
+- **"Hover avatar to upload a photo"** — the avatar controls were made permanently visible on touch in 3.24.0, but the label still told phone users to do the one thing a phone can't. Now "Tap the avatar…".
+- **`MusicProvider` moved to the root layout** (new `components/AppProviders.tsx`). It was mounted inside `app/dashboard/page.tsx`, so `router.push("/about")` unmounted it and its cleanup ran `audio.pause(); audio.src = ""` — the audio element was being **destroyed**, not paused, and the return trip re-ran `applyPendingRestore` from a position rounded to the last 5-second write. A layout-level provider is the only thing that survives a route change; a route-group layout wouldn't have helped, because the dashboard page still unmounts. Verified live: playback position kept advancing across the nav, and the mount effect ran exactly once.
+- **MiniPlayer never re-clamped to the viewport.** `onResize` only updated `isMobile`; clamping happened solely on drag release. A resize or rotate could strand it off-screen permanently. Now clamps on `resize` and `orientationchange`, including across the 768px breakpoint where the card width changes 288↔220.
+- **MiniPlayer drag listeners leaked.** The `document`-level `pointermove`/`pointerup` pair was removed only in `onUp`, so unmounting mid-drag left them attached; there was no `pointercancel` handler at all, so a system gesture taking over a touch drag wedged `dragRef.active` true forever. Both handled.
+- **The MiniPlayer seek bar was a 2px hit target** — the only scrub control in the widget. The 2px line is now painted separately and the input is a transparent 16px strip over it. Padding the container alone doesn't work: the pointer still has to land on the input.
+- **z-index collision with `StickyLayer`** — both were `z-40`, and DOM order put sticky notes permanently on top of the player. MiniPlayer is now `z-45`.
+- **Transport controls migrated to lucide** in `Music.tsx`, `FocusMode.tsx`, `MiniPlayer.tsx`, `DeskWidgets.tsx` (both the music and pomodoro widgets) and `Pomodoro.tsx`. The 3.24.0 icon sweep replaced emoji but left the typographic glyphs `⏸ ▶ ⏮ ⏭ ⇄ ↺` in place — they inherit `color` so they never looked broken, but they sit at a different weight and shape from every other icon in the app. Now `Play`/`Pause`/`SkipBack`/`SkipForward`/`Shuffle`/`Repeat`/`Repeat1`/`RotateCcw` at `strokeWidth={1.75}`, with `fill="currentColor"` on the solid glyphs.
+- **`export const viewport` added to `app/layout.tsx`.** Next's default omits `viewport-fit`, which meant every `env(safe-area-inset-*)` in the codebase resolved to **0** — the mobile dock's bottom padding and the dashboard's scroll padding were both silently dead. Also adds `themeColor` for light and dark. Deliberately no `maximumScale`/`userScalable:false`: that's the other way to stop iOS input zoom, and it removes pinch-zoom from everyone.
+- **iOS input auto-zoom** — 45 fields computed under 16px (34 `text-sm`, 8 `text-xs`, 2 `[11px]`, 1 `[14px]`). Safari zooms the page on focus below 16px and does not zoom back. One `@media (max-width:767px)` rule in `globals.css` raises `input`/`textarea`/`select` to 16px; verified 16px at 375px and unchanged 14px at 903px.
+- **`100vh` → `100dvh`** in `Music.tsx`, `Snippets.tsx`, `Writing.tsx`, and the palette's inline `maxHeight`. `100vh` is the viewport with the mobile URL bar hidden, so the bottom of each panel sat behind browser chrome.
+- **Music panel stacking below `lg`** — the now-playing block had no `shrink-0` and the queue no `min-h-0`, so a fixed-height parent compressed the art and transport. Also drops to `min-h` below `lg`, since a stacked two-column layout can't fit a fixed height.
+- **Gantt rows stack below `sm`** (`Projects.tsx`). Side-by-side, a 130px name column + 70px date column + gaps + padding took ~296px before the bar got any — 64px of track at 360px. Name now sits above a full-width bar and the date column hides; the month ticks above already carry the timeline. **`flex-1` is scoped to `sm:`** — in the stacked column it applies `flex-basis:0` to the *height* axis and collapsed the bar to 0px.
+- **Modal viewport padding** — `Profile.tsx` crop dialog and `Chess.tsx` promotion dialog reached the screen edges on mobile; every other modal already had `px-4`. The crop dialog's fixed `w-85` is now `w-full max-w-85`, which would otherwise have overflowed a 360px screen.
+- **Chess selected-square colour was a hardcoded `#f97316` in an inline style** — inline can't be reached by the accent remap in `globals.css`, so it stayed orange whatever accent was picked. Now `var(--accent)`, which does work inline.
+
+### Changed
+
+- **MiniPlayer position persists** to `localStorage['tyunnie_miniplayer_pos']`, written on drag release, clamped on restore. Not the DB: a sticky note's position is content, a widget's position is chrome.
+- **MiniPlayer drag writes `left`/`top` to the node during the gesture**, committing to React state only on release. It was calling `setPos` on every `pointermove`, re-rendering the whole card each frame.
+- **The MiniPlayer's close button hides the widget instead of pausing playback.** An X on a floating widget means "get out of the way"; it re-appears on the next track. Tracked as `dismissedAt` (a track index) rather than a boolean, so "un-hide on track change" is a comparison rather than a state-resetting effect. Also hidden entirely on `/auth`.
+- **`hasEverPlayed` moved into `MusicContext`.** It was MiniPlayer component state, which resets on remount — and the MiniPlayer now remounts on every route change.
+- **`lib/activePanel.ts`** — a module variable plus one window event, so the MiniPlayer can still hide itself when the Music panel is open now that it has no dashboard parent to pass it a prop. A context would have to wrap the root layout and re-render every route to serve one consumer. The dashboard also listens for `tyunnie-open-panel`, which is how the MiniPlayer's art/title gets you back to the player from `/about`.
+- **`PANEL_MEASURE` in `app/dashboard/page.tsx`** — one map from `Panel` to a max-width, applied on the panel wrapper. Six panels were bare `<div>`s running the full monitor width while five capped themselves anywhere from `max-w-md` to `max-w-2xl`; switching tabs changed the measure by ~2000px on a wide screen. Split by content: wide (`7xl`) for tables/boards/timelines, `5xl` for hub card grids, `3xl` for lists and prose, `2xl`/`lg` for single focused tools. **Panels must no longer set their own top-level max-width** — removed from `Calculator.tsx`, `Pomodoro.tsx`, `Profile.tsx`. Board-level caps inside the games panel stay; those size a board, not a page.
+- **Tetris cell size is derived at runtime** — `fitCellSize()` clamps to 22–34px from viewport width instead of a fixed 28. 310×620 at 375px, 340×680 on desktop; was 280×560 everywhere. Lazy `useState` initialiser, no synchronous setState in the effect.
+- **`text-[9px]` → 10px below `md:`** only. 104 instances; 10px is the app's deliberate mono-label tier and is untouched, 9px is where a label stops being small and starts being unreadable at 360px. `text-[8px]` excluded — both uses are decorative marks.
+- **Six hand-rolled icon `<svg>`s replaced with lucide** — `Search` in `CommandPalette.tsx` (which already imported it) and `dashboard/page.tsx`; `Mic`/`Square`, `ArrowDownToLine` and `ExternalLink` in `TyunniePanel.tsx`. The remaining nine are not icons and stay: six progress rings, two sticky-note corner folds, and the multicolour Google mark.
+- **`.pb-safe` removed from `globals.css`** — defined, never used; `Sidebar.tsx` inlines the same `env()` instead.
+- **Chess setup screen `max-w-md` → `max-w-lg`**, matching Minesweeper.
+- **`.claude/CLAUDE.md`** — the Focus Mode rule said transport glyphs must be monochrome text characters. It now says lucide, and names all five files so the next sweep doesn't miss one again.
+- **Accessible names added** where a glyph was the only label: Music and MiniPlayer play/pause, both Desk transport buttons, and the reset/skip pairs in `Pomodoro.tsx` and `FocusMode.tsx`.
+
+### Not changed (measured, then rejected)
+
+- **The 7-item mobile dock.** Measured live at 375px: **54×72px per item**, 51×72 at 360px — comfortably past the 44px touch floor, so the Fitts concern that prompted the review was wrong. Seven is inside Miller's 7±2, and all seven are top-level destinations; §4's ruling on Hick vs recognition says break into steps, not into hidden menus. Hiding two behind an overflow would trade a reachable target for a hidden one.
+- **The Chess board's own width.** Already `min(80vw, 400px)` and responsive — the `max-w-md` flagged in review was the setup screen, not the board.
+- **The dashboard's own remount on returning from `/about`** — auth guard, full data reload. Only the music was in scope; fixing this is a separate piece of work.
+
+---
+
 ## [3.24.0] — 2026-08-07
 
 ### Highlights

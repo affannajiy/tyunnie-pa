@@ -853,7 +853,7 @@ export default function Chess() {
   // ── SETUP SCREEN ──
   if (screen === "setup") {
     return (
-      <div className="max-w-md mx-auto">
+      <div className="max-w-lg mx-auto">
         <div className="mb-6">
           <h1 className="font-serif italic text-2xl text-[#111010] mb-1">
             Chess
@@ -1120,7 +1120,10 @@ export default function Chess() {
                       backgroundColor: check
                         ? "#ff6b6b"
                         : sel
-                          ? "#f97316"
+                          ? // Inline, so the globals.css accent remap can't reach
+                            // it — the selected square was frozen orange whatever
+                            // accent the user picked. var() works inline.
+                            "var(--accent)"
                           : lm
                             ? isLight
                               ? "#f9d8a8"
@@ -1172,7 +1175,7 @@ export default function Chess() {
 
       {/* Promotion modal */}
       {promotion && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
           {/* Forced choice — no Esc/cancel by design: a promotion must resolve. */}
           <div
             ref={promotionTrapRef}

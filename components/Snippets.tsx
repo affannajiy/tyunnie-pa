@@ -294,7 +294,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
 
   // ── RENDER ──
   return (
-    <div className="flex flex-col md:flex-row gap-4 h-auto md:h-[calc(100vh-120px)]">
+    <div className="flex flex-col md:flex-row gap-4 h-auto md:h-[calc(100dvh-120px)]">
       {/* ── FILE SIDEBAR ── */}
       <div className="flex flex-row md:flex-col gap-2 md:w-50 shrink-0 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
         {/* New snip button */}

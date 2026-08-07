@@ -300,7 +300,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
               onChange={e => { setBody(e.target.value); setIsDirty(true) }}
               placeholder="Start writing... let the ideas flow. Nothing is too small to save."
               className="w-full bg-transparent border-none outline-none resize-none text-[14px] leading-[1.9] text-[#2d2416] placeholder:text-[#c5bdb0] font-sans"
-              style={{ minHeight: 'calc(100vh - 320px)' }}
+              style={{ minHeight: 'calc(100dvh - 320px)' }}
             />
           </div>
 

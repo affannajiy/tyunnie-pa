@@ -211,8 +211,9 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
           <div className="flex-1 h-px bg-[#e8e2d8]" />
         </div>
 
-        {/* Month tick labels */}
-        <div className="relative h-5 mb-2 ml-35">
+        {/* Month tick labels — the ml only applies once the name column is
+            beside the track (sm:), not when it sits above it. */}
+        <div className="relative h-5 mb-2 sm:ml-35">
           {ticks.map((tick, i) => {
             const prev = ticks[i - 1];
             if (prev && tick.pct - prev.pct < 8) return null; // skip if too close
@@ -241,14 +242,19 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
             );
 
             return (
-              <div key={p.id} className="flex items-center gap-3">
+              // Below sm: the name stacks above its own track. Side-by-side, the
+              // fixed columns cost ~296px of the row before the bar gets any —
+              // at 360px that left the track 64px wide and unreadable.
+              <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                 {/* Project name label */}
-                <div className="w-32.5 shrink-0 text-xs font-semibold text-[#111010] truncate text-right pr-2">
+                <div className="sm:w-32.5 sm:shrink-0 text-xs font-semibold text-[#111010] truncate sm:text-right sm:pr-2">
                   {p.name}
                 </div>
 
-                {/* Track */}
-                <div className="flex-1 h-7 bg-[#f3f0ea] rounded-lg relative overflow-hidden">
+                {/* Track. `flex-1` is scoped to sm: on purpose — in the stacked
+                    column below it, flex-basis:0 applies to the HEIGHT axis and
+                    collapses the bar to 0px. */}
+                <div className="w-full sm:flex-1 min-w-0 h-7 bg-[#f3f0ea] rounded-lg relative overflow-hidden">
                   <div
                     className="absolute top-0 h-full rounded-lg flex items-center px-2 overflow-hidden"
                     style={{
@@ -263,8 +269,9 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   </div>
                 </div>
 
-                {/* End date */}
-                <div className="w-17.5 shrink-0 font-mono text-[9px] text-[#9a8f7e] text-right">
+                {/* End date — the month ticks above already carry the timeline
+                    on narrow screens, so this column is the one that goes. */}
+                <div className="hidden sm:block w-17.5 shrink-0 font-mono text-[9px] text-[#9a8f7e] text-right">
                   {p.end_date}
                 </div>
               </div>

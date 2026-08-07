@@ -1,6 +1,17 @@
 "use client";
 
-import { X, Music2 } from "lucide-react";
+import {
+  X,
+  Music2,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Play,
+  Pause,
+  Repeat,
+  Repeat1,
+  RotateCcw,
+} from "lucide-react";
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
@@ -520,7 +531,8 @@ export default function FocusMode({
               setPomMode("focus");
               setPomSeconds(pomSettings.focusMins * 60);
             }}
-            className="w-12 h-12 rounded-2xl border border-[#2a2520] text-[#4a4038] transition-all text-lg flex items-center justify-center"
+            aria-label="Reset timer"
+            className="w-12 h-12 rounded-2xl border border-[#2a2520] text-[#4a4038] transition-all flex items-center justify-center"
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "var(--accent)";
               e.currentTarget.style.color = "var(--accent)";
@@ -530,7 +542,7 @@ export default function FocusMode({
               e.currentTarget.style.color = "#4a4038";
             }}
           >
-            ↺
+            <RotateCcw size={18} strokeWidth={1.75} />
           </button>
           <button
             onClick={() => setPomRunning((v) => !v)}
@@ -550,8 +562,9 @@ export default function FocusMode({
               setPomMode(next);
               setPomSeconds(next === "focus" ? pomSettings.focusMins * 60 : pomSettings.shortMins * 60);
             }}
-            className="w-12 h-12 rounded-2xl border border-[#2a2520] text-[#4a4038] transition-all text-lg flex items-center justify-center"
+            className="w-12 h-12 rounded-2xl border border-[#2a2520] text-[#4a4038] transition-all flex items-center justify-center"
             title="Skip"
+            aria-label="Skip to next session"
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "var(--accent)";
               e.currentTarget.style.color = "var(--accent)";
@@ -561,7 +574,7 @@ export default function FocusMode({
               e.currentTarget.style.color = "#4a4038";
             }}
           >
-            ⏭
+            <SkipForward size={18} strokeWidth={1.75} fill="currentColor" />
           </button>
         </div>
         )}
@@ -661,47 +674,53 @@ export default function FocusMode({
                 aria-label="Shuffle"
                 aria-pressed={music.shuffle}
                 title="Shuffle"
-                className="w-7 h-7 flex items-center justify-center transition-colors text-sm"
+                className="w-7 h-7 flex items-center justify-center transition-colors"
                 style={{ color: music.shuffle ? "var(--accent)" : "#4a4038" }}
               >
-                <span aria-hidden="true">⇄</span>
+                <Shuffle size={16} strokeWidth={1.75} />
               </button>
               <button
                 onClick={music.prevTrack}
                 aria-label="Previous track"
-                className="w-7 h-7 flex items-center justify-center text-[#4a4038] hover:text-white transition-colors text-xs"
+                className="w-7 h-7 flex items-center justify-center text-[#4a4038] hover:text-white transition-colors"
               >
-                <span aria-hidden="true">⏮</span>
+                <SkipBack size={16} strokeWidth={1.75} fill="currentColor" />
               </button>
               <button
                 onClick={music.togglePlay}
                 aria-label={music.isPlaying ? "Pause" : "Play"}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs transition-colors"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors"
                 style={{ background: "var(--accent)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
               >
-                {music.isPlaying ? "⏸" : "▶"}
+                {music.isPlaying ? (
+                  <Pause size={16} strokeWidth={1.75} fill="currentColor" />
+                ) : (
+                  <Play size={16} strokeWidth={1.75} fill="currentColor" className="ml-0.5" />
+                )}
               </button>
               <button
                 onClick={music.nextTrack}
                 aria-label="Next track"
-                className="w-7 h-7 flex items-center justify-center text-[#4a4038] hover:text-white transition-colors text-xs"
+                className="w-7 h-7 flex items-center justify-center text-[#4a4038] hover:text-white transition-colors"
               >
-                <span aria-hidden="true">⏭</span>
+                <SkipForward size={16} strokeWidth={1.75} fill="currentColor" />
               </button>
               <button
                 onClick={music.cycleRepeat}
                 aria-label={`Repeat: ${music.repeat === "none" ? "off" : music.repeat === "all" ? "all tracks" : "this track"}`}
                 title={`Repeat: ${music.repeat}`}
-                className="w-7 h-7 flex items-center justify-center transition-colors text-sm"
+                className="w-7 h-7 flex items-center justify-center transition-colors"
                 style={{
                   color: music.repeat !== "none" ? "var(--accent)" : "#4a4038",
                 }}
               >
-                <span aria-hidden="true">
-                  {music.repeat === "one" ? "↺¹" : "↺"}
-                </span>
+                {music.repeat === "one" ? (
+                  <Repeat1 size={16} strokeWidth={1.75} />
+                ) : (
+                  <Repeat size={16} strokeWidth={1.75} />
+                )}
               </button>
             </div>
           </div>

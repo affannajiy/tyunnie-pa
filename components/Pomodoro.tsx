@@ -1,7 +1,7 @@
 // components/Pomodoro.tsx
 "use client";
 
-import { X } from "lucide-react";
+import { X, RotateCcw, SkipForward } from "lucide-react";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getTodos, type Todo } from "@/lib/database";
@@ -327,7 +327,8 @@ export default function Pomodoro({ userId, initialTask }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-lg mx-auto">
+    // Width now comes from PANEL_MEASURE in the dashboard, not from here.
+    <div>
       {/* Mode tabs */}
       <div className="flex gap-2 mb-6">
         {(["focus", "short", "long"] as Mode[]).map((m) => (
@@ -406,9 +407,10 @@ export default function Pomodoro({ userId, initialTask }: Props) {
       <div className="flex gap-3 justify-center mb-6">
         <button
           onClick={reset}
-          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-lg flex items-center justify-center"
+          aria-label="Reset timer"
+          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all flex items-center justify-center"
         >
-          ↺
+          <RotateCcw size={18} strokeWidth={1.75} />
         </button>
         <button
           onClick={() => setRunning((r) => !r)}
@@ -423,10 +425,11 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         </button>
         <button
           onClick={() => switchMode(mode === "focus" ? "short" : "focus")}
-          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-lg flex items-center justify-center"
+          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all flex items-center justify-center"
           title="Skip"
+          aria-label="Skip to next session"
         >
-          ⏭
+          <SkipForward size={18} strokeWidth={1.75} fill="currentColor" />
         </button>
       </div>
 

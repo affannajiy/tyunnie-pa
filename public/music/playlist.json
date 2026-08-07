@@ -1,122 +1,200 @@
 [
   {
+    "title": "21st Century Romance",
+    "artist": "TXT",
+    "file": "/music/TXT - 21st Century Romance.mp3",
+    "cover": "/music/cover-a-moment-of-stillness-in-the-thorns.png"
+  },
+  {
+    "title": "So What",
+    "artist": "TXT",
+    "file": "/music/TXT - So What.mp3",
+    "cover": "/music/cover-a-moment-of-stillness-in-the-thorns.png"
+  },
+  {
+    "title": "Stick With You",
+    "artist": "TXT",
+    "file": "/music/TXT - Stick With You.mp3",
+    "cover": "/music/cover-a-moment-of-stillness-in-the-thorns.png"
+  },
+  {
+    "title": "Baby Wassup",
+    "artist": "Yeonjun",
+    "file": "/music/Yeonjun - Baby Wassup.mp3",
+    "cover": "/music/cover-no-labels-pt2.png"
+  },
+  {
+    "title": "Long Way Long Ride",
+    "artist": "Yeonjun",
+    "file": "/music/Yeonjun - Long Way Long Ride.mp3",
+    "cover": "/music/cover-no-labels-pt2.png"
+  },
+  {
     "title": "Heaven",
     "artist": "TXT",
     "file": "/music/TXT - Heaven.mp3",
-    "cover": "/music/cover-star-chapter-sanctuary.jpg"
+    "cover": "/music/cover-star-chapter-sanctuary.png"
   },
   {
     "title": "Over The Moon",
     "artist": "TXT",
     "file": "/music/TXT - Over The Moon.mp3",
-    "cover": "/music/cover-star-chapter-sanctuary.jpg"
+    "cover": "/music/cover-star-chapter-sanctuary.png"
+  },
+  {
+    "title": "Danger",
+    "artist": "TXT",
+    "file": "/music/TXT - Danger.mp3",
+    "cover": "/music/cover-star-chapter-sanctuary.png"
+  },
+  {
+    "title": "Coma",
+    "artist": "yeonjun",
+    "file": "/music/Yeonjun - Coma.mp3",
+    "cover": "/music/cover-no-labels-pt1.png"
+  },
+  {
+    "title": "Talk To You",
+    "artist": "Yeonjun",
+    "file": "/music/Yeonjun - Talk to You.mp3",
+    "cover": "/music/cover-no-labels-pt1.png"
+  },
+  {
+    "title": "Let Me Tell You",
+    "artist": "Yeonjun",
+    "file": "/music/Yeonjun - Let Me Tell You (feat. Daniela of KATSEYE).mp3",
+    "cover": "/music/cover-no-labels-pt1.png"
   },
   {
     "title": "Love Language",
     "artist": "TXT",
     "file": "/music/TXT - Love Language.mp3",
-    "cover": "/music/cover-love-language.jpg"
+    "cover": "/music/cover-love-language.png"
   },
   {
     "title": "Song of the Stars",
     "artist": "TXT",
     "file": "/music/TXT - Song of the Stars.mp3",
-    "cover": "/music/cover-star-chapter-together.jpg"
+    "cover": "/music/cover-star-chapter-together.png"
+  },
+  {
+    "title": "Beautiful Strangers",
+    "artist": "TXT",
+    "file": "/music/TXT - Beautiful Strangers.mp3",
+    "cover": "/music/cover-star-chapter-together.png"
+  },
+  {
+    "title": "Upside Down Kiss",
+    "artist": "TXT",
+    "file": "/music/TXT - Upside Down Kiss.mp3",
+    "cover": "/music/cover-star-chapter-together.png"
+  },
+  {
+    "title": "GGUM",
+    "artist": "Yeonjun",
+    "file": "/music/Yeonjun - GGUM.mp3",
+    "cover": "/music/cover-ggum.png"
+  },
+  {
+    "title": "Panic",
+    "artist": "Beomgyu",
+    "file": "/music/Beomgyu - Panic.mp3",
+    "cover": "/music/cover-panic.png"
   },
   {
     "title": "I'll See You There Tomorrow",
     "artist": "TXT",
     "file": "/music/TXT - I'll See You There Tomorrow.mp3",
-    "cover": "/music/cover-minisode-3-tomorrow.jpg"
+    "cover": "/music/cover-minisode-3-tomorrow.png"
+  },
+  {
+    "title": "Deja Vu",
+    "artist": "TXT",
+    "file": "/music/TXT - Deja Vu.mp3",
+    "cover": "/music/cover-minisode-3-tomorrow.png"
+  },
+  {
+    "title": "The Killa (I Belong to You)",
+    "artist": "TXT",
+    "file": "/music/TXT - The Killa (I Belong to You).mp3",
+    "cover": "/music/cover-minisode-3-tomorrow.png"
+  },
+  {
+    "title": "Miracle",
+    "artist": "TXT",
+    "file": "/music/TXT - Miracle.mp3",
+    "cover": "/music/cover-minisode-3-tomorrow.png"
+  },
+  {
+    "title": "Happily Ever After",
+    "artist": "TXT",
+    "file": "/music/TXT - Happily Ever After.mp3",
+    "cover": "/music/cover-name-chapter-freefall.png"
+  },
+  {
+    "title": "Growing Pain",
+    "artist": "TXT",
+    "file": "/music/TXT - Growing Pain.mp3",
+    "cover": "/music/cover-name-chapter-freefall.png"
+  },
+  {
+    "title": "Dreamer",
+    "artist": "TXT",
+    "file": "/music/TXT - Dreamer.mp3",
+    "cover": "/music/cover-name-chapter-freefall.png"
+  },
+  {
+    "title": "Back for More (TXT Ver.)",
+    "artist": "TXT",
+    "file": "/music/TXT - Back for More (TXT Ver.).mp3",
+    "cover": "/music/cover-name-chapter-freefall.png"
+  },
+  {
+    "title": "Chasing That Feeling",
+    "artist": "TXT",
+    "file": "/music/TXT - Chasing That Feeling.mp3",
+    "cover": "/music/cover-name-chapter-freefall.png"
+  },
+  {
+    "title": "Do It Like That",
+    "artist": "TXT",
+    "file": "/music/TXT - Do It Like That.mp3",
+    "cover": "/music/cover-name-chapter-freefall.png"
   },
   {
     "title": "Tinnitus (Wanna be a rock)",
     "artist": "TXT",
     "file": "/music/TXT - Tinnitus (Wanna be a rock).mp3",
-    "cover": "/music/cover-name-chapter-temptation.jpg"
+    "cover": "/music/cover-name-chapter-temptation.png"
+  },
+  {
+    "title": "Sugar Rush Ride",
+    "artist": "TXT",
+    "file": "/music/TXT - Sugar Rush Ride.mp3",
+    "cover": "/music/cover-name-chapter-temptation.png"
+  },
+  {
+    "title": "Farewell, Neverland",
+    "artist": "TXT",
+    "file": "/music/TXT - Farewell, Neverland.mp3",
+    "cover": "/music/cover-name-chapter-temptation.png"
+  },
+  {
+    "title": "Devil by the Window",
+    "artist": "TXT",
+    "file": "/music/TXT - Devil by the Window.mp3",
+    "cover": "/music/cover-name-chapter-temptation.png"
   },
   {
     "title": "Can't You See Me",
     "artist": "TXT",
     "file": "/music/TXT - Can't You See Me.mp3",
-    "cover": "/music/cover-dream-chapter-eternity.jpg"
+    "cover": "/music/cover-dream-chapter-eternity.png"
   },
   {
     "title": "butterflies",
     "artist": "jvke",
     "file": "/music/jvke - butterflies.mp3",
-    "cover": "/music/cover-butterflies.jpg"
-  },
-  {
-    "title": "So Far So Fake",
-    "artist": "Pierce The Veil",
-    "file": "/music/Pierce The Veil - So Far So Fake.mp3",
-    "cover": "/music/cover-so-far-so-fake.jpg"
-  },
-  {
-    "title": "Ending Scene",
-    "artist": "TSS",
-    "file": "/music/TSS - Ending Scene.mp3",
-    "cover": "/music/cover-ending-scene.jpg"
-  },
-  {
-    "title": "Kita Usahakan Lagi",
-    "artist": "Batas Senja",
-    "file": "/music/Batas Senja - Kita Usahakan Lagi.mp3",
-    "cover": "/music/cover-kita-usahakan-lagi.jpg"
-  },
-  {
-    "title": "Sandiwara Cinta",
-    "artist": "Repvblik",
-    "file": "/music/Repvblik - Sandiwara Cinta.mp3",
-    "cover": "/music/cover-sandiwara-cinta.jpg"
-  },
-  {
-    "title": "Sedetik Lebih",
-    "artist": "Anuar Zain",
-    "file": "/music/Anuar Zain - Sedetik Lebih.mp3",
-    "cover": "/music/cover-sedetik-lebih.jpg"
-  },
-  {
-    "title": "Jack Sparrow",
-    "artist": "Hans Zimmer",
-    "file": "/music/Hans Zimmer - Jack Sparrow.mp3",
-    "cover": "/music/cover-jack-sparrow.jpg"
-  },
-  {
-    "title": "Made in Thailand",
-    "artist": "Carabao",
-    "file": "/music/Carabao - Made in Thailand.mp3",
-    "cover": "/music/cover-made-in-thailand.jpg"
-  },
-  {
-    "title": "MR. RAINDROP",
-    "artist": "Amplified",
-    "file": "/music/Amplified - MR. RAINDROP.mp3",
-    "cover": "/music/cover-mr-raindrop.jpg"
-  },
-  {
-    "title": "Pasilyo",
-    "artist": "SunKissed Lola",
-    "file": "/music/SunKissed Lola - Pasilyo.mp3",
-    "cover": "/music/cover-pasilyo.jpg"
-  },
-  {
-    "title": "Ai to Highball",
-    "artist": "LET ME KNOW",
-    "file": "/music/LET ME KNOW - Ai to Highball.mp3",
-    "cover": "/music/cover-ai-to-highball.jpg"
-  },
-  {
-    "title": "I Warned Myself",
-    "artist": "Charlie Puth",
-    "file": "/music/Charlie Puth - I Warned Myself.mp3",
-    "cover": "/music/cover-i-warned-myself.jpg"
-  },
-  {
-    "title": "Close",
-    "artist": "Nick Jonas",
-    "file": "/music/Nick Jonas - Close.mp3",
-    "cover": "/music/cover-close.jpg"
+    "cover": "/music/cover-butterflies.png"
   }
 ]

@@ -1,7 +1,7 @@
 // components/TyunniePanel.tsx
 "use client";
 
-import { X } from "lucide-react";
+import { X, Mic, Square, ArrowDownToLine, ExternalLink } from "lucide-react";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useMusicContext } from "@/lib/MusicContext";
@@ -1756,30 +1756,9 @@ casual chat (no data action — still set a mood):
           }`}
         >
           {listening ? (
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="currentColor"
-            >
-              <rect x="2" y="2" width="10" height="10" rx="2" />
-            </svg>
+            <Square size={16} strokeWidth={1.75} fill="currentColor" />
           ) : (
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <rect x="4.5" y="1" width="5" height="7" rx="2.5" />
-              <path
-                d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5"
-                strokeLinecap="round"
-              />
-              <line x1="7" y1="12" x2="7" y2="14" strokeLinecap="round" />
-            </svg>
+            <Mic size={16} strokeWidth={1.75} />
           )}
         </button>
       )}
@@ -1875,19 +1854,7 @@ casual chat (no data action — still set a mood):
                 title="Snap back to panel"
                 className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M6 2v6M3.5 5.5L6 8l2.5-2.5" />
-                  <path d="M1 10.5h10" />
-                </svg>
+                <ArrowDownToLine size={16} strokeWidth={1.75} />
               </button>
               {/* Close float window — hides panel, preserves chat */}
               <button
@@ -2022,20 +1989,7 @@ casual chat (no data action — still set a mood):
                         title="Float panel"
                         className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
                       >
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 12 12"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M5 2H2.5A.5.5 0 0 0 2 2.5v7a.5.5 0 0 0 .5.5h7A.5.5 0 0 0 10 9.5V7" />
-                          <path d="M7.5 2H10v2.5" />
-                          <path d="M10 2L6 6" />
-                        </svg>
+                        <ExternalLink size={16} strokeWidth={1.75} />
                       </button>
                     )}
                     <button

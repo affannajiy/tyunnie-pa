@@ -1624,7 +1624,8 @@ export default function Calculator() {
   const [activeMode, setActiveMode] = useState<CalcMode>("Scientific");
 
   return (
-    <div className="flex flex-col h-full w-full max-w-2xl mx-auto">
+    // Width now comes from PANEL_MEASURE in the dashboard, not from here.
+    <div className="flex flex-col h-full w-full">
       {/* Header */}
       <div className="mb-3 shrink-0">
         <h1
