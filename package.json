@@ -16,7 +16,7 @@
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.99.1",
     "@vercel/analytics": "^1.1.4",
-    "@vercel/speed-insights": "^1.0.4",
+    "@vercel/speed-insights": "^2.0.0",
     "canvas-confetti": "^1.9.4",
     "date-fns": "^4.1.0",
     "groq-sdk": "^1.1.1",
