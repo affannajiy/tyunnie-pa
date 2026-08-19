@@ -1,0 +1,66 @@
+version: 2
+
+# Dependency hygiene (SECURITY_Rulebook §3.2) — CVEs get found by the pipeline
+# on a schedule, not by someone remembering to run `npm audit` before a deploy.
+#
+# Security updates are raised by Dependabot immediately and ignore the schedule
+# and the open-PR cap below; those settings only pace the routine version bumps.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "01:00"
+      timezone: Asia/Kuala_Lumpur
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: scope
+
+    groups:
+      # One PR per group instead of one per package — a wall of individual PRs
+      # is how dependency updates end up permanently ignored.
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      types:
+        patterns: ["@types/*"]
+        exclude-patterns: ["@types/react", "@types/react-dom"]
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+    ignore:
+      # The lint toolchain is pinned deliberately, not accidentally — see
+      # .claude/CLAUDE.md "Lint toolchain is fragile". eslint 10 breaks on
+      # eslint-plugin-react's peer cap; eslint-config-next majors drag it along.
+      # Security advisories still come through: `ignore` only suppresses the
+      # scheduled version bumps.
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint-config-next
+        update-types: ["version-update:semver-major"]
+      # Next and React majors are architectural — they get a deliberate upgrade
+      # pass, not a bot PR.
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+
+  # Keep the Actions below pinned to current majors; a stale action is itself a
+  # supply-chain risk.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "ci"

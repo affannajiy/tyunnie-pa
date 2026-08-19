@@ -17,6 +17,18 @@ function safeEqual(a: string, b: string): boolean {
 // OTP store — expires after 10 minutes, max 5 verify attempts before lockout
 const otpStore = new Map<string, { otp: string; expires: number; attempts: number }>();
 
+/**
+ * Drop every expired OTP. Without this the Map only ever shrank on a successful
+ * verify, so abandoned requests left live secrets sitting in memory for the
+ * lifetime of the instance and the Map grew once per distinct email. Purging on
+ * write keeps expired material out of a heap dump and bounds the size.
+ */
+function purgeExpiredOtps(now: number) {
+  for (const [key, record] of otpStore) {
+    if (now > record.expires) otpStore.delete(key);
+  }
+}
+
 export async function POST(req: NextRequest) {
   // ── Auth ──
   const auth = req.headers.get("authorization");
@@ -36,11 +48,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 
-  const { type, otp: submittedOtp } = await req.json();
+  // A malformed body must fail as a controlled 400, not as a thrown parse error
+  // that escapes the handler and becomes an uncontrolled 500 (§1.7).
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const { type, otp: submittedOtp } = (body ?? {}) as {
+    type?: unknown;
+    otp?: unknown;
+  };
+
   const ALLOWED_TYPES = new Set(["verify", "pin_change_request", "setup", "changed"]);
-  if (!type || !ALLOWED_TYPES.has(type)) {
+  if (typeof type !== "string" || !ALLOWED_TYPES.has(type)) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   }
+
+  purgeExpiredOtps(Date.now());
 
   // ── VERIFY OTP ──
   if (type === "verify") {
@@ -82,7 +108,8 @@ export async function POST(req: NextRequest) {
     const otp = randomInt(100000, 1000000).toString();
     otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000, attempts: 0 });
 
-    await resend.emails.send({
+    try {
+      await resend.emails.send({
       from: "Tyunnie <onboarding@resend.dev>",
       to: email,
       subject: "Your Tyunnie vault PIN change code",
@@ -109,7 +136,12 @@ export async function POST(req: NextRequest) {
           </div>
         </div>
       `,
-    });
+      });
+    } catch {
+      // The OTP was never delivered, so don't leave it verifiable.
+      otpStore.delete(email);
+      return NextResponse.json({ error: "Failed to send" }, { status: 500 });
+    }
 
     return NextResponse.json({ ok: true });
   }

@@ -5,6 +5,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.26.0] — 2026-08-19
+
+### Highlights
+
+**Improved**
+
+- **The app now checks itself for security problems every time it changes.** Automated scanning runs on every update and once a week, so a newly-discovered flaw in something Tyunnie depends on gets found by the pipeline instead of by someone remembering to look.
+- **The calculator's graphing box is properly locked down.** It only accepts real maths now — nothing else can be smuggled in through it.
+- **Chat messages are handled more safely.** The way Tyun's replies get formatted was rebuilt so that anything other than plain text and simple formatting can't do anything at all, rather than being filtered out case by case.
+- **The vault behaves properly when something goes wrong.** If a verification email fails to send, the code is thrown away instead of being left usable, and a bad request now gets a clear error rather than a crash.
+
+### Security
+
+Full review against `docs/SECURITY_Rulebook.md` §1–§3, including the §2a line-level checklist. Eight findings, all resolved — the audit table with severities lives in `SECURITY.md` under "Rulebook Pass — 2026-08-19".
+
+- **`sanitizeGraphExpr` in `Calculator.tsx` gated `new Function()` behind a character-class allowlist** (`GRAPH_SAFE`). The letters needed to spell `sin`/`cos`/`sqrt`/`abs` also spell `alert`, `location` and `atob`, so `alert(1)` passed validation. Replaced with token-based `isSafeGraphExpr()` — strip the known vocabulary, then require only math punctuation remains, so an unknown identifier leaves letters behind and is rejected. Same shape as the existing `isSafeCalcExpr`; the two must stay in step. Verified: `alert(1)`, `location` and `atob` now rejected, every real expression still accepted.
+- **`nanoid <3.3.18` (GHSA-2v37-7h3g-55p8) was in the production dependency tree** via `@tailwindcss/postcss` → `postcss` → `nanoid`, so the standing "prod audit is 0" note had gone stale. Cleared by `npm audit fix` (lockfile-only). "Production tree" is not the same as "listed under `dependencies`" — trace with `npm ls` before calling a finding dev-only.
+- **`sanitizeHtml()` rewritten from strip-regex to escape-then-restore.** It previously removed known-hostile shapes, which means enumerating them. It now escapes everything and re-opens only bare `b|strong|em|i|code|br`, so attributes cannot exist in the output at all — `onerror=`, `javascript:` URIs and unterminated-tag parser recovery become structurally impossible rather than pattern-matched.
+- **`/api/vault-notify` parsed the request body outside any `try`**, turning a malformed body into an uncontrolled 500 instead of a 400, and the OTP-send branch was unguarded. Both wrapped; a failed Resend call now deletes the OTP so an undelivered code is never verifiable.
+- **The OTP `Map` only shrank on a successful verify** — abandoned requests left live codes in memory for the lifetime of the instance, and the Map grew once per distinct email. `purgeExpiredOtps()` now runs on every request.
+- **Authenticated API responses carried no `Cache-Control`.** `no-store, max-age=0` + `Pragma: no-cache` added for `/api/(chat|run|vault-notify)`, set centrally in `next.config.ts` so a new authenticated route inherits it. `/api/changelog` (public, CDN-cached) and `/api/exchange-rates` (sets its own `private`) are deliberately excluded.
+- **`/api/run` ignored JDoodle's `res.ok`** — whose error body can name the failing credential — and relayed `data.output` unbounded. Non-OK now returns a generic 502 with the status logged server-side; output is capped at 100 000 characters.
+
+### Added
+
+- **`.github/dependabot.yml`** — weekly npm updates and monthly GitHub Actions updates. Grouped (React, `@types/*`, minor-and-patch) so updates arrive as a few reviewable PRs rather than a wall of individual ones. Majors for `eslint`, `eslint-config-next`, `next`, `react` and `react-dom` are ignored: the first two are the load-bearing lint pins documented in `.claude/CLAUDE.md`, the rest are architectural upgrades that deserve a deliberate pass. `ignore` suppresses only scheduled version bumps — security advisories still come through.
+- **`.github/workflows/codeql.yml`** — CodeQL SAST on every push and PR to `main`, plus weekly (Monday 02:00 UTC, after Dependabot). Uses the `security-extended` query pack. Advanced setup, deliberately: switching the repo to CodeQL Default setup silently replaces this pack with the smaller default one.
+- **`.github/workflows/ci.yml`** — blocking `npm audit --omit=dev --audit-level=high`, plus `npm run build` (which type-checks). Builds with placeholder Supabase values; no real secret belongs in CI here. `npm run lint` is advisory for now — `main` carries 42 pre-existing `react-hooks` errors from `eslint-config-next@16`, and a check that is red on day one is a check nobody reads. Clear the backlog, then drop the `|| true`.
+- **`.claude/skills/tyun-deps`** — dependency, lockfile and CI hygiene: reading `npm audit` in this repo, the load-bearing pins, reviewing a new package, handling a Dependabot PR.
+- **`.claude/skills/tyun-database`** — the Supabase data layer: the five things a new table needs (table, RLS, policy, grant, index), the mandatory `GUEST_ID` branch in `lib/database.ts`, and migration rules for `docs/sql/`.
+
+### Changed
+
+- **`.claude/CLAUDE.md`** — skills roster updated to seven with explicit boundaries (`tyun-security` = app-code posture, `tyun-deps` = supply chain, `tyun-database` = data layer; an RLS *audit* is security, an RLS *change* is database). New Security rules cover the `eval`-allowlist failure mode, the sanitiser's escape-then-restore property, the body-parse guard, the central `no-store` matcher, and the CI floor.
+- **`SECURITY.md`** — new "Rulebook Pass — 2026-08-19" audit table; Current Defences gains CI security and API cache rows; the XSS row rewritten for the new sanitiser; the "prod audit is 0" note now says CI enforces it.
+
+### Note
+
+The previous release was committed with the title `3.26.0` but shipped `package.json` at `3.25.0` — its changelog entry, README badge and version file all read 3.25.0, so **3.25.0 is what actually released** and the commit title was simply wrong. This entry is the first real 3.26.0.
+
+---
+
 ## [3.25.0] — 2026-08-07
 
 ### Highlights

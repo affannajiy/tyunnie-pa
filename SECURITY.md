@@ -1,6 +1,6 @@
 # Security — Tyunnie PA
 
-Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link). Last robustness pass: **2026-06-24** (v3.22.0 — rate-limiter memory hardening, changelog cache fix, crash-guard sweep).
+Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link). Last robustness pass: **2026-06-24** (v3.22.0 — rate-limiter memory hardening, changelog cache fix, crash-guard sweep). Last rulebook pass: **2026-08-19** (v3.25.0 — graph-expression sandbox escape, sanitiser rewrite, CI security automation).
 
 ---
 
@@ -15,11 +15,13 @@ Security posture, audit history, known limitations, and backup plans. Last full 
 | OTP | `crypto.randomInt` (CSPRNG), `crypto.timingSafeEqual` comparison, 10-min expiry, 5-attempt lockout, one-time use |
 | Cron | `/api/daily-quote` guarded by `CRON_SECRET` Bearer token, constant-time compared |
 | Vault crypto | AES-GCM 256-bit (Web Crypto), PBKDF2 100k iterations; fresh salt + 12-byte IV per encryption; PIN never stored (decrypt-then-compare verifier) |
-| XSS | `sanitizeHtml()` on all AI output before `dangerouslySetInnerHTML` (tag allowlist `b|strong|em|i|code|br`, strips event handlers + `javascript:` URIs) |
+| XSS | `sanitizeHtml()` on all AI output before `dangerouslySetInnerHTML`. Escapes everything, then re-opens only bare `b\|strong\|em\|i\|code\|br`. Attributes cannot survive, so event handlers and `javascript:` URIs are impossible by construction rather than stripped by pattern |
 | Headers | CSP (`default-src 'self'` + explicit `connect-src`), HSTS preload, `nosniff`, `frame-ancestors 'self'`, `X-XSS-Protection: 0`, `poweredByHeader: false` |
 | Secrets | All API keys server-only (no `NEXT_PUBLIC_` on secrets); service role key used only in `app/api/daily-quote`; `.env*` gitignored and untracked |
 | Upstream timeouts | JDoodle fetch `AbortSignal.timeout(15s)`; client weather fetches 5s timeouts with fallbacks |
 | Guest mode | No JWT → all paid endpoints reject guests server-side, not just in UI |
+| CI security | CodeQL SAST per-PR + weekly (`.github/workflows/codeql.yml`); blocking production `npm audit --audit-level=high` in `.github/workflows/ci.yml`; Dependabot for npm + GitHub Actions (`.github/dependabot.yml`) |
+| API cache | `no-store` on `/api/(chat\|run\|vault-notify)` — set centrally in `next.config.ts`, so a new authenticated route inherits it |
 
 ### External APIs and their risk surface
 
@@ -78,6 +80,39 @@ Verified clean: all 13 `JSON.parse(localStorage…)` sites guarded after #3; eve
 
 ---
 
+## Rulebook Pass — 2026-08-19 (v3.25.0)
+
+Full review against `docs/SECURITY_Rulebook.md`, §1 through §3, including the
+§2a line-level checklist.
+
+| # | Severity | Issue | Status |
+|---|---|---|---|
+| 1 | 🔴 High | `Calculator.tsx` `sanitizeGraphExpr` used a *character-class* allowlist (`GRAPH_SAFE`) before handing the expression to `new Function()`. The letters required by `sin`/`cos`/`sqrt`/`abs` also spell `alert`, `location` and `atob`, so `alert(1)` passed validation (§2a-210) | ✅ Fixed — replaced with token-based `isSafeGraphExpr()`: strip the known vocabulary, then require only math punctuation remains. Mirrors the existing `isSafeCalcExpr`. Verified `alert(1)` / `location` / `atob` now rejected, all real expressions still accepted |
+| 2 | 🔴 High | `nanoid <3.3.18` (GHSA-2v37-7h3g-55p8) present in the **production** tree via `postcss` — the "prod audit is 0" note below had gone stale | ✅ Fixed — `npm audit fix`, lockfile-only change, back to 0 |
+| 3 | 🟠 Medium | No CI security automation at all: no `.github/workflows`, no Dependabot. §1.1 (security as code), §3.1 (shift-left scanning) and §3.2 (dependency hygiene) were entirely manual | ✅ Fixed — added `.github/dependabot.yml`, `.github/workflows/codeql.yml` (SAST, weekly + per-PR), `.github/workflows/ci.yml` (blocking prod `npm audit`, build, type-check) |
+| 4 | 🟠 Medium | `sanitizeHtml()` was a *strip*-regex — it removed known-hostile shapes, which means enumerating them. A blocklist wearing an allowlist's clothes (§2.9, §2.16) | ✅ Fixed — rewritten as escape-everything-then-restore-allowlisted-tags. Attributes can no longer exist in the output at all, so `onerror=`, `javascript:` and unterminated-tag parser recovery are structurally impossible rather than pattern-matched |
+| 5 | 🟠 Medium | `/api/vault-notify` called `await req.json()` outside any `try`, and the OTP-send branch was unguarded — a malformed body or a Resend outage escaped the handler as an uncontrolled 500 (§1.7, §2a-110) | ✅ Fixed — parse guarded → 400; send guarded → 500, and a failed send now deletes the OTP so an undelivered code is never verifiable |
+| 6 | 🟠 Medium | The OTP `Map` only shrank on a successful verify — abandoned requests left live codes in memory for the instance lifetime, and the Map grew once per distinct email (§2a-132) | ✅ Fixed — `purgeExpiredOtps()` runs on every request |
+| 7 | 🟡 Low | Authenticated API responses carried no `Cache-Control` (§2a-140) — chat carries the user's own words, vault-notify carries an OTP | ✅ Fixed — `no-store, max-age=0` + `Pragma: no-cache` for `/api/(chat\|run\|vault-notify)`, set centrally in `next.config.ts` so a new authenticated route inherits it. Deliberately excludes `/api/changelog` (public) and `/api/exchange-rates` (sets its own `private`) |
+| 8 | 🟡 Low | `/api/run` ignored JDoodle's `res.ok` (whose error body can name the failing credential) and relayed `data.output` unbounded (§2a-194) | ✅ Fixed — non-OK → generic 502 + server-side log; output capped at 100 000 chars |
+
+Verified clean this pass: secrets still absent from git (`.env*` untracked, no
+history hits); service-role key still confined to `app/api/daily-quote`; RLS
+`owner` policies present on all ten tables; recipient binding on `vault-notify`
+intact; `escapeHtml()` still applied to model output in `daily-quote`; external
+link in `Profile.tsx` carries `rel="noopener noreferrer"`; `isSafeCalcExpr`
+token allowlist sound; CSP `connect-src` still matches the origins in use.
+
+Still open and deliberately accepted: the in-memory rate limiter (#3 of the
+2026-06-10 log) and CSP `unsafe-inline`/`unsafe-eval` (#7 of that log) — see
+Known Limitations. Neither changed in this pass.
+
+Not applicable this pass (§2a categories with no such surface): File Management
+(no server-side upload path — music/avatar uploads go directly to Supabase
+Storage under RLS), Memory Management (managed runtime).
+
+---
+
 ## Reading `npm audit` in this repo
 
 **Do not panic at the raw number.** As of v3.23.0 `npm audit` reports **9 high-severity advisories, all of them dev-only** — old `minimatch`/`brace-expansion` copies bundled inside eslint plugins, which exist only to run `npm run lint` on a developer machine and never reach a deployed bundle.
@@ -88,7 +123,7 @@ The meaningful command is:
 npm audit --omit=dev   # 0 vulnerabilities
 ```
 
-Production dependencies audit clean at **0**. The dev-only advisories were accepted deliberately in 3.23.0 as the cost of restoring the lint gate (`eslint-config-next` had been pinned to a wrong package, so `npm run lint` was broken for a full release). Two constraints hold that repair together and must not be "tidied up": `eslint` stays on `^9` (eslint-config-next@16 bundles a react plugin whose peer caps at ^9.7), and the `brace-expansion` override stays **scoped to `@eslint/config-array`** — making it global re-breaks the linter.
+Production dependencies audit clean at **0** — reconfirmed 2026-08-19 after clearing the `nanoid` advisory (see the Rulebook Pass above). This number is now enforced by CI rather than by remembering to check. The dev-only advisories were accepted deliberately in 3.23.0 as the cost of restoring the lint gate (`eslint-config-next` had been pinned to a wrong package, so `npm run lint` was broken for a full release). Two constraints hold that repair together and must not be "tidied up": `eslint` stays on `^9` (eslint-config-next@16 bundles a react plugin whose peer caps at ^9.7), and the `brace-expansion` override stays **scoped to `@eslint/config-array`** — making it global re-breaks the linter.
 
 ---
 

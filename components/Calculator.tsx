@@ -234,11 +234,23 @@ interface GraphFn {
   error: string | null;
 }
 
-// Allowed chars for graphing expressions
-const GRAPH_SAFE = /^[0-9x+\-*/^().sincostanlgoqrtebsπ\s]+$/i;
+// Allowed vocabulary for graphing expressions.
+// A character-class allowlist is NOT enough here: the letters needed to spell
+// `sin`/`cos`/`sqrt`/`abs` also spell `alert`, `location` and `escape`, and the
+// result is handed straight to `new Function()` in `evalGraphFn`. So strip the
+// known vocabulary first and require that nothing but math punctuation is left —
+// an unknown identifier leaves letters behind and is rejected. Same shape as
+// `isSafeCalcExpr` above; keep the two in step.
+const GRAPH_KNOWN_TOKENS = /\b(?:sqrt|sin|cos|tan|abs|log|ln|x|e)\b/gi;
+const GRAPH_SAFE_REST = /^[0-9+\-*/^().,π\s]*$/;
+
+export function isSafeGraphExpr(raw: string): boolean {
+  if (typeof raw !== "string" || raw.length > 200) return false;
+  return GRAPH_SAFE_REST.test(raw.replace(GRAPH_KNOWN_TOKENS, ""));
+}
 
 function sanitizeGraphExpr(raw: string): string | null {
-  if (!GRAPH_SAFE.test(raw)) return null;
+  if (!isSafeGraphExpr(raw)) return null;
   let e = raw.trim();
   e = e.replace(/\^/g, "**");
   e = e.replace(/\bπ\b/g, "Math.PI");

@@ -16,12 +16,31 @@ import { getCyclingQuote } from "@/lib/tyunnieQuotes";
 import { TYUN_CORE, isTyunBirthday } from "@/lib/tyunPersona";
 import { confirmDialog } from "@/components/ui/ConfirmDialog";
 
-/** Strip all tags except a safe whitelist — prevents XSS in AI-rendered chat bubbles. */
+/** Only these ever survive sanitisation, and only bare — never with attributes. */
+const ALLOWED_TAG = /&lt;(\/?)(b|strong|em|i|code|br)\s*\/?&gt;/gi;
+
+/**
+ * Escape everything, then re-open the allowlisted tags — prevents XSS in
+ * AI-rendered chat bubbles.
+ *
+ * The order matters and is the whole defence. Escaping first makes the result
+ * decidable: nothing in `html` can come out as markup unless it exactly matches
+ * `ALLOWED_TAG`, so attributes — and therefore `onerror=`, `javascript:` and
+ * every unterminated-tag parser-recovery trick — cannot exist in the output at
+ * all. The previous version stripped hostile shapes instead, which meant
+ * enumerating them: a blocklist wearing an allowlist's clothes (§2.9, §2.16).
+ */
 function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<(?!\/?(?:b|strong|em|i|code|br)\b)[^>]*>/gi, "")
-    .replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "")
-    .replace(/javascript\s*:/gi, "");
+  const escaped = html
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+  return escaped.replace(
+    ALLOWED_TAG,
+    (_match, closing: string, tag: string) => `<${closing}${tag.toLowerCase()}>`,
+  );
 }
 
 const MONTHS = [

@@ -77,6 +77,19 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       }] : []),
+      // Authenticated, per-user API responses must never be stored by a shared
+      // cache or written to the browser's disk cache — chat carries the user's
+      // own words, vault-notify carries an OTP. Set centrally rather than in
+      // each route so a new authenticated route inherits the safe default.
+      // Deliberately NOT applied to /api/changelog (public, CDN-cached) or
+      // /api/exchange-rates (sets its own `private, max-age=3600`).
+      {
+        source: '/api/(chat|run|vault-notify)',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, max-age=0' },
+          { key: 'Pragma',        value: 'no-cache' },
+        ],
+      },
       // Long-lived cache for public images and fonts
       {
         source: '/(.*\\.(?:png|jpg|jpeg|gif|svg|ico|woff2?))',

@@ -1,0 +1,62 @@
+## Build, lint, and dependency audit on every change.
+##
+## The audit step is the one that matters for §3.2: it fails the build on a
+## HIGH-or-worse advisory in the *production* tree. `--omit=dev` is deliberate —
+## the dev tree carries eslint advisories that cannot reach a deployed user, and
+## a check that cries wolf every week is a check nobody reads (§2.13).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` installs exactly the lockfile — a bumped transitive dep can
+      # never sneak in between a local test and a CI run.
+      - name: Install
+        run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      # Advisory: surfaces dev-tree findings in the log without failing the run.
+      - name: Audit dev dependencies (informational)
+        run: npm audit --audit-level=high || true
+
+      # Advisory for now: main currently carries 42 pre-existing errors from
+      # eslint-config-next 16's react-hooks rules (set-state-in-effect and
+      # friends). Blocking on it would make CI red on day one and train everyone
+      # to ignore it. Clear the backlog, then drop the `|| true`.
+      - name: Lint (informational)
+        run: npm run lint || true
+
+      # Also the TypeScript check — `next build` type-checks the whole project.
+      - name: Build
+        run: npm run build
+        env:
+          # Build-time placeholders. These are public-by-design anon values in
+          # production too, and nothing here contacts a real project — the build
+          # only needs the vars to exist. No real secret belongs in CI for this.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key

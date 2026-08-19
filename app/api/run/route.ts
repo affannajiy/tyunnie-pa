@@ -11,7 +11,8 @@ const LANG_MAP: Record<string, { language: string; versionIndex: string }> = {
   other: { language: "python3",    versionIndex: "4" },
 };
 
-const MAX_CODE_CHARS = 50_000;
+const MAX_CODE_CHARS   = 50_000;
+const MAX_OUTPUT_CHARS = 100_000;
 const ALLOWED_LANGS  = new Set(Object.keys(LANG_MAP));
 
 export async function POST(req: NextRequest) {
@@ -60,8 +61,23 @@ export async function POST(req: NextRequest) {
       }),
     });
 
+    // JDoodle answers 401/429 with a JSON body too, and its `error` field can
+    // name the credential that failed — never relay upstream text to the client.
+    if (!res.ok) {
+      console.error(`[run] JDoodle responded ${res.status}`);
+      return NextResponse.json({ output: "Error: Could not run code." }, { status: 502 });
+    }
+
     const data = await res.json();
-    const output = data.output ?? "(no output)";
+    // Bound what we echo back: the output is attacker-authored (it's whatever
+    // their script printed) and an unbounded print loop would otherwise stream
+    // straight through us into the browser.
+    const raw = typeof data.output === "string" ? data.output : "";
+    const output = raw
+      ? raw.length > MAX_OUTPUT_CHARS
+        ? `${raw.slice(0, MAX_OUTPUT_CHARS)}\n…output truncated.`
+        : raw
+      : "(no output)";
     return NextResponse.json({ output });
   } catch {
     return NextResponse.json({ output: "Error: Could not run code." }, { status: 500 });
