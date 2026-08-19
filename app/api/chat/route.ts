@@ -9,8 +9,18 @@ import { rateLimit, clientKey } from "@/lib/rateLimit";
 import { getAuthUser } from "@/lib/apiAuth";
 
 // ── Clients ──
-const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
-const groq   = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Lazy + memoised. These SDKs throw on a missing key AT CONSTRUCTION, and
+// `next build` imports every route module to collect its config — so a
+// module-scope `new` turns "no secret in CI" into a failed build. Constructing
+// on first request keeps the build env-free and the runtime unchanged.
+let _gemini: GoogleGenerativeAI | null = null;
+function gemini() {
+  return (_gemini ??= new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? ""));
+}
+let _groq: Groq | null = null;
+function groq() {
+  return (_groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY }));
+}
 
 // Limits
 const MAX_MESSAGES      = 30;
@@ -42,7 +52,7 @@ async function callGemini(
   systemPrompt: string,
   messages: IncomingMessage[],
 ): Promise<string> {
-  const model = gemini.getGenerativeModel({
+  const model = gemini().getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction: systemPrompt,
     safetySettings: SAFETY_SETTINGS,
@@ -83,7 +93,7 @@ async function callGroq(
   systemPrompt: string,
   messages: IncomingMessage[],
 ): Promise<string> {
-  const response = await groq.chat.completions.create({
+  const response = await groq().chat.completions.create({
     model: "llama-3.3-70b-versatile",
     max_tokens: 400,
     messages: [

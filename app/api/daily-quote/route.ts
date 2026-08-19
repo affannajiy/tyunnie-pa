@@ -102,8 +102,16 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Lazy + memoised — see app/api/chat/route.ts. `new Resend(undefined)` throws
+// "Missing API key", and `next build` imports this module to collect its config.
+let _resend: Resend | null = null;
+function resend() {
+  return (_resend ??= new Resend(process.env.RESEND_API_KEY));
+}
+let _groq: Groq | null = null;
+function groq() {
+  return (_groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY }));
+}
 
 // Verify cron secret so random people can't spam this endpoint
 function verifyCronSecret(req: NextRequest) {
@@ -164,7 +172,7 @@ export async function GET(req: NextRequest) {
         : pick(TOPICS);
       const tone = tyunBday ? "teasing" : pick(TONES);
 
-      const completion = await groq.chat.completions.create({
+      const completion = await groq().chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [
           {
@@ -201,7 +209,7 @@ RULES
       const subjectLabel = escapeHtml(subject);
 
       // Send email
-      await resend.emails.send({
+      await resend().emails.send({
         from: "Taehyun via Tyunnie <onboarding@resend.dev>",
         to: email,
         subject: `${subject} — Taehyun`,

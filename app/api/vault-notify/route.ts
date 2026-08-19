@@ -4,7 +4,11 @@ import { randomInt, timingSafeEqual } from "crypto";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
 import { getAuthUser } from "@/lib/apiAuth";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy + memoised — see app/api/chat/route.ts.
+let _resend: Resend | null = null;
+function resend() {
+  return (_resend ??= new Resend(process.env.RESEND_API_KEY));
+}
 
 const MAX_OTP_LEN = 10;
 
@@ -109,7 +113,7 @@ export async function POST(req: NextRequest) {
     otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000, attempts: 0 });
 
     try {
-      await resend.emails.send({
+      await resend().emails.send({
       from: "Tyunnie <onboarding@resend.dev>",
       to: email,
       subject: "Your Tyunnie vault PIN change code",
@@ -158,7 +162,7 @@ export async function POST(req: NextRequest) {
       : "Your password vault PIN was successfully changed. If this wasn't you, please secure your account immediately.";
 
   try {
-    await resend.emails.send({
+    await resend().emails.send({
       from: "Tyunnie <onboarding@resend.dev>",
       to: email,
       subject,

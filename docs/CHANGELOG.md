@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.26.3] — 2026-08-19
+
+### Highlights
+
+**Fixed**
+
+- **Builds no longer need secrets** — the production build was failing because it tried to set up the email and AI connections before it had any keys. It now waits until something actually sends a request.
+
+### Fixed
+
+- **`next build` crashed with "Missing API key. Pass it to the constructor `new Resend("re_123")`".** `next build` imports every route module to collect its config, so a module-scope `new Resend(process.env.RESEND_API_KEY)` runs at build time. With no `RESEND_API_KEY` present — which is correct for CI, where no real secret belongs — the Resend SDK threw at construction and `/api/daily-quote` failed page-data collection.
+
+### Changed
+
+- **Every API-route SDK client is now lazy and memoised** — `resend()`, `groq()`, `gemini()` construct on first request instead of at module load, across `app/api/chat`, `app/api/daily-quote`, and `app/api/vault-notify`. Runtime behaviour is identical; the build no longer needs an environment.
+- Verified by reproducing CI exactly: built with `.env.local` removed and only the two placeholder Supabase vars set. Exit 0.
+
 ## [3.26.2] — 2026-08-19
 
 ### Highlights
