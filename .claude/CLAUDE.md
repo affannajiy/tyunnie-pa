@@ -1,6 +1,6 @@
 # CLAUDE.md — Tyunnie PA Reference
 
-Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.26.0.
+Personal AI assistant web app inspired by Taehyun (TXT). Next.js 16, TypeScript, Tailwind v4, Supabase, Groq AI. v3.26.1.
 
 Docs: [DEPLOYMENT.md](../docs/DEPLOYMENT.md) (env/Vercel) · [DATABASE.md](../docs/DATABASE.md) (schema/SQL) · [SECURITY.md](../SECURITY.md) (posture/audit) · [UI-UX_Rulebook.md](../docs/UI-UX_Rulebook.md) (**UI contract — read before any UI change**; §1 Nielsen · §2 Gestalt · §3 Laws of UX · §4 conflict rulings) · [SECURITY_Rulebook.md](../docs/SECURITY_Rulebook.md) (general secure-design reference — §1 7 principles · §2 OWASP foundations · §3 SDLC practices · §4 conflict rulings; pairs with `SECURITY.md`'s project-specific posture). Full file-tree + verbose notes live in git history of this file (pre-3.22 versions) if needed.
 

@@ -1,6 +1,6 @@
 # Security — Tyunnie PA
 
-Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link). Last robustness pass: **2026-06-24** (v3.22.0 — rate-limiter memory hardening, changelog cache fix, crash-guard sweep). Last rulebook pass: **2026-08-19** (v3.25.0 — graph-expression sandbox escape, sanitiser rewrite, CI security automation).
+Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link). Last robustness pass: **2026-06-24** (v3.22.0 — rate-limiter memory hardening, changelog cache fix, crash-guard sweep). Last rulebook pass: **2026-08-19** (v3.26.0 — graph-expression sandbox escape, sanitiser rewrite, CI security automation).
 
 ---
 
@@ -80,7 +80,7 @@ Verified clean: all 13 `JSON.parse(localStorage…)` sites guarded after #3; eve
 
 ---
 
-## Rulebook Pass — 2026-08-19 (v3.25.0)
+## Rulebook Pass — 2026-08-19 (v3.26.0)
 
 Full review against `docs/SECURITY_Rulebook.md`, §1 through §3, including the
 §2a line-level checklist.
@@ -110,6 +110,27 @@ Known Limitations. Neither changed in this pass.
 Not applicable this pass (§2a categories with no such surface): File Management
 (no server-side upload path — music/avatar uploads go directly to Supabase
 Storage under RLS), Memory Management (managed runtime).
+
+---
+
+## CodeQL Triage — 2026-08-19 (first scan, v3.26.1)
+
+First `security-extended` run on `main` raised 4 alerts. Verdicts:
+
+| Alert | Where | Verdict |
+|---|---|---|
+| #3, #4 — Replacement of a substring with itself (Medium) | `Calculator.tsx:89-90` | ✅ **True positive, fixed.** `e.replace(/nCr\(/g, "nCr(")` and the `nPr` twin were literal no-ops. Unlike `sin`/`cos`/`abs`, `nCr`/`nPr` are not `Math` members — they're passed into `new Function()` as their own parameters, so the identifier was already correct. Lines removed, comment left explaining why there is deliberately no rewrite |
+| #1 — Clear text storage of sensitive information (High) | `Weather.tsx:81` | ⚠️ **False positive — dismiss as "Used in tests / won't fix → false positive".** The value is `{lat, lon, city}` for a city the user typed into a search box, geocoded to a **city centroid** by Open-Meteo. Not device geolocation, not a credential. It is stored in the user's own `localStorage`, on their own device, and persisting it *is* the feature — the panel would forget the chosen city every reload. There is no attacker who can read it that cannot already read everything else in that origin's storage |
+| #2 — Clear text storage of sensitive information (High) | `Profile.tsx:961` | ⚠️ **False positive, same value, same key** (`tyunnie_city`), written from the settings panel instead of the weather panel. Dismiss identically |
+
+If either #1/#2 is ever un-dismissed, the question to re-ask is whether the stored
+coordinate is still a *typed city centroid* — if a future change starts writing
+`navigator.geolocation` output to that key, the alert becomes a true positive and the
+correct fix is to stop persisting it, not to round it.
+
+Verified during triage: `lib/guest.ts` has no vault branch at all (guests were cut off
+from the vault in 3.25.0), so no plaintext secret reaches `localStorage['tyunnie_guest_data']`;
+`Profile.tsx`'s `PIN_LOCK_KEY` stores only `{attempts, until}`, never the PIN.
 
 ---
 

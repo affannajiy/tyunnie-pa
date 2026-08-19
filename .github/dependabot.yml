@@ -52,6 +52,17 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: react-dom
         update-types: ["version-update:semver-major"]
+      # TypeScript majors change the compiler, not a library. 7.x is the
+      # native-Go rewrite; it needs a deliberate pass against Next 16 and the
+      # pinned eslint toolchain, not an overnight bot merge.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # @types/node must track the Node the app actually RUNS on (22 — see
+      # ci.yml and the Vercel runtime), not the newest Node that exists. A
+      # newer major type-checks against APIs the runtime does not have, so the
+      # build goes green and production throws.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # Keep the Actions below pinned to current majors; a stale action is itself a
   # supply-chain risk.

@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.26.1] — 2026-08-19
+
+### Highlights
+
+**Improved**
+
+- **Three unused libraries removed.** They were being downloaded and shipped without any part of the app ever using them. Less to go wrong, less to keep patched.
+
+### Security
+
+First CodeQL scan of `main` raised 4 alerts. Triage table with per-alert verdicts is in `SECURITY.md` under "CodeQL Triage — 2026-08-19".
+
+- **Two dead `.replace()` calls removed from `Calculator.tsx`** (CodeQL #3, #4 — "replacement of a substring with itself", Medium, true positive). `e.replace(/nCr\(/g, "nCr(")` and its `nPr` twin replaced a string with itself. Unlike `sin`/`cos`/`abs`, `nCr` and `nPr` are not `Math` members — they are passed into `new Function()` as their own parameters, so no rewrite was ever needed. A comment now says so, to stop the no-ops being "restored" as missing cases.
+- **CodeQL #1 and #2 ("clear text storage of sensitive information", High) assessed as false positives** and documented rather than worked around. Both point at `localStorage['tyunnie_city']`, which holds a city-centroid coordinate for a city the user typed into a search box — not device geolocation and not a credential. Persisting it is the feature. The note records what would make it a true positive later: a future change writing `navigator.geolocation` output to that key.
+- **Three unused production dependencies removed** — `@anthropic-ai/sdk`, `@supabase/auth-helpers-nextjs` (deprecated upstream in favour of `@supabase/ssr`) and `analytics` (the app uses `@vercel/analytics`, a different package). Nothing in `app/`, `components/`, `lib/` or `scripts/` imported any of them. Unused dependencies are attack surface that no feature is paying for (§1.5) and CVE noise nobody can act on.
+
+### Changed
+
+- **`@types/node` moved from `^20` to `^22`, and `engines.node` set to `>=22`.** The types were a major behind the Node the app actually runs on in CI and on Vercel. Types ahead of the runtime are the dangerous direction — the build goes green against APIs that do not exist in production — so this now has an explicit floor instead of drifting.
+- **`.github/dependabot.yml` ignores majors for `typescript` and `@types/node`.** The first Dependabot run proposed TypeScript 5.9 → 7.0 (the native-Go rewrite) and `@types/node` 20 → 26 overnight. Both are runtime- or toolchain-coupled and need a deliberate pass. As with the existing entries, this suppresses only scheduled version bumps — security advisories still come through.
+
+---
+
 ## [3.26.0] — 2026-08-19
 
 ### Highlights

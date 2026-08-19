@@ -1,7 +1,10 @@
 {
   "name": "tyunnie",
-  "version": "3.26.0",
+  "version": "3.26.1",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:noopen": "next dev",
@@ -10,13 +13,10 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
     "@google/generative-ai": "^0.24.1",
-    "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.99.1",
     "@vercel/analytics": "^1.1.4",
     "@vercel/speed-insights": "^1.0.4",
-    "analytics": "^0.8.19",
     "canvas-confetti": "^1.9.4",
     "date-fns": "^4.1.0",
     "groq-sdk": "^1.1.1",
@@ -30,7 +30,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.39.5",

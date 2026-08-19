@@ -86,8 +86,11 @@ function buildEval(
   e = e.replace(/√\(/g, "Math.sqrt(");
   e = e.replace(/∛\(/g, "Math.cbrt(");
   e = e.replace(/\babs\(/g, "Math.abs(");
-  e = e.replace(/\bnCr\(/g, "nCr(");
-  e = e.replace(/\bnPr\(/g, "nPr(");
+  // nCr( and nPr( deliberately have no rewrite: unlike sin/cos/abs they are not
+  // Math members, they're passed into `new Function()` as their own parameters
+  // (see tryEval), so the identifier is already correct. Two `.replace(x, x)`
+  // no-ops used to sit here — CodeQL flagged them as replacing a substring with
+  // itself, which is exactly what they did.
   e = e.replace(/(\d)\s*\(/g, "$1*(");
   e = e.replace(/(\d)\s*(Math\.)/g, "$1*$2");
   e = e.replace(/\)\s*(\d)/g, ")*$1");
