@@ -47,7 +47,13 @@ Both are documented in CLAUDE.md; the short version:
 | Pin | Why | Symptom if broken |
 |---|---|---|
 | `eslint` stays `^9` | `eslint-config-next@16` bundles `eslint-plugin-react` whose peer caps at `^9.7` | `contextOrFilename.getFilename is not a function` |
-| `brace-expansion: ^2` scoped under `@eslint/config-array` | Global v5 exports an object; bundled `minimatch@3` needs a function | `expand is not a function` |
+| `brace-expansion: ^2.1.4` scoped under **all four** `minimatch@3` consumers (`eslint`, `@eslint/eslintrc`, `eslint-config-next`, `@eslint/config-array`) | v5 exports an object, `minimatch@3` needs a function; v1 has the ReDoS advisory. Covering only some leaves the rest unresolvable | `expand is not a function`, or `npm ci` `Missing: brace-expansion@1.1.18 from lock file` |
+
+**After ANY change to `overrides`, verify with `npm ci --dry-run` — not `npm install`.**
+`npm install` repairs a partial tree in place and reports success; `npm ci` refuses a lockfile
+that does not fully resolve. CI, Vercel, and every Dependabot PR run `npm ci`, so an
+`npm install`-only check ships a lockfile that is red everywhere but green locally. This
+is what broke every build between 3.26.0 and 3.26.2.
 
 `.github/dependabot.yml` already suppresses the major bumps for `eslint`,
 `eslint-config-next`, `next`, `react`, and `react-dom`. That `ignore` block only stops

@@ -1,6 +1,6 @@
 {
   "name": "tyunnie",
-  "version": "3.26.1",
+  "version": "3.26.2",
   "private": true,
   "engines": {
     "node": ">=22"
@@ -43,9 +43,15 @@
     "postcss": "^8.5.23",
     "js-yaml": "^4.3.1",
     "eslint-config-next": {
-      "brace-expansion": "^5.0.9"
+      "brace-expansion": "^2.1.4"
     },
     "@eslint/config-array": {
+      "brace-expansion": "^2.1.4"
+    },
+    "eslint": {
+      "brace-expansion": "^2.1.4"
+    },
+    "@eslint/eslintrc": {
       "brace-expansion": "^2.1.4"
     }
   }

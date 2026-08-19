@@ -32,6 +32,14 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Pin npm to the major that WROTE package-lock.json. `overrides` are the
+      # part of a lockfile whose resolution differs most between npm majors, and
+      # this repo overrides `brace-expansion` under four separate parents. Node
+      # 22 ships npm 10; letting it read an npm 11 lock is how a lockfile passes
+      # locally and fails `npm ci` here.
+      - name: Pin npm
+        run: npm i -g npm@11
+
       # `npm ci` installs exactly the lockfile — a bumped transitive dep can
       # never sneak in between a local test and a CI run.
       - name: Install

@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.26.2] — 2026-08-19
+
+### Highlights
+
+**Fixed**
+
+- **Builds are reliable again** — an internal dependency list had drifted out of step with itself, which made every automated build fail before it started. Rebuilt from scratch; nothing about the app itself changed.
+
+### Fixed
+
+- **`npm ci` lockfile desync broke CI on every run since 3.26.0.** `package-lock.json` left three copies of `minimatch@3.1.5` (under `eslint`, `@eslint/eslintrc`, `eslint-config-next`) with no `brace-expansion@^1.1.7` satisfying them, so `npm ci` aborted with `Missing: brace-expansion@1.1.18 from lock file`. `npm install` tolerated it; `npm ci` does not — and CI, Vercel and every Dependabot PR use `npm ci`.
+
+### Changed
+
+- **`brace-expansion` overrides are now scoped to all four `minimatch@3` consumers at `^2.1.4`** (`eslint`, `@eslint/eslintrc`, `eslint-config-next`, `@eslint/config-array`), not two of them at two different majors. The old `eslint-config-next` scope pinned `^5.0.9`, which is the version that exports an object where `minimatch@3` expects a function — the exact failure the pin was meant to prevent, latent because that code path had not run.
+- **CI now pins npm to 11** (`npm i -g npm@11`) before `npm ci`. Node 22 ships npm 10; `overrides` resolution is the part of a lockfile that differs most across npm majors, and this repo overrides `brace-expansion` under four parents. Reading an npm 11 lock with npm 10 is how a lockfile goes green locally and red in CI.
+- `package-lock.json` regenerated from scratch. Lint baseline unchanged (85 problems), `npm audit --omit=dev` still 0, production build green.
+
+---
+
 ## [3.26.1] — 2026-08-19
 
 ### Highlights
