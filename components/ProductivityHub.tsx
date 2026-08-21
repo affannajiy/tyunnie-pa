@@ -37,7 +37,7 @@ export default function ProductivityHub({ onNavigate }: Props) {
         <h1 className="font-serif italic text-2xl text-[#111010] dark:text-[#f0ebe3] mb-1">
           Focus
         </h1>
-        <p className="text-sm text-[#9a8f7e]">
+        <p className="text-sm text-[#6f6455]">
           Where things get done.
         </p>
       </div>
@@ -57,7 +57,7 @@ export default function ProductivityHub({ onNavigate }: Props) {
             <div className="font-bold text-[#111010] dark:text-[#f0ebe3] mb-1 group-hover:text-(--accent) transition-colors">
               {card.title}
             </div>
-            <div className="text-xs text-[#9a8f7e]">{card.desc}</div>
+            <div className="text-xs text-[#6f6455]">{card.desc}</div>
           </button>
         ))}
       </div>

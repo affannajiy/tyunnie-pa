@@ -93,7 +93,7 @@ export default function Weather() {
   if (editing) {
     return (
       <div className="hidden md:flex items-center gap-2">
-        <input
+        <input aria-label="Search city"
           autoFocus
           type="text"
           value={input}
@@ -106,9 +106,9 @@ export default function Weather() {
             }
           }}
           placeholder="City name..."
-          className="bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-xs text-[#111010] outline-none focus:border-(--accent) transition-colors w-32 placeholder:text-[#c5bdb0]"
+          className="bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-xs text-[#111010] outline-none focus:border-(--accent) transition-colors w-32 placeholder:text-[#756a5a]"
         />
-        {error && <span className="text-[10px] text-red-400">{error}</span>}
+        {error && <span className="text-[10px] text-red-600">{error}</span>}
         <button
           onClick={handleSearch}
           className="text-[10px] font-bold text-(--accent) hover:text-[#c2500f] transition-colors"
@@ -121,7 +121,7 @@ export default function Weather() {
             setError("");
           }}
           aria-label="Cancel city search"
-          className="text-[10px] text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors"
+          className="text-[10px] text-[#756a5a] hover:text-[#6f6455] transition-colors"
         >
           <X size={16} strokeWidth={2} />
         </button>
@@ -146,7 +146,7 @@ export default function Weather() {
           fetchWeather(lastAttempt.lat, lastAttempt.lon, lastAttempt.city)
         }
         title={`${error} Tap to try again.`}
-        className="hidden md:flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-[10px] font-mono text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all"
+        className="hidden md:flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-[10px] font-mono text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all"
       >
         <AlertTriangle size={14} strokeWidth={2} />
         {lastAttempt.city} — tap to retry
@@ -158,7 +158,7 @@ export default function Weather() {
     return (
       <button
         onClick={() => setEditing(true)}
-        className="hidden md:flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-[10px] text-[#c5bdb0] font-mono hover:border-(--accent) hover:text-(--accent) transition-all"
+        className="hidden md:flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-[10px] text-[#756a5a] font-mono hover:border-(--accent) hover:text-(--accent) transition-all"
       >
         + Add city
       </button>
@@ -169,7 +169,7 @@ export default function Weather() {
   return (
     <button
       onClick={() => setEditing(true)}
-      className="hidden md:flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-xs text-[#9a8f7e] font-mono hover:border-(--accent) transition-all"
+      className="hidden md:flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-3 py-1.5 text-xs text-[#6f6455] font-mono hover:border-(--accent) transition-all"
       title={`${data.city} — click to change`}
     >
       <WIcon size={16} strokeWidth={1.75} />

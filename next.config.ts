@@ -1,14 +1,50 @@
 import type { NextConfig } from 'next'
 
+// In development only, two extra script sources are needed. Both are dev-time
+// tooling that never runs in a deployed build, so production keeps the tight
+// policy and the dev console stays free of violations nobody should act on:
+//   • 'unsafe-eval'  — React's dev build uses eval() to rebuild callstacks.
+//                      React's own message: "React will never use eval() in
+//                      production mode." Granting it in dev does not weaken the
+//                      shipped policy, and leaving it out only trained us to
+//                      ignore a red console.
+//   • va.vercel-scripts.com — @vercel/analytics and @vercel/speed-insights load
+//                      their debug script from that host in dev. On Vercel they
+//                      are served from this origin (/_vercel/…), which 'self'
+//                      already covers. Both were being blocked silently, which
+//                      is what a control looks like when it breaks a feature
+//                      nobody is watching.
+const isDevBuild = process.env.NODE_ENV !== 'production'
+
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  ...(isDevBuild ? ["'unsafe-eval'", 'https://va.vercel-scripts.com'] : []),
+].join(' ')
+
 const securityHeaders = [
   // Content Security Policy — restricts resource origins to known-safe sources.
-  // unsafe-inline: required for Next.js inline scripts + Tailwind inline styles.
-  // unsafe-eval: required for Calculator's new Function() expression evaluator.
+  //
+  // 'unsafe-eval' is GONE from the production policy and must stay gone. It was
+  // there for one reason: Calculator's `new Function()` expression evaluator.
+  // That evaluator was replaced by a real parser (lib/mathEval.ts), so the
+  // shipped app contains no string-to-code path at all. Putting the directive
+  // back unconditionally would silently re-open the injection class the parser
+  // exists to remove (§2b.4, §2a.7). It is granted in development only, for
+  // React's dev build — see isDevBuild above.
+  //
+  // 'unsafe-inline' on script-src is still required: Next.js emits inline
+  // bootstrap scripts, and app/layout.tsx runs an inline theme script before
+  // paint to avoid a flash. Removing it needs a per-request nonce from
+  // middleware, threaded through both — tracked as the next CSP step, not
+  // something to fake with a hash.
+  // 'unsafe-inline' on style-src is required by Tailwind's inline styles and by
+  // the per-frame inline styles the music/focus animations write.
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      `script-src ${scriptSrc}`,
       "style-src 'self' 'unsafe-inline'",
       // Scoped to the origins actually used: Supabase Storage (avatars, covers,
       // music art), plus data:/blob: for cropped avatars and object URLs.
@@ -23,6 +59,11 @@ const securityHeaders = [
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'self'",
+      // No plugin/applet content anywhere, and no <base> rewriting.
+      "frame-src 'none'",
+      // Upgrade any stray http:// subresource rather than letting it be blocked
+      // silently or, worse, loaded in the clear (§2j.1).
+      'upgrade-insecure-requests',
     ].join('; '),
   },
   // Prevent clickjacking (legacy; frame-ancestors above handles modern browsers)
@@ -40,6 +81,15 @@ const securityHeaders = [
   { key: 'X-XSS-Protection',        value: '0' },
   // DNS prefetch control
   { key: 'X-DNS-Prefetch-Control',  value: 'on' },
+  // Isolate the browsing context: a window this app opens (and any opener) gets
+  // no scripting handle back into it, which also closes the tabnabbing path for
+  // the vault's saved-website links. 'same-origin-allow-popups' rather than
+  // 'same-origin' so Supabase's Google OAuth popup still resolves.
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+  // Only this origin may embed our documents/resources as a subresource.
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+  // Legacy Adobe cross-domain policy files — we serve none; say so.
+  { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
 ]
 
 const nextConfig: NextConfig = {

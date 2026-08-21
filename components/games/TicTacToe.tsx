@@ -212,7 +212,7 @@ export default function TicTacToe() {
             className={`flex-1 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
               difficulty === d
                 ? "bg-[#f97316] text-white"
-                : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+                : "bg-white border border-[#e8e2d8] text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316]"
             }`}
           >
             {d}
@@ -223,18 +223,18 @@ export default function TicTacToe() {
       {/* Score */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-3 text-center">
-          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#9a8f7e] mb-1">
+          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#6f6455] mb-1">
             You
           </div>
-          <div className="font-serif italic text-3xl text-[#16a34a]">
+          <div className="font-serif italic text-3xl text-[#15803d]">
             {scores.you}
           </div>
         </div>
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-3 text-center">
-          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#9a8f7e] mb-1">
+          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#6f6455] mb-1">
             Draw
           </div>
-          <div className="font-serif italic text-3xl text-[#9a8f7e]">
+          <div className="font-serif italic text-3xl text-[#6f6455]">
             {scores.draw}
           </div>
         </div>
@@ -256,7 +256,7 @@ export default function TicTacToe() {
         >
           {statusText()}
         </p>
-        {quip && <p className="text-xs text-[#9a8f7e] mt-1 italic">"{quip}"</p>}
+        {quip && <p className="text-xs text-[#6f6455] mt-1 italic">"{quip}"</p>}
       </div>
 
       {/* Board */}
@@ -303,7 +303,7 @@ export default function TicTacToe() {
         </button>
         <button
           onClick={() => setScores({ you: 0, tyun: 0, draw: 0 })}
-          className="px-4 py-3 rounded-2xl border border-[#e8e2d8] text-[#9a8f7e] text-sm font-bold hover:border-[#f97316] hover:text-[#f97316] transition-all"
+          className="px-4 py-3 rounded-2xl border border-[#e8e2d8] text-[#6f6455] text-sm font-bold hover:border-[#f97316] hover:text-[#f97316] transition-all"
         >
           Clear
         </button>

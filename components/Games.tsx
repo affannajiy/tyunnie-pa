@@ -76,7 +76,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -98,7 +98,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -120,7 +120,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -142,7 +142,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -164,7 +164,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -178,7 +178,7 @@ export default function Games() {
       <div>
         <button
           onClick={() => setActiveGame(null)}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+          className="flex items-center gap-2 text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
         >
           ← Back to Games
         </button>
@@ -193,7 +193,7 @@ export default function Games() {
         <h1 className="font-serif italic text-2xl text-[#111010] mb-1">
           Games
         </h1>
-        <p className="text-sm text-[#9a8f7e]">
+        <p className="text-sm text-[#6f6455]">
           Take a break. Challenge Tyunnie.
         </p>
       </div>
@@ -210,13 +210,13 @@ export default function Games() {
                 : "border-[#e8e2d8] opacity-50 cursor-not-allowed"
             }`}
           >
-            <div className="mb-3" style={{ color: "var(--accent)" }}><game.icon size={26} strokeWidth={1.5} /></div>
+            <div className="mb-3" style={{ color: "var(--accent-text)" }}><game.icon size={26} strokeWidth={1.5} /></div>
             <div className="font-bold text-[#111010] mb-1 group-hover:text-(--accent) transition-colors">
               {game.title}
             </div>
-            <div className="text-xs text-[#9a8f7e]">{game.desc}</div>
+            <div className="text-xs text-[#6f6455]">{game.desc}</div>
             {!game.available && (
-              <div className="mt-2 text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono">
+              <div className="mt-2 text-[9px] font-bold uppercase tracking-widest text-[#756a5a] font-mono">
                 Coming Soon
               </div>
             )}

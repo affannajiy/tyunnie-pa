@@ -25,12 +25,12 @@ export default function AboutPage() {
   const accent = `rgb(${accentRgb})`;
 
   return (
-    <div className="h-[100dvh] overflow-y-auto bg-[#faf8f5] dark:bg-[#0e0d0b] text-[#111010] dark:text-[#f5f0e8]">
+    <main className="h-[100dvh] overflow-y-auto bg-[#faf8f5] dark:bg-[#0e0d0b] text-[#111010] dark:text-[#f5f0e8]">
       <div className="max-w-2xl mx-auto px-6 pt-6 pb-14">
         {/* ── Back link ── */}
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-[#9a8f7e] dark:text-[#6a6050] hover:opacity-70 transition-opacity mb-6"
+          className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-[#6f6455] dark:text-[#6a6050] hover:opacity-70 transition-opacity mb-6"
         >
           ← Back to app
         </Link>
@@ -49,7 +49,7 @@ export default function AboutPage() {
             <span className="text-3xl font-bold tracking-tight" style={{ color: accent }}>
               Tyunnie
             </span>
-            <p className="text-sm text-[#9a8f7e] dark:text-[#7a7060] mt-0.5">
+            <p className="text-sm text-[#6f6455] dark:text-[#7a7060] mt-0.5">
               A planner, with Taehyun at your side.
             </p>
           </div>
@@ -67,7 +67,7 @@ export default function AboutPage() {
             a little dry, quietly in your corner. Now getting things done feels like having a
             friend sat next to you instead of a checklist staring back. That's the whole idea.
           </p>
-          <p className="text-sm text-[#9a8f7e] dark:text-[#7a7060]">
+          <p className="text-sm text-[#6f6455] dark:text-[#7a7060]">
             Tyunnie is a fan-made tribute and isn't affiliated with TOMORROW X TOGETHER or HYBE.
           </p>
         </div>
@@ -76,16 +76,16 @@ export default function AboutPage() {
         <div className="mt-14">
           <div className="flex items-baseline justify-between mb-6">
             <h2 className="text-lg font-serif italic">What's changed</h2>
-            <span className="text-[11px] font-mono text-[#c5bdb0] dark:text-[#4a4540]">
+            <span className="text-[11px] font-mono text-[#756a5a] dark:text-[#9c8f80]">
               v{APP_VERSION}
             </span>
           </div>
 
           {entries === null && (
-            <p className="text-sm text-[#9a8f7e] dark:text-[#6a6050]">Loading history…</p>
+            <p className="text-sm text-[#6f6455] dark:text-[#6a6050]">Loading history…</p>
           )}
           {entries?.filter(hasHighlights).length === 0 && (
-            <p className="text-sm text-[#9a8f7e] dark:text-[#6a6050]">No notes yet.</p>
+            <p className="text-sm text-[#6f6455] dark:text-[#6a6050]">No notes yet.</p>
           )}
 
           <div className="space-y-9">
@@ -99,7 +99,7 @@ export default function AboutPage() {
                   <span className="font-bold text-sm" style={{ color: accent }}>
                     {e.version}
                   </span>
-                  <span className="text-[11px] font-mono text-[#c5bdb0] dark:text-[#4a4540]">
+                  <span className="text-[11px] font-mono text-[#756a5a] dark:text-[#9c8f80]">
                     {e.date}
                   </span>
                 </div>
@@ -108,7 +108,7 @@ export default function AboutPage() {
                     .filter((g) => g.items.length > 0)
                     .map((g, gi) => (
                       <div key={gi}>
-                        <p className="text-[10px] font-bold uppercase tracking-[2px] text-[#9a8f7e] dark:text-[#6a6050] mb-1.5">
+                        <p className="text-[10px] font-bold uppercase tracking-[2px] text-[#6f6455] dark:text-[#6a6050] mb-1.5">
                           {g.label}
                         </p>
                         <ul className="space-y-1.5">
@@ -136,10 +136,10 @@ export default function AboutPage() {
           </div>
         </div>
 
-        <p className="text-center text-[10px] font-mono text-[#c5bdb0] dark:text-[#4a4540] mt-16">
+        <p className="text-center text-[10px] font-mono text-[#756a5a] dark:text-[#9c8f80] mt-16">
           Tyunnie × Taehyun · v{APP_VERSION}
         </p>
       </div>
-    </div>
+    </main>
   );
 }

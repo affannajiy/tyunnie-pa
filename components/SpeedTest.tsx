@@ -166,7 +166,7 @@ function SpeedDial({ speed, phase, progress }: DialProps) {
               <span className="text-4xl font-bold tabular-nums leading-none" style={{ color }}>
                 {speed}
               </span>
-              <span className="text-xs text-[#9a8f7e] font-mono mt-1">Mbps</span>
+              <span className="text-xs text-[#6f6455] font-mono mt-1">Mbps</span>
             </>
           ) : active ? (
             <div
@@ -174,13 +174,13 @@ function SpeedDial({ speed, phase, progress }: DialProps) {
               style={{ borderRightColor: `${color}40`, borderBottomColor: `${color}40`, borderLeftColor: `${color}40`, borderTopColor: color }}
             />
           ) : phase === "done" ? (
-            <span className="text-4xl" style={{ color: "var(--accent)" }}>✓</span>
+            <span className="text-4xl" style={{ color: "var(--accent-text)" }}>✓</span>
           ) : (
             <span className="text-3xl font-bold text-[#c4b9a8]">—</span>
           )}
 
           {label !== "" && phase !== "done" && (
-            <span className="text-[11px] text-[#9a8f7e] font-mono mt-2">{label}</span>
+            <span className="text-[11px] text-[#6f6455] font-mono mt-2">{label}</span>
           )}
 
           {/* Countdown ring label */}
@@ -199,12 +199,12 @@ function SpeedDial({ speed, phase, progress }: DialProps) {
 function ResultCard({ label, value, unit, icon: Icon }: { label: string; value: number | null; unit: string; icon: LucideIcon }) {
   return (
     <div className="flex flex-col items-center p-4 bg-white dark:bg-[#1a1612] border border-[#e8e2d8] dark:border-[#2a2520] rounded-2xl flex-1 min-w-0">
-      <Icon size={20} strokeWidth={1.75} className="mb-2" style={{ color: "var(--accent)" }} />
-      <p className="text-[10px] text-[#9a8f7e] font-mono uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-bold tabular-nums" style={{ color: value != null ? "var(--accent)" : "#c4b9a8" }}>
+      <Icon size={20} strokeWidth={1.75} className="mb-2" style={{ color: "var(--accent-text)" }} />
+      <p className="text-[10px] text-[#6f6455] font-mono uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-2xl font-bold tabular-nums" style={{ color: value != null ? "var(--accent-text)" : "#c4b9a8" }}>
         {value != null ? value : "—"}
       </p>
-      <p className="text-[10px] text-[#9a8f7e] mt-0.5">{unit}</p>
+      <p className="text-[10px] text-[#6f6455] mt-0.5">{unit}</p>
     </div>
   );
 }
@@ -314,7 +314,7 @@ export default function SpeedTest() {
     <div>
       <div className="mb-2">
         <h1 className="font-serif italic text-2xl text-[#111010] dark:text-[#f0ece4] mb-1">Speed Test</h1>
-        <p className="text-sm text-[#9a8f7e]">10 seconds each — ping, download, upload.</p>
+        <p className="text-sm text-[#6f6455]">10 seconds each — ping, download, upload.</p>
       </div>
 
       {/* Circular gauge */}
@@ -328,8 +328,8 @@ export default function SpeedTest() {
       </div>
 
       {results.jitter != null && (
-        <p className="text-xs text-[#9a8f7e] text-center mb-4 font-mono">
-          Jitter <span style={{ color: "var(--accent)" }}>{results.jitter} ms</span>
+        <p className="text-xs text-[#6f6455] text-center mb-4 font-mono">
+          Jitter <span style={{ color: "var(--accent-text)" }}>{results.jitter} ms</span>
         </p>
       )}
 
@@ -346,7 +346,7 @@ export default function SpeedTest() {
         {isRunning && (
           <button
             onClick={cancelTest}
-            className="px-8 py-2.5 rounded-xl font-semibold text-sm border border-[#e8e2d8] dark:border-[#2a2520] text-[#9a8f7e] hover:border-red-300 hover:text-red-500 transition-all"
+            className="px-8 py-2.5 rounded-xl font-semibold text-sm border border-[#e8e2d8] dark:border-[#2a2520] text-[#6f6455] hover:border-red-300 hover:text-red-600 transition-all"
           >
             Cancel
           </button>

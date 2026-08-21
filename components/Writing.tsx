@@ -13,6 +13,7 @@ import {
   type Draft
 } from '@/lib/database'
 import { useWorkspace } from '@/lib/WorkspaceContext'
+import { dayKeyOfIso, daysAgoKey } from '@/lib/dayKey'
 
 type Props = {
   userId: string
@@ -20,34 +21,25 @@ type Props = {
   refreshKey?: number
 }
 
-// Bucket a timestamp into a Malaysia-time (UTC+8, no DST) calendar day key so
-// the streak counts "days you wrote" in the user's own day, not UTC's.
-function mytDayKey(iso: string): string {
-  const shifted = new Date(new Date(iso).getTime() + 8 * 3600 * 1000)
-  return shifted.toISOString().split('T')[0]
-}
-function mytDayKeyAgo(days: number): string {
-  return mytDayKey(new Date(Date.now() - days * 86400000).toISOString())
-}
 
 // Current writing streak (consecutive days ending today, or yesterday as grace)
 // plus how many of the last 7 days had any writing activity.
 function computeStreak(drafts: Draft[]): { streak: number; thisWeek: number } {
   const active = new Set<string>()
   for (const d of drafts) {
-    if (d.created_at) active.add(mytDayKey(d.created_at))
-    if (d.updated_at) active.add(mytDayKey(d.updated_at))
+    if (d.created_at) active.add(dayKeyOfIso(d.created_at))
+    if (d.updated_at) active.add(dayKeyOfIso(d.updated_at))
   }
-  let start = active.has(mytDayKeyAgo(0)) ? 0 : active.has(mytDayKeyAgo(1)) ? 1 : -1
+  let start = active.has(daysAgoKey(0)) ? 0 : active.has(daysAgoKey(1)) ? 1 : -1
   let streak = 0
   if (start >= 0) {
-    while (active.has(mytDayKeyAgo(start))) {
+    while (active.has(daysAgoKey(start))) {
       streak++
       start++
     }
   }
   const thisWeek = Array.from({ length: 7 }, (_, i) => i).filter((i) =>
-    active.has(mytDayKeyAgo(i)),
+    active.has(daysAgoKey(i)),
   ).length
   return { streak, thisWeek }
 }
@@ -244,7 +236,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
           <div className="bg-[#f3f0ea] border-b border-[#e8e2d8] px-5 py-3 flex items-center gap-3">
             <button
               onClick={closeEditor}
-              className="text-[#9a8f7e] hover:text-[#111010] transition-colors text-sm"
+              className="text-[#6f6455] hover:text-[#111010] transition-colors text-sm"
               title="Back to drafts"
             >
               ← Back
@@ -253,10 +245,10 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
             <div className="flex-1 h-px bg-[#e8e2d8]" />
 
             {/* Stats */}
-            <span className="font-mono text-[10px] text-[#9a8f7e] bg-[#e8e2d8] px-2.5 py-1 rounded-full">
+            <span className="font-mono text-[10px] text-[#6f6455] bg-[#e8e2d8] px-2.5 py-1 rounded-full">
               {wordCount} {wordCount === 1 ? 'word' : 'words'}
             </span>
-            <span className="font-mono text-[10px] text-[#9a8f7e] bg-[#e8e2d8] px-2.5 py-1 rounded-full">
+            <span className="font-mono text-[10px] text-[#6f6455] bg-[#e8e2d8] px-2.5 py-1 rounded-full">
               {charCount} chars
             </span>
 
@@ -279,13 +271,13 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
 
           {/* Title input */}
           <div className="px-8 pt-8 pb-2">
-            <input
+            <input aria-label="Draft title"
               ref={titleRef}
               type="text"
               value={title}
               onChange={e => { setTitle(e.target.value); setIsDirty(true) }}
               placeholder="Untitled"
-              className="w-full bg-transparent border-none outline-none font-serif italic text-3xl text-[#111010] placeholder:text-[#c5bdb0]"
+              className="w-full bg-transparent border-none outline-none font-serif italic text-3xl text-[#111010] placeholder:text-[#756a5a]"
             />
           </div>
 
@@ -294,19 +286,19 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
 
           {/* Body textarea */}
           <div className="px-8 py-6">
-            <textarea
+            <textarea aria-label="Draft body"
               ref={bodyRef}
               value={body}
               onChange={e => { setBody(e.target.value); setIsDirty(true) }}
               placeholder="Start writing... let the ideas flow. Nothing is too small to save."
-              className="w-full bg-transparent border-none outline-none resize-none text-[14px] leading-[1.9] text-[#2d2416] placeholder:text-[#c5bdb0] font-sans"
+              className="w-full bg-transparent border-none outline-none resize-none text-[14px] leading-[1.9] text-[#2d2416] placeholder:text-[#756a5a] font-sans"
               style={{ minHeight: 'calc(100dvh - 320px)' }}
             />
           </div>
 
           {/* Bottom hint */}
           <div className="px-8 pb-4">
-            <span className="font-mono text-[9px] text-[#c5bdb0]">
+            <span className="font-mono text-[9px] text-[#756a5a]">
               Cmd+S to save
             </span>
           </div>
@@ -318,17 +310,19 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
         <div>
 
           {/* Top bar */}
-          <div className="flex items-center gap-3 mb-5">
-            <input
+          {/* Wraps: at 320px the New Draft button sat at x=360, off the panel
+              and unclickable (WCAG 1.4.10). */}
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            <input aria-label="Search drafts"
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search drafts..."
-              className="flex-1 bg-white border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
+              className="flex-1 min-w-40 bg-white border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
             />
             <button
               onClick={openNew}
-              className="bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px shrink-0"
+              className="w-full sm:w-auto bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px shrink-0"
             >
               + New Draft
             </button>
@@ -338,7 +332,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
           {!loading && drafts.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
               <div className="bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-1">
                   Drafts
                 </div>
                 <div className="font-serif italic text-3xl text-(--accent)">
@@ -346,7 +340,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                 </div>
               </div>
               <div className="bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-1">
                   Total Words
                 </div>
                 <div className="font-serif italic text-3xl text-[#111010]">
@@ -354,7 +348,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                 </div>
               </div>
               <div className="bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-1">
                   Avg Length
                 </div>
                 <div className="font-serif italic text-3xl text-[#111010]">
@@ -362,20 +356,20 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                     ? Math.round(drafts.reduce((s, d) => s + getWordCount(d.body ?? ''), 0) / drafts.length)
                     : 0
                   }
-                  <span className="text-base text-[#9a8f7e] ml-1">wds</span>
+                  <span className="text-base text-[#6f6455] ml-1">wds</span>
                 </div>
               </div>
               <div className="bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-1">
                   Streak
                 </div>
                 <div className="font-serif italic text-3xl text-[#111010]">
                   <Flame size={13} strokeWidth={2} /> {streak}
-                  <span className="text-base text-[#9a8f7e] ml-1">
+                  <span className="text-base text-[#6f6455] ml-1">
                     {streak === 1 ? 'day' : 'days'}
                   </span>
                 </div>
-                <div className="text-[9px] font-mono text-[#c5bdb0] mt-1">
+                <div className="text-[9px] font-mono text-[#756a5a] mt-1">
                   {thisWeek} {thisWeek === 1 ? 'day' : 'days'} this week
                 </div>
               </div>
@@ -384,14 +378,14 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
 
           {/* Loading */}
           {loading && (
-            <div className="text-center py-16 text-[#c5bdb0] text-sm">
+            <div className="text-center py-16 text-[#756a5a] text-sm">
               Loading your drafts...
             </div>
           )}
 
           {/* Empty state */}
           {!loading && filtered.length === 0 && (
-            <div className="text-center py-16 text-[#c5bdb0]">
+            <div className="text-center py-16 text-[#756a5a]">
               <PenLine size={36} strokeWidth={1.5} className="mb-3 opacity-40 mx-auto" />
               <p className="text-sm">
                 {search ? 'No drafts match that search.' : "No drafts yet. Hit \"+ New Draft\" and let it flow."}
@@ -412,7 +406,7 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                   <button
                     onClick={e => { e.stopPropagation(); handleDelete(draft.id, draft.title) }}
                     aria-label={`Delete draft ${draft.title}`}
-                    className="absolute top-3 right-3 text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                    className="absolute top-3 right-3 text-[#756a5a] hover:text-red-600 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   >
                     <X size={16} strokeWidth={2} />
                   </button>
@@ -423,16 +417,16 @@ export default function Writing({ userId, onAction, refreshKey }: Props) {
                   </h3>
 
                   {/* Preview */}
-                  <p className="text-xs text-[#9a8f7e] leading-relaxed mb-4 line-clamp-3">
+                  <p className="text-xs text-[#6f6455] leading-relaxed mb-4 line-clamp-3">
                     {getPreview(draft.body ?? '') || '(empty)'}
                   </p>
 
                   {/* Footer */}
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[9px] text-[#c5bdb0]">
+                    <span className="font-mono text-[9px] text-[#756a5a]">
                       {formatDate(draft.created_at)}
                     </span>
-                    <span className="font-mono text-[9px] text-[#c5bdb0] bg-[#f3f0ea] px-2 py-0.5 rounded-full">
+                    <span className="font-mono text-[9px] text-[#756a5a] bg-[#f3f0ea] px-2 py-0.5 rounded-full">
                       {getWordCount(draft.body ?? '')} words
                     </span>
                   </div>

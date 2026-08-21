@@ -116,13 +116,13 @@ function CardView({ card, selected }: { card: Card; selected?: boolean }) {
       ${selected ? "border-[#f97316] shadow-lg" : "border-[#e8e2d8] hover:border-[#f97316]"}`}
     >
       <div
-        className={`text-[11px] font-bold leading-tight ${red ? "text-red-500" : "text-[#111010]"}`}
+        className={`text-[11px] font-bold leading-tight ${red ? "text-red-600" : "text-[#111010]"}`}
       >
         {card.value}
         {card.suit}
       </div>
       <div
-        className={`flex-1 flex items-center justify-center text-2xl font-bold ${red ? "text-red-400" : "text-[#9a8f7e]"}`}
+        className={`flex-1 flex items-center justify-center text-2xl font-bold ${red ? "text-red-600" : "text-[#6f6455]"}`}
       >
         {card.suit}
       </div>
@@ -349,7 +349,7 @@ export default function Solitaire() {
     <div ref={boardRef} className="max-w-2xl mx-auto select-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="font-mono text-xs text-[#9a8f7e]">{moves} moves</span>
+        <span className="font-mono text-xs text-[#6f6455]">{moves} moves</span>
         <button
           onClick={restart}
           className="px-4 py-1.5 rounded-xl bg-[#f97316] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-[#c2500f] transition-all"
@@ -360,7 +360,7 @@ export default function Solitaire() {
 
       {/* Win banner */}
       {won && (
-        <div className="bg-[#16a34a] rounded-2xl px-4 py-3 text-center mb-3">
+        <div className="bg-[#15803d] rounded-2xl px-4 py-3 text-center mb-3">
           <p className="text-white font-bold text-sm">You won! 🧡</p>
           <p className="text-white/80 text-xs mt-0.5">{winQuip}</p>
         </div>
@@ -457,7 +457,7 @@ export default function Solitaire() {
         })}
       </div>
 
-      <p className="text-center text-[10px] text-[#c5bdb0] font-mono mt-6">
+      <p className="text-center text-[10px] text-[#756a5a] font-mono mt-6">
         Click to select · Click destination to move · Click stock to draw
       </p>
     </div>

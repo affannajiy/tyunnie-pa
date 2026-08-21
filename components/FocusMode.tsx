@@ -286,7 +286,7 @@ export default function FocusMode({
   const r = 88;
   const circ = 2 * Math.PI * r;
   const dash = (pomPct / 100) * circ;
-  const timerColor = pomMode === "focus" ? "var(--accent)" : "#16a34a";
+  const timerColor = pomMode === "focus" ? "var(--accent-text)" : "#16a34a";
 
   // ── Sticky note handlers ──
   async function handleStickyUpdate(id: string, patch: Partial<StickyNoteType>) {
@@ -301,7 +301,7 @@ export default function FocusMode({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex flex-col overflow-hidden"
+      className="on-dark fixed inset-0 z-100 flex flex-col overflow-hidden"
       style={{ background: "linear-gradient(160deg, #0e0b08 0%, #111010 100%)" }}
     >
       {/* Music-reactive ambient glow — written directly via bgGlowRef */}
@@ -323,11 +323,11 @@ export default function FocusMode({
         <div className="flex items-center gap-3">
           <div
             className="w-2 h-2 rounded-full animate-pulse"
-            style={{ background: "var(--accent)" }}
+            style={{ background: "var(--accent)", color: "var(--accent-on)" }}
           />
           <span
             className="text-[10px] font-mono font-bold uppercase tracking-[3px] opacity-70"
-            style={{ color: "var(--accent)" }}
+            style={{ color: "var(--accent-text)" }}
           >
             {listenMode ? "Listening" : "Focus Mode"}
           </span>
@@ -350,7 +350,7 @@ export default function FocusMode({
                   listenMode === mode
                     ? "rgba(var(--accent-rgb),0.18)"
                     : "transparent",
-                color: listenMode === mode ? "var(--accent)" : "#9a8f7e",
+                color: listenMode === mode ? "var(--accent-text)" : "#9a8f7e",
               }}
             >
               {mode ? "Listen" : "Timer"}
@@ -359,7 +359,7 @@ export default function FocusMode({
         </div>
         <button
           onClick={onExit}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#2a2520] text-[#9a8f7e] transition-all text-xs font-mono"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#2a2520] text-[#b0a090] transition-all text-xs font-mono"
           style={{}}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = "var(--accent)";
@@ -392,7 +392,7 @@ export default function FocusMode({
             >
               <div
                 className="w-2 h-2 rounded-full shrink-0"
-                style={{ background: "var(--accent)" }}
+                style={{ background: "var(--accent)", color: "var(--accent-on)" }}
               />
               <p className="flex-1 text-[#e8ddd0] text-sm font-medium truncate">
                 {linkedTodo.text}
@@ -400,16 +400,16 @@ export default function FocusMode({
               <button
                 onClick={() => setLinkedTask(null)}
                 aria-label="Unlink task from this session"
-                className="text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors shrink-0"
+                className="text-[#8f8272] hover:text-[#b0a090] text-xs transition-colors shrink-0"
               >
                 <X size={16} strokeWidth={2} />
               </button>
             </div>
           ) : (
-            <select
+            <select aria-label="Link a task to this session"
               value=""
               onChange={(e) => setLinkedTask(e.target.value)}
-              className="w-full bg-[#1a1410] border border-[#2a2520] rounded-2xl px-5 py-3 text-sm text-[#4a4038] outline-none transition-colors appearance-none cursor-pointer"
+              className="w-full bg-[#1a1410] border border-[#2a2520] rounded-2xl px-5 py-3 text-sm text-[#8f8272] outline-none transition-colors appearance-none cursor-pointer"
               style={{}}
               onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = "#2a2520")}
@@ -447,7 +447,7 @@ export default function FocusMode({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-5xl text-[#4a4038]">
+                <div className="w-full h-full flex items-center justify-center text-5xl text-[#8f8272]">
                   <Music2 size={22} strokeWidth={1.5} />
                 </div>
               )}
@@ -456,7 +456,7 @@ export default function FocusMode({
               <h2 className="font-serif italic text-2xl text-white leading-snug">
                 {music.currentTrack.title}
               </h2>
-              <p className="text-sm text-[#9a8f7e] mt-1">
+              <p className="text-sm text-[#b0a090] mt-1">
                 {music.currentTrack.artist}
               </p>
             </div>
@@ -474,13 +474,13 @@ export default function FocusMode({
             <div className="text-4xl mb-3" aria-hidden="true">
               <Music2 size={22} strokeWidth={1.5} />
             </div>
-            <p className="text-sm text-[#9a8f7e] leading-relaxed">
+            <p className="text-sm text-[#b0a090] leading-relaxed">
               Nothing playing yet. Start a track from the Music panel and it&apos;ll
               fill the screen here, glowing along to the beat.
             </p>
             <button
               onClick={toggleListenMode}
-              className="mt-4 px-4 py-2 rounded-xl border border-[#2a2520] text-[11px] font-mono text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-colors"
+              className="mt-4 px-4 py-2 rounded-xl border border-[#2a2520] text-[11px] font-mono text-[#b0a090] hover:border-(--accent) hover:text-(--accent) transition-colors"
             >
               Back to Timer
             </button>
@@ -515,7 +515,7 @@ export default function FocusMode({
               {pomMode === "focus" ? "Focus" : "Break"}
             </span>
             {/* Subtle duration info */}
-            <span className="text-[10px] font-mono text-[#4a4038] mt-1">
+            <span className="text-[10px] font-mono text-[#8f8272] mt-1">
               {pomSettings.focusMins}m focus · {pomSettings.shortMins}m break
             </span>
           </div>
@@ -532,7 +532,7 @@ export default function FocusMode({
               setPomSeconds(pomSettings.focusMins * 60);
             }}
             aria-label="Reset timer"
-            className="w-12 h-12 rounded-2xl border border-[#2a2520] text-[#4a4038] transition-all flex items-center justify-center"
+            className="w-12 h-12 rounded-2xl border border-[#2a2520] text-[#8f8272] transition-all flex items-center justify-center"
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "var(--accent)";
               e.currentTarget.style.color = "var(--accent)";
@@ -562,7 +562,7 @@ export default function FocusMode({
               setPomMode(next);
               setPomSeconds(next === "focus" ? pomSettings.focusMins * 60 : pomSettings.shortMins * 60);
             }}
-            className="w-12 h-12 rounded-2xl border border-[#2a2520] text-[#4a4038] transition-all flex items-center justify-center"
+            className="w-12 h-12 rounded-2xl border border-[#2a2520] text-[#8f8272] transition-all flex items-center justify-center"
             title="Skip"
             aria-label="Skip to next session"
             onMouseEnter={(e) => {
@@ -594,7 +594,7 @@ export default function FocusMode({
                 style={{
                   background: isActive ? "rgba(var(--accent-rgb),0.18)" : "rgba(255,255,255,0.05)",
                   border: isActive ? "1px solid rgba(var(--accent-rgb),0.45)" : "1px solid rgba(255,255,255,0.08)",
-                  color: isActive ? "var(--accent)" : "#9a8f7e",
+                  color: isActive ? "var(--accent-text)" : "#9a8f7e",
                 }}
               >
                 {preset.label}
@@ -627,7 +627,7 @@ export default function FocusMode({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#4a4038]">
+                <div className="w-full h-full flex items-center justify-center text-[#8f8272]">
                   <Music2 size={22} strokeWidth={1.5} />
                 </div>
               )}
@@ -636,7 +636,7 @@ export default function FocusMode({
               <p className="text-xs font-semibold text-[#e8ddd0] truncate leading-tight">
                 {music.currentTrack.title}
               </p>
-              <p className="text-[10px] text-[#4a4038] font-mono truncate">
+              <p className="text-[10px] text-[#8f8272] font-mono truncate">
                 {music.currentTrack.artist}
               </p>
               {/* Seekable — was a plain div, so the bar showed progress but you
@@ -660,10 +660,10 @@ export default function FocusMode({
                 }}
               />
               <div className="flex justify-between mt-0.5">
-                <span className="text-[9px] font-mono text-[#4a4038]">
+                <span className="text-[9px] font-mono text-[#8f8272]">
                   {music.formatTime(music.progress)}
                 </span>
-                <span className="text-[9px] font-mono text-[#4a4038]">
+                <span className="text-[9px] font-mono text-[#8f8272]">
                   {music.formatTime(music.duration)}
                 </span>
               </div>
@@ -675,14 +675,14 @@ export default function FocusMode({
                 aria-pressed={music.shuffle}
                 title="Shuffle"
                 className="w-7 h-7 flex items-center justify-center transition-colors"
-                style={{ color: music.shuffle ? "var(--accent)" : "#4a4038" }}
+                style={{ color: music.shuffle ? "var(--accent-text)" : "#4a4038" }}
               >
                 <Shuffle size={16} strokeWidth={1.75} />
               </button>
               <button
                 onClick={music.prevTrack}
                 aria-label="Previous track"
-                className="w-7 h-7 flex items-center justify-center text-[#4a4038] hover:text-white transition-colors"
+                className="w-7 h-7 flex items-center justify-center text-[#8f8272] hover:text-white transition-colors"
               >
                 <SkipBack size={16} strokeWidth={1.75} fill="currentColor" />
               </button>
@@ -690,7 +690,7 @@ export default function FocusMode({
                 onClick={music.togglePlay}
                 aria-label={music.isPlaying ? "Pause" : "Play"}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors"
-                style={{ background: "var(--accent)" }}
+                style={{ background: "var(--accent)", color: "var(--accent-on)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
               >
@@ -703,7 +703,7 @@ export default function FocusMode({
               <button
                 onClick={music.nextTrack}
                 aria-label="Next track"
-                className="w-7 h-7 flex items-center justify-center text-[#4a4038] hover:text-white transition-colors"
+                className="w-7 h-7 flex items-center justify-center text-[#8f8272] hover:text-white transition-colors"
               >
                 <SkipForward size={16} strokeWidth={1.75} fill="currentColor" />
               </button>
@@ -713,7 +713,7 @@ export default function FocusMode({
                 title={`Repeat: ${music.repeat}`}
                 className="w-7 h-7 flex items-center justify-center transition-colors"
                 style={{
-                  color: music.repeat !== "none" ? "var(--accent)" : "#4a4038",
+                  color: music.repeat !== "none" ? "var(--accent-text)" : "#4a4038",
                 }}
               >
                 {music.repeat === "one" ? (

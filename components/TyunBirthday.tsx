@@ -1,6 +1,5 @@
 "use client";
 
-import { Cake } from "lucide-react";
 
 import { useEffect, useState } from "react";
 import Image from "next/image";

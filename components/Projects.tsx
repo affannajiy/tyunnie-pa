@@ -24,8 +24,8 @@ const STATUS_OPTIONS = ["planning", "active", "paused", "done"] as const;
 const STATUS_STYLES: Record<string, string> = {
   planning: "bg-[#fff0e6] text-[#c2500f] border-[#fed7aa]",
   active: "bg-[#dcfce7] text-[#15803d] border-[#86efac]",
-  paused: "bg-[#f3f0ea] text-[#9a8f7e] border-[#e8e2d8]",
-  done: "bg-[#eff6ff] text-[#3b82f6] border-[#bfdbfe]",
+  paused: "bg-[#f3f0ea] text-[#6f6455] border-[#e8e2d8]",
+  done: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
 };
 
 export default function Projects({ userId, onAction, refreshKey }: Props) {
@@ -220,7 +220,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
             return (
               <span
                 key={i}
-                className="absolute text-[9px] font-mono text-[#9a8f7e] -translate-x-1/2 whitespace-nowrap"
+                className="absolute text-[9px] font-mono text-[#6f6455] -translate-x-1/2 whitespace-nowrap"
                 style={{ left: `${tick.pct}%` }}
               >
                 {tick.label}
@@ -263,7 +263,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                       background: "linear-gradient(90deg, var(--accent-dim), var(--accent))",
                     }}
                   >
-                    <span className="text-white text-[9px] font-bold whitespace-nowrap">
+                    <span className="text-(--accent-on) text-[9px] font-bold whitespace-nowrap">
                       {p.progress}%
                     </span>
                   </div>
@@ -271,7 +271,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
 
                 {/* End date — the month ticks above already carry the timeline
                     on narrow screens, so this column is the one that goes. */}
-                <div className="hidden sm:block w-17.5 shrink-0 font-mono text-[9px] text-[#9a8f7e] text-right">
+                <div className="hidden sm:block w-17.5 shrink-0 font-mono text-[9px] text-[#6f6455] text-right">
                   {p.end_date}
                 </div>
               </div>
@@ -299,7 +299,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 setShowForm(false);
               }}
               aria-label="Close project form"
-              className="text-[#c5bdb0] hover:text-[#9a8f7e] text-sm transition-colors"
+              className="text-[#756a5a] hover:text-[#6f6455] text-sm transition-colors"
             >
               <X size={16} strokeWidth={2} />
             </button>
@@ -309,10 +309,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
             {/* Name + Status */}
             <div className="flex gap-3 mb-3">
               <div className="flex-2">
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                   Project Name
                 </label>
-                <input
+                <input aria-label="Project name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -322,10 +322,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                   Status
                 </label>
-                <select
+                <select aria-label="Status"
                   value={status}
                   onChange={(e) =>
                     setStatus(e.target.value as Project["status"])
@@ -344,10 +344,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
             {/* Dates + Progress */}
             <div className="flex gap-3 mb-3">
               <div className="flex-1">
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                   Start Date
                 </label>
-                <input
+                <input aria-label="Start date"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
@@ -355,10 +355,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                   End Date
                 </label>
-                <input
+                <input aria-label="End date"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
@@ -366,10 +366,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                   Progress %
                 </label>
-                <input
+                <input aria-label="Progress percent"
                   type="number"
                   value={progress}
                   onChange={(e) => setProgress(e.target.value)}
@@ -383,10 +383,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
 
             {/* Description */}
             <div className="mb-4">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 Description
               </label>
-              <textarea
+              <textarea aria-label="Description"
                 value={description}
                 onChange={(e) => setDesc(e.target.value)}
                 placeholder="What is this project about?"
@@ -402,7 +402,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   resetForm();
                   setShowForm(false);
                 }}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-colors"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide border border-[#e8e2d8] text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-colors"
               >
                 Cancel
               </button>
@@ -439,13 +439,13 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
 
       {/* Project cards */}
       {loading && (
-        <div className="text-center py-12 text-[#c5bdb0] text-sm">
+        <div className="text-center py-12 text-[#756a5a] text-sm">
           Loading your projects...
         </div>
       )}
 
       {!loading && projects.length === 0 && (
-        <div className="text-center py-16 text-[#c5bdb0]">
+        <div className="text-center py-16 text-[#756a5a]">
           <FolderKanban size={30} strokeWidth={1.5} className="mb-3 opacity-50 mx-auto" />
           <p className="text-sm">
             No projects yet. Hit + New Project to get started.
@@ -475,7 +475,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 {/* Edit button */}
                 <button
                   onClick={() => openEditForm(p)}
-                  className="text-[#c5bdb0] hover:text-(--accent) transition-colors text-xs font-mono"
+                  className="text-[#756a5a] hover:text-(--accent) transition-colors text-xs font-mono"
                   title="Edit project"
                 >
                   <Pencil size={14} strokeWidth={2} />
@@ -486,7 +486,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                   onClick={() =>
                     setExpandedId((prev) => (prev === p.id ? null : p.id))
                   }
-                  className="text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors text-sm"
+                  className="text-[#756a5a] hover:text-[#6f6455] transition-colors text-sm"
                 >
                   {expandedId === p.id ? "▲" : "▼"}
                 </button>
@@ -495,7 +495,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
                 <button
                   onClick={() => handleDelete(p.id, p.name)}
                   aria-label={`Delete project ${p.name}`}
-                  className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm"
+                  className="text-[#756a5a] hover:text-red-600 transition-colors text-sm"
                 >
                   <X size={16} strokeWidth={2} />
                 </button>
@@ -503,7 +503,7 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
 
               {/* Description */}
               {p.description && (
-                <p className="text-xs text-[#9a8f7e] mb-3 leading-relaxed">
+                <p className="text-xs text-[#6f6455] mb-3 leading-relaxed">
                   {p.description}
                 </p>
               )}
@@ -511,10 +511,10 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
               {/* Progress bar */}
               <div className="mb-1">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="font-mono text-[10px] text-[#9a8f7e]">
+                  <span className="font-mono text-[10px] text-[#6f6455]">
                     {p.start_date ?? "?"} → {p.end_date ?? "?"}
                   </span>
-                  <span className="font-mono text-[10px] text-[#9a8f7e]">
+                  <span className="font-mono text-[10px] text-[#6f6455]">
                     {p.progress}%
                   </span>
                 </div>
@@ -532,11 +532,11 @@ export default function Projects({ userId, onAction, refreshKey }: Props) {
               {/* Expanded: inline progress slider */}
               {expandedId === p.id && (
                 <div className="mt-4 pt-4 border-t border-[#e8e2d8]">
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-2">
                     Update Progress
                   </label>
                   <div className="flex items-center gap-3">
-                    <input
+                    <input aria-label="Update progress"
                       type="range"
                       min="0"
                       max="100"

@@ -1,9 +1,9 @@
 ## Build, lint, and dependency audit on every change.
 ##
-## The audit step is the one that matters for §3.2: it fails the build on a
+## The audit step is the one that matters for §5b.6: it fails the build on a
 ## HIGH-or-worse advisory in the *production* tree. `--omit=dev` is deliberate —
 ## the dev tree carries eslint advisories that cannot reach a deployed user, and
-## a check that cries wolf every week is a check nobody reads (§2.13).
+## a check that cries wolf every week is a check nobody reads.
 name: CI
 
 on:
@@ -26,6 +26,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Secret scanning needs history to scan, not just the tip commit
+          # (§5c.3 — "scan history too").
+          fetch-depth: 0
+          # Don't leave the job's GITHUB_TOKEN in .git/config where any later
+          # step, including one inside a dependency's script, could read it.
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
@@ -44,6 +51,14 @@ jobs:
       # never sneak in between a local test and a CI run.
       - name: Install
         run: npm ci
+
+      # §5c.3 — a credential must not reach the default branch. GitHub's own
+      # push protection catches known provider formats at push time; this
+      # catches what it does not, and covers history on every PR.
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high

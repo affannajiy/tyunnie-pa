@@ -80,10 +80,60 @@ Verified clean: all 13 `JSON.parse(localStorage…)` sites guarded after #3; eve
 
 ---
 
+## Rulebook Pass — 2026-08-21
+
+Full review against the rewritten `rulebooks/SECURITY_Rulebook.md` (§1 through §6).
+This pass ran against the new §-numbering, so its citations are the ones to follow.
+
+| # | Severity | Issue | Status |
+|---|---|---|---|
+| 1 | 🔴 High | `Calculator.tsx` still reached `new Function()` on both the calculator and graphing paths. The token allowlists added in 3.26.0 were correct, but they were guarding an evaluator rather than removing one — §2a.7 forbids the sink outright, and the same guard had already failed once. It also forced `'unsafe-eval'` into the CSP, breaking §2b.4 for the whole app | ✅ Fixed — `lib/mathEval.ts`, a recursive-descent parser over the keypad's own vocabulary. No string ever becomes code, so `constructor`/`fetch`/`alert` are not dangerous inputs but simply not tokens. Both `new Function()` sites deleted; `'unsafe-eval'` removed from the production CSP and verified absent on a real production response |
+| 2 | 🟠 Medium | `Profile.tsx` rendered a vault entry's saved website straight into `href={dec.website}`. React escapes text but does not police URL schemes, so a stored `javascript:` URL executed on click — stored XSS with a click trigger (§2b.1, A05) | ✅ Fixed — `lib/safeUrl.ts` `safeHref()` parses the URL and allowlists `http`/`https`/`mailto` (§2a.2). Parsing rather than prefix-matching, so `java	script:` and case tricks canonicalise before the check. A non-conforming value still displays as text, just not as a link |
+| 3 | 🟠 Medium | `/api/chat` accepted a fully client-supplied `systemPrompt` of up to 60 000 chars. Any authenticated caller could replace the persona entirely and use the route as a general-purpose LLM proxy on the owner's Gemini and Groq keys (§2e.4, §4 LLM06/LLM07/LLM10) | ✅ Partly fixed — the server now owns a preamble it always prepends, and the client's string is appended below it as explicitly untrusted framing (§1a.4: enforce in code, remind in the prompt). Prompt cap cut 60k → 20k and a new 40k conversation-wide cap added. **Remaining:** the four prompts are still composed client-side; moving them into the route is the real fix |
+| 4 | 🟠 Medium | Vault PBKDF2 ran at 100 000 iterations where §2c.6 requires 600 000 — and the stretched secret is a 6-digit PIN, so the iteration count is very nearly the entire work factor (§1a.9) | ✅ Fixed — 600 000 for everything written from now on, with a read-only fallback to 100 000 so existing rows still decrypt; re-saving upgrades a record. Unlock now decrypts entries concurrently so the 6× cost does not become 6× the wait |
+| 5 | 🟡 Low | `/api/chat` checked `m.content.length` only *if* it was a string, so a non-string `content` skipped validation entirely and went on to the SDK (§2a.3) | ✅ Fixed — type checked before length, and a conversation-wide character total added |
+| 6 | 🟡 Low | `buildSystemPrompt()` inlined every todo, draft, project and snippet with no cap, so prompt size — and token spend — scaled with the user's data (§4 LLM10) | ✅ Fixed — 40 items per list, with a truncation line so the model reports "and N more" instead of inventing a total |
+| 7 | 🟡 Low | CI had no secret scanning, and `actions/checkout` left the job token in `.git/config` for every later step (§5c.3) | ✅ Fixed — gitleaks step added with `fetch-depth: 0` so history is scanned too, plus `persist-credentials: false` |
+| 8 | 🟡 Low | `crypto.ts` built base64 with `String.fromCharCode(...bytes)`, which throws `RangeError` once a record is large enough to exceed the argument limit | ✅ Fixed — chunked base64 helpers |
+| 9 | 🟡 Low | **Found by tightening the CSP:** `@vercel/analytics` and `@vercel/speed-insights` were being blocked outright in development — `va.vercel-scripts.com` was in no directive. A control silently breaking a feature nobody was watching (§1a.8) | ✅ Fixed — allowed in the dev policy only; on Vercel both are served from this origin, which `'self'` already covers |
+
+Also hardened: `Cross-Origin-Opener-Policy: same-origin-allow-popups` (closes the tabnabbing
+path behind the vault's website links while leaving the Google OAuth popup working),
+`Cross-Origin-Resource-Policy: same-origin`, `X-Permitted-Cross-Domain-Policies: none`,
+`frame-src 'none'`, and `upgrade-insecure-requests`.
+
+Verified clean this pass: no secret reaches the client bundle (`SUPABASE_SERVICE_ROLE_KEY`
+appears only in `app/api/daily-quote`); no user-supplied URL is fetched server-side, so
+there is no SSRF surface (§2m); every outbound call carries a timeout; every route body
+parse is inside `try`; no query is built by concatenation (§2a.6); `sanitizeHtml()`'s
+escape-then-restore property still holds; vault emails remain bound to the JWT's own email;
+the OTP path keeps constant-time comparison and its escalating lockout (§2c.11).
+
+**Known and accepted, not fixed here:**
+
+- `'unsafe-inline'` remains on `script-src`. Removing it needs a per-request nonce from
+  middleware threaded through both Next's bootstrap scripts and the pre-paint theme script
+  in `app/layout.tsx`. A hash-based policy would not cover the Next bootstrap. This is the
+  next CSP step, and it is a change worth doing on its own.
+- A 6-digit vault PIN is 10^6 possibilities. 600 000 PBKDF2 iterations makes an offline
+  sweep expensive, not impossible. The ceiling is PIN length, which is a product decision.
+- Each vault entry carries its own PBKDF2 salt, so unlocking runs one key derivation per
+  entry. One vault-level key with per-entry IVs would derive once; it needs a data
+  migration, so it belongs to `tyun-database`.
+- The rate limiter is still in-memory and per-instance (unchanged, long-standing).
+- §5c.5 ("a test per fixed vulnerability") is **not** met: the repo has no test runner. The
+  parser in `lib/mathEval.ts` was verified against 30 arithmetic cases and 21 rejection
+  cases during this pass, but that check is not committed and cannot re-run in CI. Adding a
+  runner touches the lockfile, which this project guards carefully — so it is a deliberate
+  decision to make, not something to slip in.
+
+---
+
 ## Rulebook Pass — 2026-08-19 (v3.26.0)
 
-Full review against `docs/SECURITY_Rulebook.md`, §1 through §3, including the
-§2a line-level checklist.
+Full review against `rulebooks/SECURITY_Rulebook.md`, §1 through §3, including the
+§2a line-level checklist. (Section numbers below are the rulebook edition current at the
+time of the pass; the file was re-sectioned in the 2026-08-20 rewrite.)
 
 | # | Severity | Issue | Status |
 |---|---|---|---|
@@ -175,6 +225,6 @@ Production dependencies audit clean at **0** — reconfirmed 2026-08-19 after cl
 
 ## Re-audit Procedure
 
-Invoke the **`tyun-security`** skill (`.claude/skills/tyun-security/SKILL.md`) — "Full pre-deploy sweep" — before any deploy that adds an API route, a new external origin, or any email/LLM/code-execution surface. Findings are tagged against `docs/SECURITY_Rulebook.md` sections. Update this file's audit log with the date and findings.
+Invoke the **`tyun-security`** skill (`.claude/skills/tyun-security/SKILL.md`) — "Full pre-deploy sweep" — before any deploy that adds an API route, a new external origin, or any email/LLM/code-execution surface. Findings are tagged against `rulebooks/SECURITY_Rulebook.md` sections. Update this file's audit log with the date and findings.
 
 For caching, bundle, and latency work, the companion skill is **`tyun-network`**. Both replaced the old `tyun-network-and-security` agent — a skill runs in the current session and can use what's already known about the change under review, where a subagent restarted cold. The security sweep still delegates its bulk file-reading to a subagent, since that phase reads far more than it reports.

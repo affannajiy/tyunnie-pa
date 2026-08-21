@@ -80,6 +80,52 @@ export function hslToHex(hh: number, ss: number, ll: number): string {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+
+/* ── Contrast-safe accent derivatives ──
+   UI/UX Rulebook §8: "a brand colour fails contrast / consistency wants the
+   palette everywhere → contrast wins on text and controls." The raw accent is
+   the brand; it is fine on a fill, a border, a glow. As *text* it was 2.8:1 on
+   white at the default orange — under WCAG 1.4.3's 4.5:1 — and the accent is
+   user-selectable, so no single darker hex fixes it. These derive one.
+
+   --accent-text      accent walked darker until it clears 4.5:1 on white
+   --accent-text-dark accent walked lighter until it clears 4.5:1 on #111010
+   --accent-on        foreground for text sitting ON an accent fill: white or
+                      near-black, whichever wins. White-on-orange was 2.8:1. */
+
+function relLum(hex: string): number {
+  const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const lin = ch.map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+
+function contrast(a: string, b: string): number {
+  const l1 = relLum(a), l2 = relLum(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+/**
+ * Walk the accent's HSL lightness toward `step` until it clears `target`
+ * against `bg`. Hue and saturation are untouched, so the result still reads as
+ * the user's colour rather than a different one.
+ */
+export function accentOn(hex: string, bg: string, step: number, target = 4.5): string {
+  const { h, s, l } = hexToHsl(hex);
+  let out = hex;
+  for (let i = 0; i <= 100; i++) {
+    const li = Math.max(0, Math.min(100, l + step * i));
+    out = hslToHex(h, s, li);
+    if (contrast(out, bg) >= target) return out;
+    if (li === 0 || li === 100) break;
+  }
+  return out;
+}
+
+/** Black or white, whichever is readable on an accent-filled surface. */
+export function accentForeground(hex: string): string {
+  return contrast(hex, "#ffffff") >= contrast(hex, "#16120c") ? "#ffffff" : "#16120c";
+}
+
 /**
  * Paint the accent onto :root. Derives soft/mid/dim variants in HSL so every
  * consumer of --accent-* stays in the same hue family.
@@ -102,6 +148,9 @@ export function setAccentVars(hex: string) {
   root.style.setProperty("--accent-mid", mid);
   root.style.setProperty("--accent-dim", dim);
   root.style.setProperty("--accent-rgb", `${ri}, ${gi}, ${bi}`);
+  root.style.setProperty("--accent-text", accentOn(hex, "#ffffff", -2));
+  root.style.setProperty("--accent-text-dark", accentOn(hex, "#111010", 2));
+  root.style.setProperty("--accent-on", accentForeground(hex));
   // Lets useAccentColor() consumers (music glow, canvases) re-read the vars.
   window.dispatchEvent(new Event("tyunnie-accent-changed"));
 }

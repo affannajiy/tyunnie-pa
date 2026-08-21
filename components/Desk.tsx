@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useAccentColor } from "@/lib/useAccentColor";
 import type { Profile, Todo, Project, FinanceEntry } from "@/lib/database";
 import type { Panel } from "@/components/Sidebar";
 import { authHeader } from "@/lib/supabase";
 import { isGuest } from "@/lib/guest";
+import { todayKey } from "@/lib/dayKey";
 import DeskWidgets from "@/components/DeskWidgets";
 
 type Props = {
@@ -20,7 +21,6 @@ type Props = {
   financeViewYear: number;
   onNavigate: (panel: Panel) => void;
   onTodoToggle: (id: string, done: boolean) => void;
-  onFocusMode: () => void;
 };
 
 function getGreeting(name: string) {
@@ -47,7 +47,6 @@ export default function Desk({
   financeViewYear,
   onNavigate,
   onTodoToggle,
-  onFocusMode,
 }: Props) {
   const accentRgb = useAccentColor();
   const [oneliner, setOneliner] = useState<string | null>(null);
@@ -67,7 +66,7 @@ export default function Desk({
   const activeName = profile?.display_name ?? userName ?? "";
 
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayKey();
     const cacheKey = `desk_oneliner:${activeName}:${today}`;
 
     const cached = sessionStorage.getItem(cacheKey);
@@ -123,7 +122,7 @@ Just one sentence, no quotes, no action blocks.`,
   }, [activeName]);
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-dvh pb-24">
       {/* ── HERO ── */}
       <div
         className="desk-hero rounded-3xl px-6 md:px-8 py-0 mb-8 flex items-center justify-between gap-4 md:gap-6 overflow-hidden relative"
@@ -169,8 +168,11 @@ Just one sentence, no quotes, no action blocks.`,
         <div className="flex-1 relative z-10 py-6 md:py-7">
           <div className="flex items-center gap-2 mb-1">
             <span
-              className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[2px] md:tracking-[3px] opacity-70"
-              style={{ color: `rgb(${accentRgb})` }}
+              className="text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-[2px] md:tracking-[3px]"
+              /* Was rgb(accent) at opacity-70 — 2.6:1. --accent-text is the
+                 same hue at a readable lightness, and the dimming is gone
+                 rather than stacked on top of it (WCAG 1.4.3). */
+              style={{ color: "var(--accent-text)" }}
             >
               {new Date().toLocaleDateString("en-MY", {
                 weekday: "long",
@@ -183,7 +185,7 @@ Just one sentence, no quotes, no action blocks.`,
           <h1 className="font-serif italic text-2xl md:text-5xl text-[#1a1208] mb-2 md:mb-3 leading-tight pr-24 md:pr-0">
             {getGreeting(profile?.display_name ?? userName)}
           </h1>
-          <p className="text-sm md:text-lg text-[#8a6f5a] font-serif italic leading-relaxed max-w-lg pr-20 md:pr-0">
+          <p className="text-sm md:text-lg text-[#7d6350] font-serif italic leading-relaxed max-w-lg pr-20 md:pr-0">
             Welcome home 🧡
           </p>
         </div>
@@ -232,7 +234,6 @@ Just one sentence, no quotes, no action blocks.`,
         financeViewYear={financeViewYear}
         onNavigate={onNavigate}
         onTodoToggle={onTodoToggle}
-        onFocusMode={onFocusMode}
         oneliner={oneliner}
         userId={userId}
         savedLayout={profile?.desk_layout}

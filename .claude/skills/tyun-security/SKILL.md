@@ -17,10 +17,12 @@ Security review for Tyunnie PA. Find what's exploitable before it ships.
   the single source of truth for *what the app actually does today*. Do not restate it
   here and do not re-flag anything already logged there as accepted — check whether the
   accepted reasoning still holds instead.
-- **`docs/SECURITY_Rulebook.md`** — the principles: §1 seven secure-design principles,
-  §2 OWASP foundations, §3 SDLC practices, §4 conflict rulings. **Tag every finding
-  with the section it violates** (e.g. "§1.6 complete mediation", "§3.6 input validation
-  at the boundary"). Not optional framing — it's what makes findings arguable.
+- **`rulebooks/SECURITY_Rulebook.md`** — the principles: §1 design principles (§1a Saltzer
+  and Schroeder, §1b modern additions), §2 line-level controls (§2a–§2m), §3 OWASP
+  Top 10:2025, §4 OWASP LLM Top 10, §5 supply chain & SDLC, §6 run/detect/respond,
+  §7 conflict rulings. **Tag every finding with the section it violates** (e.g.
+  "§1a.3 complete mediation", "§2a input validation"). If a model reads untrusted
+  content or holds a tool, §4 is not optional. Not optional framing — it's what makes findings arguable.
 
 If a fact about the app contradicts `SECURITY.md`, `SECURITY.md` is stale and fixing it
 is part of the job.
@@ -91,7 +93,7 @@ Rulebook section, severity, and a one-line fix direction.
 **Full pre-deploy sweep — spawn a subagent.** It reads ~60 files to return ~2k of
 findings; that belongs in a throwaway context window, not this one. Brief it with:
 scope, "read `SECURITY.md` first so you don't re-flag accepted risks", "tag findings
-with `docs/SECURITY_Rulebook.md` sections", anything already fixed this session, and
+with `rulebooks/SECURITY_Rulebook.md` sections", anything already fixed this session, and
 "report only concrete issues found by reading actual code — no padding". Then relay
 the findings.
 
@@ -110,4 +112,5 @@ After any audit, update the `SECURITY.md` audit log with the date and findings.
 Don't rewrite business logic or UI — security surface only. Never remove a control to
 buy performance. Never present a client-side secret as acceptable under any framing.
 Never approve a deploy with an unresolved 🔴. Caching, bundle, and latency belong to
-`tyun-network`.
+`tyun-network`; correctness and failure handling to `tyun-engineer`; packages, lockfile,
+and CI to `tyun-deps`.

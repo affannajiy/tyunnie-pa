@@ -506,7 +506,7 @@ export default function Tetris() {
           {started && !gameOver && (
             <button
               onClick={() => setPaused((p) => !p)}
-              className="px-3 py-1.5 rounded-xl border border-[#e8e2d8] text-xs font-mono text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+              className="px-3 py-1.5 rounded-xl border border-[#e8e2d8] text-xs font-mono text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316] transition-all"
             >
               {paused ? "▶ Resume" : "⏸ Pause"}
             </button>
@@ -514,7 +514,7 @@ export default function Tetris() {
           {started && (
             <button
               onClick={reset}
-              className="px-3 py-1.5 rounded-xl border border-[#e8e2d8] text-xs font-mono text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all"
+              className="px-3 py-1.5 rounded-xl border border-[#e8e2d8] text-xs font-mono text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316] transition-all"
             >
               ↺ Restart
             </button>
@@ -527,7 +527,7 @@ export default function Tetris() {
         <div className="order-2 md:order-1 flex flex-col gap-3 w-20">
           {/* Hold */}
           <div className="bg-white border border-[#f0ece8] rounded-2xl p-3 flex flex-col items-center gap-2">
-            <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880]">
+            <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348]">
               Hold
             </p>
             {renderMini(held)}
@@ -535,7 +535,7 @@ export default function Tetris() {
           {/* Score */}
           <div className="bg-white border border-[#f0ece8] rounded-2xl p-3 flex flex-col gap-2">
             <div>
-              <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880]">
+              <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348]">
                 Score
               </p>
               <p className="text-sm font-bold font-mono text-[#1a1208] tabular-nums">
@@ -543,7 +543,7 @@ export default function Tetris() {
               </p>
             </div>
             <div>
-              <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880]">
+              <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348]">
                 Lines
               </p>
               <p className="text-sm font-bold font-mono text-[#1a1208]">
@@ -551,7 +551,7 @@ export default function Tetris() {
               </p>
             </div>
             <div>
-              <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880]">
+              <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348]">
                 Level
               </p>
               <p className="text-sm font-bold font-mono text-[#f97316]">
@@ -629,7 +629,7 @@ export default function Tetris() {
               <p className="font-serif italic text-2xl text-[#f97316] mb-2">
                 Tetris
               </p>
-              <p className="text-xs text-[#9a8f7e] font-mono mb-6 text-center px-4">
+              <p className="text-xs text-[#6f6455] font-mono mb-6 text-center px-4">
                 ← → Move &nbsp;·&nbsp; ↑/X Rotate &nbsp;·&nbsp; ↓ Soft drop
                 <br />
                 Space Hard drop &nbsp;·&nbsp; C Hold &nbsp;·&nbsp; P Pause
@@ -664,10 +664,10 @@ export default function Tetris() {
               <p className="font-serif italic text-2xl text-[#f97316] mb-1">
                 Game Over
               </p>
-              <p className="text-xs text-[#9a8f7e] font-mono mb-1">
+              <p className="text-xs text-[#6f6455] font-mono mb-1">
                 Score: {score}
               </p>
-              <p className="text-xs text-[#9a8f7e] font-mono mb-6">
+              <p className="text-xs text-[#6f6455] font-mono mb-6">
                 Lines: {lines} &nbsp;·&nbsp; Level: {level}
               </p>
               <button
@@ -684,14 +684,14 @@ export default function Tetris() {
         <div className="order-3 flex flex-col gap-3 w-20">
           {/* Next */}
           <div className="bg-white border border-[#f0ece8] rounded-2xl p-3 flex flex-col items-center gap-2">
-            <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880]">
+            <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348]">
               Next
             </p>
             {renderMini(next)}
           </div>
           {/* Controls hint */}
           <div className="bg-white border border-[#f0ece8] rounded-2xl p-3">
-            <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880] mb-2">
+            <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348] mb-2">
               Keys
             </p>
             {[
@@ -703,10 +703,10 @@ export default function Tetris() {
               ["P", "Pause"],
             ].map(([key, label]) => (
               <div key={key} className="flex justify-between items-center mb-1">
-                <span className="text-[8px] font-mono bg-[#f0ece8] rounded px-1 text-[#9a8f7e]">
+                <span className="text-[8px] font-mono bg-[#f0ece8] rounded px-1 text-[#6f6455]">
                   {key}
                 </span>
-                <span className="text-[8px] font-mono text-[#c5bdb0]">
+                <span className="text-[8px] font-mono text-[#756a5a]">
                   {label}
                 </span>
               </div>
@@ -724,7 +724,7 @@ export default function Tetris() {
               const np = { ...pos, x: pos.x - 1 };
               if (isValid(grid, shape, np)) setPos(np);
             }}
-            className="w-14 h-14 rounded-2xl bg-white border border-[#e8e2d8] text-xl flex items-center justify-center text-[#9a8f7e] active:bg-[#f0ece8]"
+            className="w-14 h-14 rounded-2xl bg-white border border-[#e8e2d8] text-xl flex items-center justify-center text-[#6f6455] active:bg-[#f0ece8]"
           >
             ←
           </button>
@@ -752,7 +752,7 @@ export default function Tetris() {
               const np = { ...pos, x: pos.x + 1 };
               if (isValid(grid, shape, np)) setPos(np);
             }}
-            className="w-14 h-14 rounded-2xl bg-white border border-[#e8e2d8] text-xl flex items-center justify-center text-[#9a8f7e] active:bg-[#f0ece8]"
+            className="w-14 h-14 rounded-2xl bg-white border border-[#e8e2d8] text-xl flex items-center justify-center text-[#6f6455] active:bg-[#f0ece8]"
           >
             →
           </button>
@@ -760,7 +760,7 @@ export default function Tetris() {
         <div className="flex gap-3">
           <button
             onTouchStart={() => {
-              const { grid, shape, pos, current, next, held, canHold } =
+              const { current, next, held, canHold } =
                 stateRef.current;
               if (!canHold) return;
               const spawnType = held ?? next;
@@ -776,7 +776,7 @@ export default function Tetris() {
               if (!held) setNext(randomTetromino());
               setCanHold(false);
             }}
-            className="w-14 h-14 rounded-2xl bg-white border border-[#e8e2d8] text-xs font-bold flex items-center justify-center text-[#9a8f7e] active:bg-[#f0ece8]"
+            className="w-14 h-14 rounded-2xl bg-white border border-[#e8e2d8] text-xs font-bold flex items-center justify-center text-[#6f6455] active:bg-[#f0ece8]"
           >
             Hold
           </button>
@@ -795,7 +795,7 @@ export default function Tetris() {
           </button>
           <button
             onTouchStart={() => moveDown()}
-            className="w-14 h-14 rounded-2xl bg-white border border-[#e8e2d8] text-xl flex items-center justify-center text-[#9a8f7e] active:bg-[#f0ece8]"
+            className="w-14 h-14 rounded-2xl bg-white border border-[#e8e2d8] text-xl flex items-center justify-center text-[#6f6455] active:bg-[#f0ece8]"
           >
             ↓
           </button>

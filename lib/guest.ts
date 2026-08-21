@@ -14,6 +14,7 @@
 //  the data layer.
 // ──────────────────────────────────────────────────────────────────────────
 
+import { dayKeyOf } from "./dayKey";
 import type {
   Todo,
   Draft,
@@ -75,13 +76,13 @@ function uid(): string {
 function dayOffset(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
+  return dayKeyOf(d);
 }
 function monthOffset(months: number, day: number): string {
   const d = new Date();
   d.setMonth(d.getMonth() + months);
   d.setDate(day);
-  return d.toISOString().split("T")[0];
+  return dayKeyOf(d);
 }
 const nowISO = () => new Date().toISOString();
 // Full ISO timestamp N days in the past — for seeding draft activity so the

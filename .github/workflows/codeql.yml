@@ -1,4 +1,4 @@
-## Static analysis (SECURITY_Rulebook §3.1 — shift-left scanning).
+## Static analysis (SECURITY_Rulebook §5c — checks in the pipeline).
 ## Runs on every push and PR to main, plus weekly so a newly-published query
 ## finds old code that was clean when it was written.
 name: CodeQL

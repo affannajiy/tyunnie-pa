@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { guest, isGuest, GUEST_ID } from "./guest";
+import { dayKeyOf } from "./dayKey";
 
 // ── Guest / demo routing ─────────────────────────────────────────────────────
 // When the app is in guest mode every CRUD function below short-circuits to the
@@ -420,7 +421,7 @@ export async function getFinanceEntries(
     .from("finance")
     .select("*")
     .eq("user_id", userId)
-    .gte("date", since.toISOString().split("T")[0])
+    .gte("date", dayKeyOf(since))
     .order("date", { ascending: false });
 
   if (error) console.error("getFinanceEntries error:", error);

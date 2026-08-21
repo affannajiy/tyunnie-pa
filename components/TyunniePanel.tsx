@@ -3,18 +3,17 @@
 
 import { X, Mic, Square, ArrowDownToLine, ExternalLink } from "lucide-react";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMusicContext } from "@/lib/MusicContext";
 import { useWorkspace } from "@/lib/WorkspaceContext";
 import Image from "next/image";
-import type { Profile as ProfileType } from "@/lib/database";
 import { useSpeech } from "@/lib/useSpeech";
-import type { Todo, Draft, Project, Snip, FinanceEntry } from "@/lib/database";
 import { authHeader } from "@/lib/supabase";
 import type { TyunniePanelProps } from "@/lib/tyunniePanelTypes";
 import { getCyclingQuote } from "@/lib/tyunnieQuotes";
 import { TYUN_CORE, isTyunBirthday } from "@/lib/tyunPersona";
 import { confirmDialog } from "@/components/ui/ConfirmDialog";
+import { todayKey, dayKeyIn } from "@/lib/dayKey";
 
 /** Only these ever survive sanitisation, and only bare — never with attributes. */
 const ALLOWED_TAG = /&lt;(\/?)(b|strong|em|i|code|br)\s*\/?&gt;/gi;
@@ -134,9 +133,6 @@ type ConfirmPayload = {
   detail: string; // HTML string shown in confirm card
   onConfirm: () => void;
 };
-
-// AppData is inlined from TyunniePanelProps for internal use
-type AppData = TyunniePanelProps["appData"];
 
 const SPRITE_GREETINGS = [
   "Hey, I'm here 🧡 Talk to me — ask about your balance, check your drafts. I know everything.",
@@ -303,7 +299,6 @@ export default function TyunniePanel({
   // ── BREIFING ──
   const [briefing, setBriefing] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(false);
-  const briefingFiredRef = useRef(false);
   const [briefingKey, setBriefingKey] = useState(0);
 
   // ── PROACTIVE SUGGESTION STATE ──
@@ -427,7 +422,7 @@ export default function TyunniePanel({
       return;
     }
     async function fetchBriefing() {
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayKey();
       const hour = new Date().getHours();
       const timeOfDay =
         hour < 12
@@ -616,7 +611,7 @@ No preamble. No markdown fences.`,
   function buildSystemPrompt(): string {
     const { todos, drafts, projects, snips, finance } = appData;
     const now = new Date();
-    const today = now.toISOString().split("T")[0];
+    const today = todayKey();
     const hour = now.getHours();
     const timeOfDay =
       hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night";
@@ -630,33 +625,49 @@ No preamble. No markdown fences.`,
       .reduce((s, f) => s + f.amount, 0);
     const balance = totalIncome - totalExpenses;
 
+    // Every list below is capped. Uncapped, the prompt grew with the user's data
+    // and a heavy account could push a single request past six figures of
+    // characters — the token bill scales with it and the server now rejects it
+    // outright (§4 LLM10). `MAX_ITEMS` keeps the worst case well under the
+    // route's MAX_PROMPT_CHARS; a truncation line tells the model what it is
+    // not seeing so it says "you have more" instead of inventing a total.
+    const MAX_ITEMS = 40;
+    const more = (shown: number, total: number) =>
+      total > shown ? `\n• …and ${total - shown} more (not listed)` : "";
+
+    const pending = todos.filter((t) => !t.done);
     const pendingTodos =
-      todos
-        .filter((t) => !t.done)
+      pending
+        .slice(0, MAX_ITEMS)
         .map(
           (t) =>
             `• [id:${t.id}] [${t.tag}] ${t.text}${t.due ? ` (due ${t.due})` : ""}`,
         )
-        .join("\n") || "None";
+        .join("\n") + more(MAX_ITEMS, pending.length) || "None";
 
     const draftList =
       drafts
+        .slice(0, MAX_ITEMS)
         .map(
           (d) =>
             `• [id:${d.id}] "${d.title}" — ${(d.body ?? "").trim().split(/\s+/).length} words`,
         )
-        .join("\n") || "None";
+        .join("\n") + more(MAX_ITEMS, drafts.length) || "None";
 
     const projectList =
       projects
+        .slice(0, MAX_ITEMS)
         .map(
           (p) =>
             `• [id:${p.id}] ${p.name} [${p.status}] ${p.progress}%${p.start_date ? ` (${p.start_date} → ${p.end_date})` : ""}`,
         )
-        .join("\n") || "None";
+        .join("\n") + more(MAX_ITEMS, projects.length) || "None";
 
     const snipList =
-      snips.map((s) => `• [id:${s.id}] ${s.name} (${s.language})`).join("\n") || "None";
+      snips
+        .slice(0, MAX_ITEMS)
+        .map((s) => `• [id:${s.id}] ${s.name} (${s.language})`)
+        .join("\n") + more(MAX_ITEMS, snips.length) || "None";
 
     const recentFinance =
       finance
@@ -848,7 +859,7 @@ TASKS:
 - "rename task / change task / update [task] to" → update_todo with exact id
 - "delete / remove task" → delete_todo with exact id — ask for confirmation first if unclear which task
 - Tag inference: CS/coding/study = "cs", writing/essay/blog = "write", everything personal = "personal", else "other"
-- Due date: if user says "today" use ${today}, "tomorrow" use ${new Date(Date.now()+86400000).toISOString().split("T")[0]}
+- Due date: if user says "today" use ${today}, "tomorrow" use ${dayKeyIn(1)}
 
 WRITING:
 - "create draft / write a template / start a draft / make a document" → add_draft immediately
@@ -1092,7 +1103,7 @@ casual chat (no data action — still set a mood):
             description: d.description ?? "Entry",
             amount: parseFloat(d.amount) || 0,
             category: d.category ?? "Other",
-            date: d.date ?? new Date().toISOString().split("T")[0],
+            date: d.date ?? todayKey(),
             account: d.account ?? "Wallet",
           });
           // Happy for income, concerned for big expenses
@@ -1566,7 +1577,7 @@ casual chat (no data action — still set a mood):
         <button
           onClick={() => setProactiveDismissed(true)}
           aria-label="Dismiss suggestion"
-          className="absolute top-2 right-2.5 text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors"
+          className="absolute top-2 right-2.5 text-[#8f8272] hover:text-[#b0a090] text-xs transition-colors"
         >
           <X size={16} strokeWidth={2} />
         </button>
@@ -1700,7 +1711,7 @@ casual chat (no data action — still set a mood):
             <div className="skeleton-line h-2 w-full mb-1.5" aria-hidden="true" />
             <div className="skeleton-line h-2 w-[85%] mb-1.5" aria-hidden="true" />
             <div className="skeleton-line h-2 w-[60%] mb-2" aria-hidden="true" />
-            <span className="text-[11px] italic font-serif text-[#9a8f7e]">
+            <span className="text-[11px] italic font-serif text-[#b0a090]">
               &ldquo;{getCyclingQuote(thinkQuoteIdx)}&rdquo;
             </span>
           </div>
@@ -1723,7 +1734,7 @@ casual chat (no data action — still set a mood):
           <div className="flex gap-2">
             <button
               onClick={confirm.onConfirm}
-              className="flex-1 bg-[#16a34a] text-white text-[11px] font-bold rounded-lg py-2 hover:opacity-90 transition-opacity"
+              className="flex-1 bg-[#15803d] text-white text-[11px] font-bold rounded-lg py-2 hover:opacity-90 transition-opacity"
             >
               Looks good ✓
             </button>
@@ -1732,7 +1743,7 @@ casual chat (no data action — still set a mood):
                 setConfirm(null);
                 addBubble("tyunnie", "alright, leaving it then.");
               }}
-              className="flex-1 bg-transparent border border-[#3a3028] text-[#9a8f7e] text-[11px] font-bold rounded-lg py-2 hover:border-red-800 hover:text-red-400 transition-colors"
+              className="flex-1 bg-transparent border border-[#3a3028] text-[#b0a090] text-[11px] font-bold rounded-lg py-2 hover:border-red-800 hover:text-red-600 transition-colors"
             >
               Cancel
             </button>
@@ -1748,13 +1759,13 @@ casual chat (no data action — still set a mood):
       <p className="text-[12px] text-[#e8ddd0] leading-relaxed">
         Hi, I&rsquo;m Tyun 🧡
       </p>
-      <p className="text-[11px] text-[#9a8f7e] leading-relaxed mt-1 mb-3">
+      <p className="text-[11px] text-[#b0a090] leading-relaxed mt-1 mb-3">
         Chatting with me needs an account. Sign up and I&rsquo;ll be right here.
       </p>
       <a
         href="/auth"
         className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-white text-[12px] font-bold transition-colors"
-        style={{ background: "var(--accent)" }}
+        style={{ background: "var(--accent)", color: "var(--accent-on)" }}
       >
         Sign up to chat
       </a>
@@ -1770,8 +1781,8 @@ casual chat (no data action — still set a mood):
           title={listening ? "Stop listening" : "Voice input"}
           className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 self-end transition-all ${
             listening
-              ? "bg-red-500/20 border border-red-500/40 text-red-400 animate-pulse"
-              : "bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
+              ? "bg-red-500/20 border border-red-500/40 text-red-600 animate-pulse"
+              : "bg-[#1e1b17] border border-[#3a3028] text-[#b0a090] hover:border-(--accent) hover:text-(--accent)"
           }`}
         >
           {listening ? (
@@ -1782,16 +1793,16 @@ casual chat (no data action — still set a mood):
         </button>
       )}
 
-      <textarea
+      <textarea aria-label="Message Tyun"
         ref={inputRef}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={listening ? "Listening..." : "Talk to Tyunnie..."}
         rows={1}
-        className={`flex-1 bg-[#1e1b17] border rounded-xl text-[#e8ddd0] text-[11px] md:text-xs px-3 py-2 outline-none resize-none leading-normal placeholder:text-[#4a4038] transition-colors ${
+        className={`flex-1 bg-[#1e1b17] border rounded-xl text-[#e8ddd0] text-[11px] md:text-xs px-3 py-2 outline-none resize-none leading-normal placeholder:text-[#8f8272] transition-colors ${
           listening
-            ? "border-red-500/40 placeholder:text-red-400/60"
+            ? "border-red-500/40 placeholder:text-red-600/60"
             : "border-[#3a3028] focus:border-(--accent)"
         }`}
         style={{ minHeight: "36px", maxHeight: "72px" }}
@@ -1822,7 +1833,7 @@ casual chat (no data action — still set a mood):
             boxShadow: "0 8px 32px rgba(var(--accent-rgb),0.18), 0 2px 8px rgba(0,0,0,0.5)",
             border: "1px solid rgba(255,255,255,0.09)",
           }}
-          className="rounded-2xl bg-[#111010] flex flex-col overflow-hidden"
+          className="on-dark rounded-2xl bg-[#111010] flex flex-col overflow-hidden"
         >
           {/* Radial glow */}
           <div
@@ -1857,7 +1868,7 @@ casual chat (no data action — still set a mood):
               />
               <span
                 className="font-serif italic text-[15px]"
-                style={{ color: "var(--accent)" }}
+                style={{ color: "var(--accent-text)" }}
               >
                 Tyunnie
               </span>
@@ -1871,7 +1882,7 @@ casual chat (no data action — still set a mood):
                   onOpen?.();
                 }}
                 title="Snap back to panel"
-                className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
+                className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#b0a090] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
               >
                 <ArrowDownToLine size={16} strokeWidth={1.75} />
               </button>
@@ -1883,7 +1894,7 @@ casual chat (no data action — still set a mood):
                 }}
                 title="Close"
                 aria-label="Close chat"
-                className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
+                className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#b0a090] hover:text-red-600 hover:border-red-800 transition-all text-xs flex items-center justify-center"
               >
                 <X size={16} strokeWidth={2} />
               </button>
@@ -1917,7 +1928,7 @@ casual chat (no data action — still set a mood):
 
           {/* ── BOTTOM SHEET PANEL ── */}
           <div
-            className="fixed z-60 bg-[#111010] flex flex-col overflow-hidden"
+            className="on-dark fixed z-60 bg-[#111010] flex flex-col overflow-hidden"
             style={{
               bottom: 0,
               left: "50%",
@@ -1992,7 +2003,7 @@ casual chat (no data action — still set a mood):
                 <div className="flex items-center justify-between px-4 pb-2.5 pt-0.5 border-b border-[#2a2520]">
                   <span
                     className="font-serif italic text-lg"
-                    style={{ color: "var(--accent)" }}
+                    style={{ color: "var(--accent-text)" }}
                   >
                     Tyunnie
                   </span>
@@ -2006,7 +2017,7 @@ casual chat (no data action — still set a mood):
                           onClose?.();
                         }}
                         title="Float panel"
-                        className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
+                        className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#b0a090] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
                       >
                         <ExternalLink size={16} strokeWidth={1.75} />
                       </button>
@@ -2015,7 +2026,7 @@ casual chat (no data action — still set a mood):
                       onClick={onClose}
                       title="Close"
                       aria-label="Close chat"
-                      className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#9a8f7e] hover:text-red-400 hover:border-red-800 transition-all text-xs flex items-center justify-center"
+                      className="w-7 h-7 rounded-lg bg-[#1e1b17] border border-[#3a3028] text-[#b0a090] hover:text-red-600 hover:border-red-800 transition-all text-xs flex items-center justify-center"
                     >
                       <X size={16} strokeWidth={2} />
                     </button>

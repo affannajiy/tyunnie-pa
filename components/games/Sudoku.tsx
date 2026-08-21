@@ -260,7 +260,7 @@ export default function Sudoku() {
             className={`flex-1 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
               difficulty === d
                 ? "bg-[#f97316] text-white"
-                : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+                : "bg-white border border-[#e8e2d8] text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316]"
             }`}
           >
             {d}
@@ -277,14 +277,14 @@ export default function Sudoku() {
               className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
                 i < mistakes
                   ? "bg-red-500 text-white"
-                  : "bg-[#f3f0ea] text-[#c5bdb0]"
+                  : "bg-[#f3f0ea] text-[#756a5a]"
               }`}
             >
               ✕
             </div>
           ))}
         </div>
-        <span className="font-mono text-sm font-bold text-[#9a8f7e]">
+        <span className="font-mono text-sm font-bold text-[#6f6455]">
           {formatTime(seconds)}
         </span>
         <button
@@ -292,7 +292,7 @@ export default function Sudoku() {
           className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
             noteMode
               ? "bg-[#f97316] text-white"
-              : "bg-white border border-[#e8e2d8] text-[#9a8f7e]"
+              : "bg-white border border-[#e8e2d8] text-[#6f6455]"
           }`}
         >
           <Pencil size={12} strokeWidth={2} className="inline -mt-0.5" /> Notes
@@ -301,7 +301,7 @@ export default function Sudoku() {
 
       {/* Quip */}
       <div className="h-6 mb-2 flex items-center justify-center">
-        <p className="text-[11px] text-[#9a8f7e] italic text-center">
+        <p className="text-[11px] text-[#6f6455] italic text-center">
           🧡 {quip}
         </p>
       </div>
@@ -310,7 +310,7 @@ export default function Sudoku() {
       {status !== "playing" && (
         <div
           className={`rounded-2xl px-4 py-3 text-center mb-4 ${
-            status === "won" ? "bg-[#16a34a]" : "bg-red-500"
+            status === "won" ? "bg-[#15803d]" : "bg-red-500"
           }`}
         >
           <p className="text-white font-bold text-sm">
@@ -342,7 +342,7 @@ export default function Sudoku() {
                 aspect-square flex items-center justify-center text-sm font-bold
                 transition-colors border border-transparent relative
                 ${hlClass(i)} ${borderR} ${borderC}
-                ${cell.given ? "text-[#111010]" : errors.has(i) ? "text-red-500" : "text-[#f97316]"}
+                ${cell.given ? "text-[#111010]" : errors.has(i) ? "text-red-600" : "text-[#f97316]"}
               `}
             >
               {cell.value !== 0 ? (
@@ -385,7 +385,7 @@ export default function Sudoku() {
       <div className="flex gap-3">
         <button
           onClick={() => inputNumber(0)}
-          className="flex-1 py-2.5 rounded-xl border border-[#e8e2d8] text-[#9a8f7e] text-sm font-bold hover:border-[#f97316] hover:text-[#f97316] transition-all"
+          className="flex-1 py-2.5 rounded-xl border border-[#e8e2d8] text-[#6f6455] text-sm font-bold hover:border-[#f97316] hover:text-[#f97316] transition-all"
         >
           Erase
         </button>
@@ -397,7 +397,7 @@ export default function Sudoku() {
         </button>
       </div>
 
-      <p className="text-center text-[10px] text-[#c5bdb0] font-mono mt-3">
+      <p className="text-center text-[10px] text-[#756a5a] font-mono mt-3">
         Tap a cell then tap a number · N to toggle notes
       </p>
     </div>

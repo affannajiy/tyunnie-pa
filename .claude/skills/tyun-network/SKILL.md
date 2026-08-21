@@ -94,4 +94,6 @@ reading phase and relay its findings.
 Never trade a security control for speed — no bypassing auth for caching, no widening
 a CSP directive to save a request, no caching an authorization decision (the data,
 yes; the yes/no answer, never). Auth, CSP, RLS, crypto, and injection belong to
-`tyun-security`. Don't rewrite business logic or UI.
+`tyun-security`. Correctness, failure handling, and timeout *policy* belong to
+`tyun-engineer` — this skill cares whether a call is slow, not whether its failure is
+reported. Don't rewrite business logic or UI.

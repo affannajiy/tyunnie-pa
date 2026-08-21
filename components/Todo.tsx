@@ -26,7 +26,7 @@ const TAGS = [
   {
     value: "cs",
     label: "CS / Code",
-    className: "bg-blue-50 text-blue-500 border-blue-200",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
   },
   {
     value: "write",
@@ -36,12 +36,12 @@ const TAGS = [
   {
     value: "personal",
     label: "Personal",
-    className: "bg-purple-50 text-purple-500 border-purple-200",
+    className: "bg-purple-50 text-purple-700 border-purple-200",
   },
   {
     value: "other",
     label: "Other",
-    className: "bg-[#f3f0ea] text-[#9a8f7e] border-[#e8e2d8]",
+    className: "bg-[#f3f0ea] text-[#6f6455] border-[#e8e2d8]",
   },
 ];
 
@@ -204,7 +204,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
       {!loading && todos.length > 0 && (
         <div className="flex gap-3 mb-5">
           <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-1">
               Pending
             </div>
             <div className="font-serif italic text-3xl text-(--accent)">
@@ -212,15 +212,15 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
             </div>
           </div>
           <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-1">
               Done
             </div>
-            <div className="font-serif italic text-3xl text-[#16a34a]">
+            <div className="font-serif italic text-3xl text-[#15803d]">
               {doneCount}
             </div>
           </div>
           <div className="flex-1 bg-white border border-[#e8e2d8] rounded-2xl px-5 py-4">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-1">
               Total
             </div>
             <div className="font-serif italic text-3xl text-[#111010]">
@@ -242,7 +242,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
         <form onSubmit={handleAdd}>
           {/* Task text */}
           <div className="mb-3">
-            <input
+            <input aria-label="Task description"
               ref={textInputRef}
               type="text"
               value={text}
@@ -255,13 +255,16 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
             />
           </div>
 
-          <div className="flex gap-3">
+          {/* Wraps below ~380px. Unwrapped, the Add button ended up at x=339
+              on a 320px viewport — outside the panel's overflow-hidden box and
+              genuinely unclickable (WCAG 1.4.10, §5.6). */}
+          <div className="flex flex-wrap gap-3">
             {/* Tag */}
-            <div className="flex-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+            <div className="flex-1 min-w-30">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 Tag
               </label>
-              <select
+              <select aria-label="Tag"
                 value={tag}
                 onChange={(e) => setTag(e.target.value as Todo["tag"])}
                 className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
@@ -275,11 +278,11 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
             </div>
 
             {/* Due date */}
-            <div className="flex-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+            <div className="flex-1 min-w-35">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 Due Date (optional)
               </label>
-              <input
+              <input aria-label="Due date"
                 type="date"
                 value={due}
                 onChange={(e) => setDue(e.target.value)}
@@ -288,11 +291,11 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
             </div>
 
             {/* Submit */}
-            <div className="flex items-end">
+            <div className="flex items-end w-full sm:w-auto">
               <button
                 type="submit"
                 disabled={saving || !text.trim()}
-                className="bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full sm:w-auto bg-(--accent) text-white font-bold rounded-xl px-5 py-2.5 text-xs tracking-wide hover:bg-[#c2500f] transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {saving ? "Adding..." : "Add ✦"}
               </button>
@@ -310,27 +313,27 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
             className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all border ${
               filter === f
                 ? "bg-(--accent) text-white border-(--accent)"
-                : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-(--accent) hover:text-(--accent)"
+                : "bg-white text-[#6f6455] border-[#e8e2d8] hover:border-(--accent) hover:text-(--accent)"
             }`}
           >
             {f}
           </button>
         ))}
         <div className="flex-1 h-px bg-[#e8e2d8]" />
-        <span className="text-[10px] font-mono text-[#9a8f7e]">
+        <span className="text-[10px] font-mono text-[#6f6455]">
           {filtered.length} {filtered.length === 1 ? "task" : "tasks"}
         </span>
       </div>
 
       {/* Task list */}
       {loading && (
-        <div className="text-center py-12 text-[#c5bdb0] text-sm">
+        <div className="text-center py-12 text-[#756a5a] text-sm">
           Loading your tasks...
         </div>
       )}
 
       {!loading && filtered.length === 0 && (
-        <div className="text-center py-16 text-[#c5bdb0]">
+        <div className="text-center py-16 text-[#756a5a]">
           <CheckCircle2 size={30} strokeWidth={1.5} className="mb-3 opacity-50 mx-auto" />
           <p className="text-sm">
             {filter === "done"
@@ -363,7 +366,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
               <button
                 onClick={() => handleToggle(todo.id, todo.done)}
                 className={`
-                  w-5 h-5 rounded-md border-2 flex items-center justify-center
+                  tap-target w-5 h-5 rounded-md border-2 flex items-center justify-center
                   shrink-0 transition-all text-[11px] font-bold
                   ${
                     todo.done
@@ -380,7 +383,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
 
               {/* Text */}
               <span
-                className={`flex-1 text-sm font-medium ${todo.done ? "line-through text-[#9a8f7e]" : "text-[#111010]"}`}
+                className={`flex-1 text-sm font-medium ${todo.done ? "line-through text-[#6f6455]" : "text-[#111010]"}`}
               >
                 {todo.text}
               </span>
@@ -392,8 +395,8 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
                   font-mono text-[10px] px-2 py-0.5 rounded-lg shrink-0
                   ${
                     isOverdue(todo.due) && !todo.done
-                      ? "bg-red-100 text-red-500 border border-red-200"
-                      : "bg-[#f3f0ea] text-[#9a8f7e]"
+                      ? "bg-red-100 text-red-700 border border-red-200"
+                      : "bg-[#f3f0ea] text-[#6f6455]"
                   }
                 `}
                 >
@@ -413,7 +416,7 @@ export default function Todo({ userId, onAction, refreshKey }: Props) {
               <button
                 onClick={() => handleDelete(todo.id, todo.text)}
                 aria-label={`Delete task ${todo.text}`}
-                className="text-[#c5bdb0] hover:text-red-500 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
+                className="text-[#756a5a] hover:text-red-600 transition-colors text-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
               >
                 <X size={16} strokeWidth={2} />
               </button>

@@ -282,7 +282,7 @@ export default function Minesweeper() {
             className={`flex-1 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
               difficulty === d
                 ? "bg-[#f97316] text-white"
-                : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"
+                : "bg-white border border-[#e8e2d8] text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316]"
             }`}
           >
             {d}
@@ -299,7 +299,7 @@ export default function Minesweeper() {
           </span>
         </div>
         <div className="text-center">
-          <p className="text-[10px] italic text-[#9a8f7e]">🧡 {quip}</p>
+          <p className="text-[10px] italic text-[#6f6455]">🧡 {quip}</p>
         </div>
         <div className="flex items-center gap-1.5 bg-white border border-[#e8e2d8] rounded-xl px-3 py-1.5">
           <span className="text-sm">⏱</span>
@@ -312,7 +312,7 @@ export default function Minesweeper() {
       {/* Status banner */}
       {status === "won" || status === "lost" ? (
         <div
-          className={`rounded-2xl px-4 py-3 text-center mb-3 ${status === "won" ? "bg-[#16a34a]" : "bg-red-500"}`}
+          className={`rounded-2xl px-4 py-3 text-center mb-3 ${status === "won" ? "bg-[#15803d]" : "bg-red-500"}`}
         >
           <p className="text-white font-bold text-sm">
             {status === "won"
@@ -376,7 +376,7 @@ export default function Minesweeper() {
         </button>
       </div>
 
-      <p className="text-center text-[10px] text-[#c5bdb0] font-mono mt-3">
+      <p className="text-center text-[10px] text-[#756a5a] font-mono mt-3">
         Left click to reveal · Right click to flag · Click revealed number to
         chord
       </p>

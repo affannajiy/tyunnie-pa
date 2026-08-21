@@ -26,7 +26,7 @@ export default function Error({
   const accent = `rgb(${accentRgb})`;
 
   return (
-    <div className="min-h-screen flex bg-[#faf8f5] dark:bg-[#0e0d0b]">
+    <main className="min-h-dvh flex bg-[#faf8f5] dark:bg-[#0e0d0b]">
 
       {/* Left panel — branding + sprite */}
       <div
@@ -59,7 +59,7 @@ export default function Error({
           <span className="text-2xl font-bold tracking-tight" style={{ color: accent }}>
             Tyunnie
           </span>
-          <p className="text-[#9a8f7e] dark:text-[#7a7060] text-sm mt-1">
+          <p className="text-[#6f6455] dark:text-[#7a7060] text-sm mt-1">
             Your personal AI assistant
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function Error({
 
         <div className="lg:hidden mb-8 text-center">
           <span className="text-3xl font-bold" style={{ color: accent }}>Tyunnie</span>
-          <p className="text-[#9a8f7e] text-sm mt-1">Your personal AI assistant</p>
+          <p className="text-[#6f6455] text-sm mt-1">Your personal AI assistant</p>
         </div>
 
         <div className="w-full max-w-sm">
@@ -112,13 +112,13 @@ export default function Error({
             <h1 className="font-serif italic text-3xl text-[#111010] dark:text-[#f5f0e8] mb-3">
               My bad.
             </h1>
-            <p className="text-sm text-[#9a8f7e] dark:text-[#6a6050] leading-relaxed mb-6">
+            <p className="text-sm text-[#6f6455] dark:text-[#6a6050] leading-relaxed mb-6">
               Something broke on my end. Try again — I will do better this time.
             </p>
 
             {process.env.NODE_ENV === "development" && (
               <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl px-4 py-3 mb-5">
-                <p className="text-[10px] font-mono text-red-500 dark:text-red-400 wrap-break-word">
+                <p className="text-[10px] font-mono text-red-600 dark:text-red-600 wrap-break-word">
                   {error.message}
                 </p>
               </div>
@@ -134,7 +134,7 @@ export default function Error({
               </button>
               <Link
                 href="/dashboard"
-                className="flex-1 py-3 text-center bg-transparent border border-[#e8e2d8] dark:border-[#2a2620] text-[#9a8f7e] dark:text-[#6a6050] font-bold rounded-xl text-xs uppercase tracking-widest hover:border-[#9a8f7e] dark:hover:border-[#6a6050] transition-all hover:-translate-y-px"
+                className="flex-1 py-3 text-center bg-transparent border border-[#e8e2d8] dark:border-[#2a2620] text-[#6f6455] dark:text-[#6a6050] font-bold rounded-xl text-xs uppercase tracking-widest hover:border-[#9a8f7e] dark:hover:border-[#6a6050] transition-all hover:-translate-y-px"
               >
                 Go Home
               </Link>
@@ -143,6 +143,6 @@ export default function Error({
 
         </div>
       </div>
-    </div>
+    </main>
   );
 }

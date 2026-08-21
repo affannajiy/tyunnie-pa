@@ -119,7 +119,7 @@ export default function ShortcutHelp({ open, onClose }: Props) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e2d8] dark:border-[#2a2520] shrink-0">
-          <span className="font-serif italic text-[var(--accent)] text-sm">
+          <span className="font-serif italic text-[var(--accent-text)] text-sm">
             Keyboard Shortcuts
           </span>
           <div className="flex items-center gap-2">
@@ -127,7 +127,7 @@ export default function ShortcutHelp({ open, onClose }: Props) {
             <button
               onClick={onClose}
               aria-label="Close keyboard shortcuts"
-              className="w-8 h-8 flex items-center justify-center text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors rounded-lg ml-1"
+              className="w-8 h-8 flex items-center justify-center text-[#756a5a] hover:text-[#6f6455] transition-colors rounded-lg ml-1"
             >
               <X size={16} strokeWidth={2} />
             </button>
@@ -138,7 +138,7 @@ export default function ShortcutHelp({ open, onClose }: Props) {
         <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-5" style={{ scrollbarWidth: "thin" }}>
           {GROUPS.map((group) => (
             <div key={group.title}>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-[#c5bdb0] font-mono mb-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-[#756a5a] font-mono mb-2">
                 {group.title}
               </p>
               <div>
@@ -157,7 +157,7 @@ export default function ShortcutHelp({ open, onClose }: Props) {
 
         {/* Footer */}
         <div className="border-t border-[#f3f0ea] dark:border-[#2a2520] px-5 py-2.5 shrink-0">
-          <p className="text-[9px] font-mono text-[#c5bdb0]">
+          <p className="text-[9px] font-mono text-[#756a5a]">
             esc to close
           </p>
         </div>

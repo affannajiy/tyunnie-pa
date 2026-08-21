@@ -44,7 +44,7 @@ function PanelSkeleton() {
       <div className="h-4 w-full rounded-lg bg-[#f3f0ea] dark:bg-[#1e1b17]" />
       <div className="h-4 w-5/6 rounded-lg bg-[#f3f0ea] dark:bg-[#1e1b17]" />
       <div className="h-4 w-4/6 rounded-lg bg-[#f3f0ea] dark:bg-[#1e1b17]" />
-      <p className="text-[11px] italic font-serif text-center text-[#9a8f7e] dark:text-[#b0a090] pt-2">
+      <p className="text-[11px] italic font-serif text-center text-[#6f6455] dark:text-[#b0a090] pt-2">
         &ldquo;{skeletonQuote}&rdquo;
       </p>
     </div>
@@ -334,7 +334,7 @@ export default function Home() {
   }, []);
 
   // ── MOBILE: pull-to-refresh + swipe navigation ──
-  const contentRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
   const [pullProgress, setPullProgress] = useState(0); // 0–1
   const pullRef = useRef<{ y: number; x: number; fired: boolean } | null>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
@@ -781,7 +781,9 @@ export default function Home() {
   }
 
   async function handleTodoToggle(id: string, done: boolean) {
-    const { toggleTodo } = await import("@/lib/database");
+    // Was a dynamic import of a module this file already imports statically at
+    // the top — it deferred nothing and left the static `toggleTodo` unused,
+    // which is what a half-finished migration looks like (§1.14, §4.13).
     await toggleTodo(id, done);
     setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done } : t)));
   }
@@ -958,12 +960,12 @@ export default function Home() {
           style={{ width: 120, height: "auto" }}
         />
         <p
-          className="text-sm italic font-serif text-[#9a8f7e] dark:text-[#b0a090] px-6 text-center max-w-xs"
+          className="text-sm italic font-serif text-[#6f6455] dark:text-[#b0a090] px-6 text-center max-w-xs"
           style={{ transition: "opacity 0.4s ease" }}
         >
           &ldquo;{getCyclingQuote(loadingQuoteIdx)}&rdquo;
         </p>
-        <p className="text-xs text-[#b0a090] dark:text-[#4a4038] font-mono">
+        <p className="text-xs text-[#6f6455] dark:text-[#b0a090] font-mono">
           Loading your space...
         </p>
       </div>
@@ -978,6 +980,12 @@ export default function Home() {
   return (
     <WorkspaceProvider>
       <div className="flex h-dvh w-screen overflow-hidden bg-[#faf8f5]">
+        {/* WCAG 2.4.1 Bypass Blocks. The dock and topbar sit ahead of every
+            panel in tab order, so without this a keyboard user re-traverses
+            the whole shell on each visit. Visible only on focus (§4 2.4.7). */}
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
         <Sidebar
           active={activePanel}
           onChange={(panel) => setActivePanel(panel)}
@@ -1006,12 +1014,12 @@ export default function Home() {
               style={{
                 background: "rgba(var(--accent-rgb), 0.10)",
                 borderColor: "rgba(var(--accent-rgb), 0.20)",
-                color: "var(--accent)",
+                color: "var(--accent-text)",
               }}
             >
               <span aria-hidden="true">🧡</span>
               <span className="font-semibold">Guest preview</span>
-              <span className="hidden sm:inline text-[#9a8f7e] dark:text-[#8a8070]">
+              <span className="hidden sm:inline text-[#6f6455] dark:text-[#8a8070]">
                 — changes save only in this browser.
               </span>
               <div className="ml-auto flex items-center gap-2">
@@ -1028,7 +1036,7 @@ export default function Home() {
                 <button
                   onClick={() => router.push("/auth")}
                   className="px-2.5 py-1 rounded-lg font-bold text-white transition-all"
-                  style={{ background: "var(--accent)" }}
+                  style={{ background: "var(--accent)", color: "var(--accent-on)" }}
                 >
                   Sign up to save
                 </button>
@@ -1036,17 +1044,24 @@ export default function Home() {
             </div>
           )}
           {/* Topbar */}
-          <div className="h-14 bg-white dark:bg-[#1a1814] border-b border-[#e8e2d8] dark:border-[#2a2520] flex items-center px-4 md:px-7 shrink-0 relative">
+          <header className="h-14 bg-white dark:bg-[#1a1814] border-b border-[#e8e2d8] dark:border-[#2a2520] flex items-center px-4 md:px-7 shrink-0 relative">
             {/* Left — Tyunnie brand (click → desk) */}
             <button
               onClick={() => setActivePanel("desk")}
               className="flex items-center gap-1.5 shrink-0 group"
             >
               <span
-                className="font-serif text-xl italic tracking-tight transition-colors"
-                style={{
-                  color: activePanel === "desk" ? "var(--accent)" : "#1c1917",
-                }}
+                /* The inactive colour was an inline #1c1917, which an inline
+                   style keeps in dark mode too — near-black on the dark topbar.
+                   The class carries a .dark remap; the inline one could not. */
+                className={`font-serif text-xl italic tracking-tight transition-colors ${
+                  activePanel === "desk" ? "" : "text-[#111010]"
+                }`}
+                style={
+                  activePanel === "desk"
+                    ? { color: "var(--accent-text)" }
+                    : undefined
+                }
               >
                 Tyunnie
               </span>
@@ -1063,11 +1078,11 @@ export default function Home() {
               <button
                 onClick={() => setSearchOpen(true)}
                 aria-label="Open command palette"
-                className="flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-1.5 text-xs text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono w-48 lg:w-64 xl:w-80"
+                className="flex items-center gap-2 bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-1.5 text-xs text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono w-48 lg:w-64 xl:w-80"
               >
                 <Search size={16} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
                 <span>Search</span>
-                <span className="bg-[#e8e2d8] rounded px-1.5 py-0.5 text-[9px] font-bold ml-auto">
+                <span className="bg-[#e8e2d8] text-[#5f5548] rounded px-1.5 py-0.5 text-[9px] font-bold ml-auto">
                   {isMac() ? "⌘K" : "Ctrl K"}
                 </span>
               </button>
@@ -1080,7 +1095,7 @@ export default function Home() {
                 onClick={() => setShowShortcuts(true)}
                 title="Keyboard shortcuts"
                 aria-label="Keyboard shortcuts"
-                className="hidden md:flex items-center justify-center w-8 h-8 rounded-xl border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono text-xs font-bold"
+                className="hidden md:flex items-center justify-center w-8 h-8 rounded-xl border border-[#e8e2d8] text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316] transition-all font-mono text-xs font-bold"
               >
                 ?
               </button>
@@ -1089,7 +1104,7 @@ export default function Home() {
               </div>
 
               {/* Date — desktop full, mobile short */}
-              <span className="hidden md:inline font-mono text-[11px] text-[#9a8f7e]">
+              <span className="hidden md:inline font-mono text-[11px] text-[#6f6455]">
                 {new Date().toLocaleDateString("en-MY", {
                   weekday: "long",
                   year: "numeric",
@@ -1097,7 +1112,7 @@ export default function Home() {
                   day: "numeric",
                 })}
               </span>
-              <span className="md:hidden font-mono text-[10px] text-[#9a8f7e]">
+              <span className="md:hidden font-mono text-[10px] text-[#6f6455]">
                 {new Date().toLocaleDateString("en-MY", {
                   weekday: "short",
                   month: "short",
@@ -1137,7 +1152,9 @@ export default function Home() {
                             ? "var(--accent)"
                             : "rgba(var(--accent-rgb), 0.12)",
                         color:
-                          activePanel === "profile" ? "#fff" : "var(--accent)",
+                          activePanel === "profile"
+                            ? "var(--accent-on)"
+                            : "var(--accent-text)",
                       }}
                     >
                       {userName
@@ -1191,7 +1208,7 @@ export default function Home() {
                           setProfileMenuOpen(false);
                           handleSignOut();
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-[#2a1a1a] transition-colors"
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-[#2a1a1a] transition-colors"
                       >
                         {user?.id === GUEST_ID ? "Exit demo" : "Log out"}
                       </button>
@@ -1200,7 +1217,7 @@ export default function Home() {
                 )}
               </div>
             </div>
-          </div>
+          </header>
 
           {/* Pull-to-refresh indicator — mobile only */}
           <div
@@ -1216,7 +1233,7 @@ export default function Home() {
             <div
               className="w-9 h-9 rounded-full bg-white border border-[#e8e2d8] shadow-md flex items-center justify-center text-base"
               style={{
-                color: "var(--accent)",
+                color: "var(--accent-text)",
                 transform: `rotate(${pullProgress * 360}deg)`,
               }}
             >
@@ -1225,7 +1242,9 @@ export default function Home() {
           </div>
 
           {/* Panel content — pb for mobile tab bar and desktop dock */}
-          <div
+          <main
+            id="main-content"
+            tabIndex={-1}
             ref={contentRef}
             className="flex-1 min-h-0 overflow-y-auto p-4 md:p-7 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-28"
             style={{ overscrollBehaviorY: "contain" }}
@@ -1246,7 +1265,6 @@ export default function Home() {
                   financeViewYear={financeViewYear}
                   onNavigate={(panel) => setActivePanel(panel)}
                   onTodoToggle={handleTodoToggle}
-                  onFocusMode={() => setFocusMode(true)}
                 />
               )}
               {activePanel === "focus" && (
@@ -1331,7 +1349,7 @@ export default function Home() {
                 />
               )}
             </div>
-          </div>
+          </main>
         </div>
       </div>
 

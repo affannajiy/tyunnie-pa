@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.26.3-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.27.0-f97316?style=flat-square)
 
 ---
 
@@ -116,6 +116,12 @@ All modes follow the app's light/dark theme and chosen accent colour.
 - **Fluid animations** — spring-based panel entrance, modal scale-in, backdrop fade, and dock/tab active-dot pop throughout the app
 - **Mobile pull-to-refresh** — swipe down at scroll top to reload all data; horizontal swipe to navigate between Home, Focus, Create, and Play
 
+### Accessibility
+
+- **WCAG 2.2 AA contrast, measured** — every panel audited in both light and dark themes; text and controls clear 4.5:1. Accent-coloured text derives a darker shade from whichever accent you pick, so a light accent stays readable
+- **Keyboard and screen reader** — skip link, page landmarks, accessible names on every form control, `role`/`aria-checked` on toggles, and a delete dialog that opens on Cancel rather than Delete
+- **Works down to 320px** — no horizontal page scroll, no control rendered outside its panel; touch targets meet the 24px minimum
+
 ### Performance
 
 - **Parallel data loading** — profile, tasks, drafts, projects, snippets, finance, sticky notes, and memories all fetched in a single `Promise.all` on login; no sequential waterfalls
@@ -210,6 +216,7 @@ Full instructions, Google OAuth setup, and Supabase auth config: [DEPLOYMENT.md]
 app/                    Pages, API routes, layout
 components/             All UI panels and games
 lib/                    Supabase client, database queries, crypto, contexts
+rulebooks/              Portable UI-UX / Security / Engineering principle references
 public/sprites/         Tyunnie sprite PNGs
 public/music/           MP3s, cover art, playlist.json
 ```
@@ -244,6 +251,8 @@ All project documentation lives in [`docs/`](./docs/):
 - [DEPLOYMENT.md](./docs/DEPLOYMENT.md) — env vars, Vercel setup, OAuth
 - [DEVNOTES.md](./docs/DEVNOTES.md) — developer gotchas and non-obvious decisions
 - [SECURITY.md](./SECURITY.md) — security posture, audit log, backup plans
+
+Design and engineering standards live in [`rulebooks/`](./rulebooks/README.md) — three project-agnostic principle references (UI-UX, Security, Engineering) with a routing table for which to read for a given change.
 
 ---
 

@@ -15,10 +15,10 @@ this package, or this version bump, change what a deployed user is exposed to?
 
 - **`SECURITY.md` → "Reading `npm audit` in this repo"** — why the raw audit number is
   misleading here and which command is the real one. Do not re-derive this.
-- **`.claude/CLAUDE.md` → "Lint toolchain is fragile"** — the two pinned constraints.
+- **`.claude/CLAUDE.md` → Invariants → Build** — the two pinned constraints.
   They look like bugs waiting to be tidied. They are not.
-- **`docs/SECURITY_Rulebook.md` §3.2** (dependency hygiene) and **§2.16** (leveraging
-  existing components). Tag findings with the section.
+- **`rulebooks/SECURITY_Rulebook.md` §5b** (dependencies and provenance) and **§5c**
+  (checks in the pipeline); `rulebooks/ENGINEERING_Rulebook.md` §4.6, §4.19, §4.20. Tag findings with the section.
 
 ---
 
@@ -114,6 +114,7 @@ Before it goes in `package.json`:
 ## Out of scope
 
 Application-code vulnerabilities → `tyun-security`. Bundle size, tree-shaking,
-`optimizePackageImports` → `tyun-network`. Never resolve an audit finding by deleting
+`optimizePackageImports` → `tyun-network`. Adding a test runner touches the pinned
+lockfile guarded here — it is `tyun-engineer`'s debt item, but it lands through this skill. Never resolve an audit finding by deleting
 the audit step, loosening `--audit-level`, or adding a blanket `ignore` — fix, upgrade,
 or accept it *in writing* in `SECURITY.md`.

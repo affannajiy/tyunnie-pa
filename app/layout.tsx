@@ -130,6 +130,33 @@ export default function RootLayout({
               root.style.setProperty('--accent-mid', hsl2hex(h, Math.min(s+5,100), Math.min(l+28, 90)));
               root.style.setProperty('--accent-dim', hsl2hex(h, Math.min(s+5,100), Math.max(l-18, 15)));
               root.style.setProperty('--accent-rgb', ri+','+gi+','+bi);
+              // Contrast-safe derivatives — must be computed here too, or the
+              // first paint uses the fallbacks in globals.css and the accent
+              // text flashes at the wrong lightness. Mirrors lib/accent.ts.
+              function lum(hex) {
+                var v = [1,3,5].map(function(i){
+                  var c = parseInt(hex.slice(i,i+2),16)/255;
+                  return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+                });
+                return 0.2126*v[0] + 0.7152*v[1] + 0.0722*v[2];
+              }
+              function ratio(a,b) {
+                var x = lum(a), y = lum(b);
+                return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);
+              }
+              function walk(bg, step) {
+                var out = accent;
+                for (var i = 0; i <= 100; i++) {
+                  var li = Math.max(0, Math.min(100, l + step*i));
+                  out = hsl2hex(h, s, li);
+                  if (ratio(out, bg) >= 4.5) return out;
+                  if (li === 0 || li === 100) break;
+                }
+                return out;
+              }
+              root.style.setProperty('--accent-text', walk('#ffffff', -2));
+              root.style.setProperty('--accent-text-dark', walk('#111010', 2));
+              root.style.setProperty('--accent-on', ratio(accent,'#ffffff') >= ratio(accent,'#16120c') ? '#ffffff' : '#16120c');
             }
           } catch(e) {}
         `,

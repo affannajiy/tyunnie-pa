@@ -245,12 +245,12 @@ export default function MiniPlayer() {
                 {music.currentTrack?.cover ? (
                   <Image src={music.currentTrack.cover} alt="" width={32} height={32} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-xs"><Music2 size={13} strokeWidth={1.5} /></div>
+                  <div className="w-full h-full flex items-center justify-center text-[#8f8272] text-xs"><Music2 size={13} strokeWidth={1.5} /></div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] font-semibold text-white truncate leading-tight">{music.currentTrack?.title}</div>
-                <div className="text-[9px] text-[#9a8f7e] font-mono truncate leading-none mt-0.5">{music.currentTrack?.artist}</div>
+                <div className="text-[9px] text-[#b0a090] font-mono truncate leading-none mt-0.5">{music.currentTrack?.artist}</div>
               </div>
             </button>
             {/* Play/pause */}
@@ -271,7 +271,7 @@ export default function MiniPlayer() {
               onClick={handleClose}
               aria-label="Hide player"
               title="Hide player — the music keeps going"
-              className="w-6 h-6 flex items-center justify-center text-[#4a4038] hover:text-[#9a8f7e] transition-colors shrink-0 text-[10px]"
+              className="w-6 h-6 flex items-center justify-center text-[#8f8272] hover:text-[#b0a090] transition-colors shrink-0 text-[10px]"
             >
               <X size={16} strokeWidth={2} />
             </button>
@@ -288,7 +288,7 @@ export default function MiniPlayer() {
   // ── DESKTOP: full card ──
   return (
     <div ref={cardRef} style={wrapperStyle} onPointerDown={onPointerDown}>
-      <div className="bg-[#1a1410] border border-[#2a2520] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="on-dark bg-[#1a1410] border border-[#2a2520] rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
           {/* Art + Title — click to go to Music panel */}
@@ -300,17 +300,17 @@ export default function MiniPlayer() {
               {music.currentTrack?.cover ? (
                 <Image src={music.currentTrack.cover} alt="" width={40} height={40} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#4a4038] text-sm"><Music2 size={15} strokeWidth={1.5} /></div>
+                <div className="w-full h-full flex items-center justify-center text-[#8f8272] text-sm"><Music2 size={15} strokeWidth={1.5} /></div>
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-white truncate leading-tight group-hover:text-(--accent) transition-colors">{music.currentTrack?.title}</div>
-              <div className="text-[10px] text-[#9a8f7e] font-mono truncate leading-tight mt-0.5">{music.currentTrack?.artist}</div>
+              <div className="text-[10px] text-[#b0a090] font-mono truncate leading-tight mt-0.5">{music.currentTrack?.artist}</div>
             </div>
           </button>
           <button
             onClick={handleClose}
-            className="w-6 h-6 flex items-center justify-center text-[#4a4038] hover:text-[#9a8f7e] transition-colors shrink-0 text-xs"
+            className="w-6 h-6 flex items-center justify-center text-[#8f8272] hover:text-[#b0a090] transition-colors shrink-0 text-xs"
             aria-label="Hide player"
             title="Hide player — the music keeps going"
           >
@@ -345,15 +345,15 @@ export default function MiniPlayer() {
             />
           </div>
           <div className="flex justify-between mt-1">
-            <span className="text-[9px] font-mono text-[#4a4038]">{music.formatTime(music.progress)}</span>
-            <span className="text-[9px] font-mono text-[#4a4038]">{music.formatTime(music.duration)}</span>
+            <span className="text-[9px] font-mono text-[#8f8272]">{music.formatTime(music.progress)}</span>
+            <span className="text-[9px] font-mono text-[#8f8272]">{music.formatTime(music.duration)}</span>
           </div>
         </div>
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-1.5 px-3 pb-3">
-          <button onClick={() => music.skipBack(10)}    aria-label="Back 10 seconds" className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-[9px] font-mono"><span aria-hidden="true">−10</span></button>
-          <button onClick={music.prevTrack}             aria-label="Previous track" className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors"><SkipBack size={16} strokeWidth={1.75} fill="currentColor" /></button>
+          <button onClick={() => music.skipBack(10)}    aria-label="Back 10 seconds" className="w-7 h-7 flex items-center justify-center text-[#b0a090] hover:text-white transition-colors text-[9px] font-mono"><span aria-hidden="true">−10</span></button>
+          <button onClick={music.prevTrack}             aria-label="Previous track" className="w-7 h-7 flex items-center justify-center text-[#b0a090] hover:text-white transition-colors"><SkipBack size={16} strokeWidth={1.75} fill="currentColor" /></button>
           <button
             onClick={music.togglePlay}
             aria-label={music.isPlaying ? "Pause" : "Play"}
@@ -366,8 +366,8 @@ export default function MiniPlayer() {
               <Play size={16} strokeWidth={1.75} fill="currentColor" className="ml-0.5" />
             )}
           </button>
-          <button onClick={music.nextTrack}             aria-label="Next track" className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors"><SkipForward size={16} strokeWidth={1.75} fill="currentColor" /></button>
-          <button onClick={() => music.skipForward(10)} aria-label="Forward 10 seconds" className="w-7 h-7 flex items-center justify-center text-[#9a8f7e] hover:text-white transition-colors text-[9px] font-mono"><span aria-hidden="true">+10</span></button>
+          <button onClick={music.nextTrack}             aria-label="Next track" className="w-7 h-7 flex items-center justify-center text-[#b0a090] hover:text-white transition-colors"><SkipForward size={16} strokeWidth={1.75} fill="currentColor" /></button>
+          <button onClick={() => music.skipForward(10)} aria-label="Forward 10 seconds" className="w-7 h-7 flex items-center justify-center text-[#b0a090] hover:text-white transition-colors text-[9px] font-mono"><span aria-hidden="true">+10</span></button>
         </div>
       </div>
     </div>

@@ -306,7 +306,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
         </button>
 
         {/* Search */}
-        <input
+        <input aria-label="Search snippets"
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -317,13 +317,13 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
         {/* Snip file list */}
         <div className="flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-y-auto flex-1 md:flex-none">
           {loading && (
-            <p className="text-xs text-[#c5bdb0] text-center py-4">
+            <p className="text-xs text-[#756a5a] text-center py-4">
               Loading...
             </p>
           )}
 
           {!loading && filtered.length === 0 && (
-            <p className="text-xs text-[#c5bdb0] text-center py-4 leading-relaxed">
+            <p className="text-xs text-[#756a5a] text-center py-4 leading-relaxed">
               {search ? "No matches." : "No snips yet.\nHit + New Snip."}
             </p>
           )}
@@ -363,7 +363,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
                   handleDelete(snip.id, snip.name);
                 }}
                 aria-label={`Delete snippet ${snip.name}`}
-                className="text-[#c5bdb0] hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all shrink-0"
+                className="text-[#756a5a] hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all shrink-0"
               >
                 <X size={16} strokeWidth={2} />
               </button>
@@ -384,17 +384,17 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
           </div>
 
           {/* File name input */}
-          <input
+          <input aria-label="Filename"
             type="text"
             value={fileName}
             onChange={(e) => handleFileNameChange(e.target.value)}
-            className="w-24 md:flex-1 bg-transparent border-none outline-none text-xs font-mono text-[#111010] placeholder:text-[#c5bdb0] min-w-0"
+            className="w-24 md:flex-1 bg-transparent border-none outline-none text-xs font-mono text-[#111010] placeholder:text-[#756a5a] min-w-0"
             placeholder="filename.js"
           />
 
           {/* Dirty indicator */}
           {isDirty && (
-            <span className="text-[9px] font-mono text-[#9a8f7e] bg-[#e8e2d8] px-2 py-0.5 rounded-full">
+            <span className="text-[9px] font-mono text-[#6f6455] bg-[#e8e2d8] px-2 py-0.5 rounded-full">
               unsaved
             </span>
           )}
@@ -405,13 +405,13 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
               className="w-2 h-2 rounded-full shrink-0"
               style={{ background: getLangColor(language) }}
             />
-            <select
+            <select aria-label="Language"
               value={language}
               onChange={(e) => {
                 setLanguage(e.target.value);
                 setIsDirty(true);
               }}
-              className="bg-transparent border-none outline-none text-xs font-mono text-[#9a8f7e] cursor-pointer"
+              className="bg-transparent border-none outline-none text-xs font-mono text-[#6f6455] cursor-pointer"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.value} value={l.value}>
@@ -424,7 +424,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
           {/* Copy button */}
           <button
             onClick={handleCopy}
-            className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors px-2 py-1 rounded-lg hover:bg-[#e8e2d8]"
+            className="text-[10px] font-mono text-[#6f6455] hover:text-(--accent) transition-colors px-2 py-1 rounded-lg hover:bg-[#e8e2d8]"
           >
             {copied ? "✓ Copied" : "Copy"}
           </button>
@@ -433,7 +433,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
           <button
             onClick={runCode}
             disabled={running || !code.trim()}
-            className="bg-[#16a34a] text-white font-bold rounded-lg px-4 py-1.5 text-[10px] tracking-wide hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            className="bg-[#15803d] text-white font-bold rounded-lg px-4 py-1.5 text-[10px] tracking-wide hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
           >
             {running ? (
               <>
@@ -458,14 +458,14 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
         {/* Line numbers + code area */}
         <div className="flex flex-1 overflow-hidden font-mono text-sm">
           {/* Line numbers */}
-          <div className="bg-[#faf8f5] border-r border-[#e8e2d8] px-3 py-4 text-right text-[#c5bdb0] text-xs leading-[1.8] select-none shrink-0 overflow-hidden">
+          <div className="bg-[#faf8f5] border-r border-[#e8e2d8] px-3 py-4 text-right text-[#756a5a] text-xs leading-[1.8] select-none shrink-0 overflow-hidden">
             {(code || " ").split("\n").map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
           </div>
 
           {/* Code textarea */}
-          <textarea
+          <textarea aria-label="Snippet code"
             ref={codeRef}
             value={code}
             onChange={(e) => {
@@ -475,7 +475,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
             onKeyDown={handleKeyDown}
             spellCheck={false}
             placeholder="// write your code here..."
-            className="flex-1 bg-[#faf8f5] border-none outline-none resize-none p-4 text-xs leading-[1.8] text-[#2d2416] font-mono placeholder:text-[#c5bdb0] min-h-[40vh] md:min-h-0"
+            className="flex-1 bg-[#faf8f5] border-none outline-none resize-none p-4 text-xs leading-[1.8] text-[#2d2416] font-mono placeholder:text-[#756a5a] min-h-[40vh] md:min-h-0"
           />
         </div>
 
@@ -492,7 +492,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
                 <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
                 <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
               </div>
-              <span className="font-mono text-[10px] text-[#9a8f7e] flex-1">
+              <span className="font-mono text-[10px] text-[#b0a090] flex-1">
                 output — {fileName}
               </span>
               <button
@@ -501,7 +501,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
                   setOutput("");
                 }}
                 aria-label="Close output terminal"
-                className="text-[#4a4038] hover:text-[#9a8f7e] text-xs transition-colors"
+                className="text-[#8f8272] hover:text-[#e8ddd0] text-xs transition-colors"
               >
                 <X size={16} strokeWidth={2} />
               </button>
@@ -509,7 +509,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
 
             {/* Output */}
             <div
-              className="flex-1 bg-[#0d0d0d] px-4 py-3 overflow-y-auto"
+              className="on-dark flex-1 bg-[#0d0d0d] px-4 py-3 overflow-y-auto"
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "#2a2520 transparent",
@@ -529,7 +529,7 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
                       />
                     ))}
                   </div>
-                  <span className="font-mono text-[11px] text-[#9a8f7e]">
+                  <span className="font-mono text-[11px] text-[#6f6455]">
                     {RUN_STAGES[runStage]}
                   </span>
                 </div>
@@ -543,12 +543,12 @@ export default function Snippets({ userId, onAction, refreshKey }: Props) {
         )}
 
         {/* Status bar */}
-        <div className="bg-[#f3f0ea] border-t border-[#e8e2d8] px-4 py-1.5 flex items-center gap-4 text-[9px] font-mono text-[#9a8f7e] shrink-0">
+        <div className="bg-[#f3f0ea] border-t border-[#e8e2d8] px-4 py-1.5 flex items-center gap-4 text-[9px] font-mono text-[#6f6455] shrink-0">
           <span>{getLangLabel(language)}</span>
           <span>{code.split("\n").length} lines</span>
           <span>{code.length} chars</span>
           <div className="flex-1" />
-          <span className="text-[#c5bdb0]">Tab = 2 spaces · Cmd+S to save</span>
+          <span className="text-[#756a5a]">Tab = 2 spaces · Cmd+S to save</span>
         </div>
       </div>
       <style>{`

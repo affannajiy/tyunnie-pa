@@ -301,7 +301,7 @@ export default function NotFound() {
   const accent = `rgb(${accentRgb})`;
 
   return (
-    <div className="min-h-screen flex bg-[#faf8f5] dark:bg-[#0e0d0b]">
+    <main className="min-h-dvh flex bg-[#faf8f5] dark:bg-[#0e0d0b]">
 
       {/* Left panel — branding + sprite */}
       <div
@@ -334,7 +334,7 @@ export default function NotFound() {
           <span className="text-2xl font-bold tracking-tight" style={{ color: accent }}>
             Tyunnie
           </span>
-          <p className="text-[#9a8f7e] dark:text-[#7a7060] text-sm mt-1">
+          <p className="text-[#6f6455] dark:text-[#7a7060] text-sm mt-1">
             Your personal AI assistant
           </p>
         </div>
@@ -362,7 +362,7 @@ export default function NotFound() {
 
         <div className="lg:hidden mb-8 text-center">
           <span className="text-3xl font-bold" style={{ color: accent }}>Tyunnie</span>
-          <p className="text-[#9a8f7e] text-sm mt-1">Your personal AI assistant</p>
+          <p className="text-[#6f6455] text-sm mt-1">Your personal AI assistant</p>
         </div>
 
         <div className="w-full max-w-sm">
@@ -389,7 +389,7 @@ export default function NotFound() {
             <h1 className="font-serif italic text-3xl text-[#111010] dark:text-[#f5f0e8] mb-3">
               Lost?
             </h1>
-            <p className="text-sm text-[#9a8f7e] dark:text-[#6a6050] leading-relaxed mb-4">
+            <p className="text-sm text-[#6f6455] dark:text-[#6a6050] leading-relaxed mb-4">
               This page does not exist. Even I could not find it — and I know everything.
             </p>
 
@@ -410,7 +410,7 @@ export default function NotFound() {
                 }}
               />
               {gameState === "idle" && (
-                <p className="text-[9px] text-center text-[#9a8f7e] dark:text-[#4a4038] font-mono mt-1.5">
+                <p className="text-[9px] text-center text-[#6f6455] dark:text-[#9c8f80] font-mono mt-1.5">
                   tap or press Space to play
                 </p>
               )}
@@ -426,7 +426,7 @@ export default function NotFound() {
               </button>
               <Link
                 href="/dashboard"
-                className="flex-1 py-3 text-center bg-transparent border border-[#e8e2d8] dark:border-[#2a2620] text-[#9a8f7e] dark:text-[#6a6050] font-bold rounded-xl text-xs uppercase tracking-widest hover:border-[#9a8f7e] dark:hover:border-[#6a6050] transition-all hover:-translate-y-px"
+                className="flex-1 py-3 text-center bg-transparent border border-[#e8e2d8] dark:border-[#2a2620] text-[#6f6455] dark:text-[#6a6050] font-bold rounded-xl text-xs uppercase tracking-widest hover:border-[#9a8f7e] dark:hover:border-[#6a6050] transition-all hover:-translate-y-px"
               >
                 Dashboard
               </Link>
@@ -435,6 +435,6 @@ export default function NotFound() {
 
         </div>
       </div>
-    </div>
+    </main>
   );
 }

@@ -34,6 +34,31 @@ export default function StickyNote({ note, onUpdate, onDelete }: Props) {
   const [color, setColor] = useState(note.color);
   const [showColors, setShowColors] = useState(false);
 
+  /* A note keeps the x/y it was dropped at. Open the same board on a narrower
+     screen — or rotate the phone — and a note saved at x=560 is simply gone:
+     off the viewport, unscrollable, and unclickable. Clamp on mount and on
+     every resize, the same fix MiniPlayer already carries. Position is only
+     nudged in memory; the stored coords are untouched until the user drags,
+     so widening the window puts the note back where they left it. */
+  useEffect(() => {
+    const clamp = () => {
+      setPos((p) => {
+        const maxX = Math.max(0, window.innerWidth - size.w - 8);
+        const maxY = Math.max(0, window.innerHeight - 80);
+        const x = Math.min(p.x, maxX);
+        const y = Math.min(p.y, maxY);
+        return x === p.x && y === p.y ? p : { x, y };
+      });
+    };
+    clamp();
+    window.addEventListener("resize", clamp);
+    window.addEventListener("orientationchange", clamp);
+    return () => {
+      window.removeEventListener("resize", clamp);
+      window.removeEventListener("orientationchange", clamp);
+    };
+  }, [size.w]);
+
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -243,20 +268,29 @@ export default function StickyNote({ note, onUpdate, onDelete }: Props) {
         >
           <div className="flex items-center gap-1.5">
             {/* Color dot */}
+            {/* 12px dots failed WCAG 2.5.8 outright and were too close
+                together (4px gap) to qualify for its spacing exception either.
+                Now 20px on a 28px pitch, which clears the exception, and each
+                one says which colour it is instead of relying on the swatch
+                (WCAG 1.4.1, 4.1.2). */}
             <button
-              className="color-picker w-3 h-3 rounded-full transition-transform hover:scale-125"
+              className="color-picker w-5 h-5 rounded-full transition-transform hover:scale-125"
               style={{ background: c.border }}
               onClick={() => setShowColors((v) => !v)}
               title="Change color"
+              aria-label="Change note colour"
+              aria-expanded={showColors}
             />
             {showColors && (
-              <div className="color-picker flex gap-1 ml-1">
+              <div className="color-picker flex gap-2 ml-1">
                 {Object.keys(COLORS).map((k) => (
                   <button
                     key={k}
-                    className="w-3 h-3 rounded-full hover:scale-125 transition-transform"
+                    className="w-5 h-5 rounded-full hover:scale-125 transition-transform"
                     style={{ background: COLORS[k].border }}
                     onClick={() => handleColorChange(k)}
+                    aria-label={`${k.charAt(0).toUpperCase() + k.slice(1)} note`}
+                    aria-pressed={color === k}
                   />
                 ))}
               </div>
@@ -285,7 +319,7 @@ export default function StickyNote({ note, onUpdate, onDelete }: Props) {
         </div>
 
         {/* Textarea */}
-        <textarea
+        <textarea aria-label="Sticky note text"
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
           placeholder="Dump anything here..."

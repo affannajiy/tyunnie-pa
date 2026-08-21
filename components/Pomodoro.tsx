@@ -14,10 +14,28 @@ const MODE_LABELS: Record<Mode, string> = {
   long: "Long Break",
 };
 
+/* Fills that white text can actually sit on. #16a34a gave 3.3:1 and #3b82f6
+   3.1:1 against white — both under WCAG 1.4.3. Darkening the fill keeps the
+   colour coding and fixes the label in one move, rather than dimming the text.
+   The accent is user-chosen, so its foreground is measured, not assumed. */
 const MODE_COLORS: Record<Mode, string> = {
   focus: "var(--accent)",
-  short: "#16a34a",
-  long: "#3b82f6",
+  short: "#15803d",
+  long: "#1d4ed8",
+};
+
+/* The same three modes as text on the page background, where the raw accent is
+   2.6:1. --accent-text is the readable walk of whatever accent is set. */
+const MODE_TEXT: Record<Mode, string> = {
+  focus: "var(--accent-text)",
+  short: "#15803d",
+  long: "#1d4ed8",
+};
+
+const MODE_FG: Record<Mode, string> = {
+  focus: "var(--accent-on)",
+  short: "#ffffff",
+  long: "#ffffff",
 };
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -272,6 +290,8 @@ export default function Pomodoro({ userId, initialTask }: Props) {
   const mins = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const secs = String(secondsLeft % 60).padStart(2, "0");
   const color = MODE_COLORS[mode];
+  const onColor = MODE_FG[mode];
+  const textColor = MODE_TEXT[mode];
 
   const r = 88;
   const circ = 2 * Math.PI * r;
@@ -300,11 +320,11 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         <div className="flex items-center gap-1">
           <button
             onClick={() => onChange(Math.max(min, value - 1))}
-            className="tap-target w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
+            className="tap-target w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
           >
             −
           </button>
-          <input
+          <input aria-label={label}
             type="number"
             value={value}
             min={min}
@@ -312,10 +332,10 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             onChange={(e) => onChange(clampMins(Number(e.target.value), min, max))}
             className="w-12 h-7 rounded-lg border border-[#e8e2d8] text-center text-xs font-mono font-bold text-[#111010] bg-white outline-none focus:border-(--accent) transition-colors"
           />
-          <span className="text-[10px] text-[#9a8f7e] font-mono w-5">min</span>
+          <span className="text-[10px] text-[#6f6455] font-mono w-5">min</span>
           <button
             onClick={() => onChange(Math.min(max, value + 1))}
-            className="tap-target w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
+            className="tap-target w-7 h-7 rounded-lg border border-[#e8e2d8] text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all text-sm font-bold flex items-center justify-center"
           >
             +
           </button>
@@ -337,10 +357,14 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             onClick={() => switchMode(m)}
             className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
               mode === m
-                ? "text-white"
-                : "bg-white border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
+                ? ""
+                : "bg-white border border-[#e8e2d8] text-[#6f6455] hover:border-(--accent) hover:text-(--accent)"
             }`}
-            style={mode === m ? { background: color } : {}}
+            style={
+              mode === m
+                ? { background: MODE_COLORS[m], color: MODE_FG[m] }
+                : {}
+            }
           >
             {MODE_LABELS[m]}
           </button>
@@ -378,7 +402,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             </span>
             <span
               className="text-xs font-bold uppercase tracking-widest mt-1 font-mono"
-              style={{ color }}
+              style={{ color: textColor }}
             >
               {MODE_LABELS[mode]}
             </span>
@@ -397,7 +421,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             />
           ))}
         </div>
-        <p className="text-[10px] font-mono text-[#9a8f7e] mt-1">
+        <p className="text-[10px] font-mono text-[#6f6455] mt-1">
           {sessions} session{sessions !== 1 ? "s" : ""} completed
           {" · "}long break every {settings.longAfter}
         </p>
@@ -408,14 +432,14 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         <button
           onClick={reset}
           aria-label="Reset timer"
-          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all flex items-center justify-center"
+          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all flex items-center justify-center"
         >
           <RotateCcw size={18} strokeWidth={1.75} />
         </button>
         <button
           onClick={() => setRunning((r) => !r)}
-          className="px-10 h-12 rounded-2xl font-bold text-white text-sm uppercase tracking-widest transition-all hover:opacity-90 hover:-translate-y-px"
-          style={{ background: color }}
+          className="px-10 h-12 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all hover:opacity-90 hover:-translate-y-px"
+          style={{ background: color, color: onColor }}
         >
           {running
             ? "Pause"
@@ -425,7 +449,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
         </button>
         <button
           onClick={() => switchMode(mode === "focus" ? "short" : "focus")}
-          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all flex items-center justify-center"
+          className="w-12 h-12 rounded-2xl border border-[#e8e2d8] bg-white text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all flex items-center justify-center"
           title="Skip"
           aria-label="Skip to next session"
         >
@@ -437,7 +461,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
       <div className="mb-5">
         <button
           onClick={showSettings ? cancelSettings : openSettings}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-[#e8e2d8] bg-white text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-xs font-bold uppercase tracking-widest"
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-[#e8e2d8] bg-white text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all text-xs font-bold uppercase tracking-widest"
         >
           <span>Timer Settings</span>
           <span
@@ -453,7 +477,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
           <div className="mt-2 bg-white border border-[#e8e2d8] rounded-2xl p-5 space-y-5">
             {/* Presets */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono mb-3">
                 Presets
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -468,14 +492,14 @@ export default function Pomodoro({ userId, initialTask }: Props) {
                       onClick={() => applyPreset(p)}
                       className={`py-2 px-3 rounded-xl text-xs font-bold transition-all text-left ${
                         active
-                          ? "text-white"
+                          ? ""
                           : "border border-[#e8e2d8] text-[#6b5e52] hover:border-(--accent) hover:text-(--accent)"
                       }`}
-                      style={active ? { background: "var(--accent)" } : {}}
+                      style={active ? { background: "var(--accent)", color: "var(--accent-on)" } : {}}
                     >
                       <p className="font-bold">{p.label}</p>
                       <p
-                        className={`text-[9px] font-mono mt-0.5 ${active ? "opacity-80" : "text-[#9a8f7e]"}`}
+                        className={`text-[9px] font-mono mt-0.5 ${active ? "opacity-80" : "text-[#6f6455]"}`}
                       >
                         {p.settings.focusMins}/{p.settings.shortMins}/{p.settings.longMins}
                       </p>
@@ -487,7 +511,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
 
             {/* Duration steppers */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono mb-3">
                 Durations
               </p>
               <div className="space-y-3">
@@ -511,7 +535,7 @@ export default function Pomodoro({ userId, initialTask }: Props) {
 
             {/* Long break interval */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono mb-3">
                 Long Break Interval
               </p>
               <Stepper
@@ -527,14 +551,14 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             <div className="flex gap-2 pt-1">
               <button
                 onClick={cancelSettings}
-                className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs font-bold text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all"
+                className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs font-bold text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={commitSettings}
                 className="flex-1 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
-                style={{ background: "var(--accent)" }}
+                style={{ background: "var(--accent)", color: "var(--accent-on)" }}
               >
                 Apply & Reset
               </button>
@@ -546,8 +570,8 @@ export default function Pomodoro({ userId, initialTask }: Props) {
       {/* Done banner */}
       {showDone && (
         <div
-          className="mb-5 rounded-2xl px-4 py-3 text-center text-sm font-bold text-white"
-          style={{ background: color, animation: "fadeIn 0.3s ease" }}
+          className="mb-5 rounded-2xl px-4 py-3 text-center text-sm font-bold"
+          style={{ background: color, color: onColor, animation: "fadeIn 0.3s ease" }}
         >
           {mode === "focus"
             ? "Nice work. Take a breath."
@@ -572,16 +596,16 @@ export default function Pomodoro({ userId, initialTask }: Props) {
             <button
               onClick={() => setLinkedTask(null)}
               aria-label="Unlink task from this session"
-              className="text-[#c5bdb0] hover:text-red-400 transition-colors text-sm shrink-0"
+              className="text-[#756a5a] hover:text-red-600 transition-colors text-sm shrink-0"
             >
               <X size={16} strokeWidth={2} />
             </button>
           </div>
         ) : (
-          <select
+          <select aria-label="Link a task to this session"
             value=""
             onChange={(e) => setLinkedTask(e.target.value)}
-            className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-[#9a8f7e] outline-none focus:border-(--accent) transition-colors"
+            className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-[#6f6455] outline-none focus:border-(--accent) transition-colors"
           >
             <option value="" disabled>
               Pick a task to focus on...

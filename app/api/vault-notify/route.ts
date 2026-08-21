@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { randomInt, timingSafeEqual } from "crypto";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
 import { getAuthUser } from "@/lib/apiAuth";
+import { withTimeout } from "@/lib/withTimeout";
 
 // Lazy + memoised — see app/api/chat/route.ts.
 let _resend: Resend | null = null;
@@ -11,6 +12,18 @@ function resend() {
 }
 
 const MAX_OTP_LEN = 10;
+
+// Resend's SDK takes no timeout. Without a deadline a stalled mail API holds
+// this route open until the platform kills it, and the OTP-send path below
+// deletes the code when the send fails — a hang meant it did neither, leaving a
+// code the user never received but the server still considered valid (§3.11).
+const MAIL_TIMEOUT_MS = 10_000;
+
+/** Send one message, or throw. Same error shape a Resend failure already has,
+ *  so both existing catch blocks handle a timeout without a new branch. */
+function sendMail(payload: Parameters<Resend["emails"]["send"]>[0]) {
+  return withTimeout(resend().emails.send(payload), MAIL_TIMEOUT_MS, "Resend");
+}
 
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -113,7 +126,7 @@ export async function POST(req: NextRequest) {
     otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000, attempts: 0 });
 
     try {
-      await resend().emails.send({
+      await sendMail({
       from: "Tyunnie <onboarding@resend.dev>",
       to: email,
       subject: "Your Tyunnie vault PIN change code",
@@ -162,7 +175,7 @@ export async function POST(req: NextRequest) {
       : "Your password vault PIN was successfully changed. If this wasn't you, please secure your account immediately.";
 
   try {
-    await resend().emails.send({
+    await sendMail({
       from: "Tyunnie <onboarding@resend.dev>",
       to: email,
       subject,

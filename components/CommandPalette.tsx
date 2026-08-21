@@ -95,7 +95,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
       {text.slice(0, idx)}
       <mark
         className="bg-[#fff0e6] rounded-sm px-0.5 not-italic"
-        style={{ color: "var(--accent)" }}
+        style={{ color: "var(--accent-text)" }}
       >
         {text.slice(idx, idx + query.length)}
       </mark>
@@ -112,10 +112,10 @@ function highlightMatch(text: string, query: string): React.ReactNode {
 function PreviewMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-[9px] font-mono uppercase tracking-widest text-[#c5bdb0] shrink-0">
+      <span className="text-[9px] font-mono uppercase tracking-widest text-[#756a5a] shrink-0">
         {label}
       </span>
-      <span className="text-[11px] text-[#9a8f7e] dark:text-[#b0a090] truncate">
+      <span className="text-[11px] text-[#6f6455] dark:text-[#b0a090] truncate">
         {value}
       </span>
     </div>
@@ -126,7 +126,7 @@ function PalettePreview({ data }: { data?: PreviewData }) {
   if (!data) {
     return (
       <div className="h-full flex items-center justify-center px-6 text-center">
-        <p className="text-[11px] text-[#c5bdb0] font-mono leading-relaxed">
+        <p className="text-[11px] text-[#756a5a] font-mono leading-relaxed">
           Highlight a task, draft,
           <br />
           project or snippet to preview it
@@ -158,7 +158,7 @@ function PalettePreview({ data }: { data?: PreviewData }) {
             {body}
           </p>
         ) : (
-          <p className="text-[11px] italic text-[#c5bdb0]">Empty draft</p>
+          <p className="text-[11px] italic text-[#756a5a]">Empty draft</p>
         )}
       </div>
     );
@@ -202,7 +202,7 @@ function PalettePreview({ data }: { data?: PreviewData }) {
           <h3
             className={`text-sm leading-snug ${
               t.done
-                ? "line-through text-[#9a8f7e]"
+                ? "line-through text-[#6f6455]"
                 : "text-[#111010] dark:text-white"
             }`}
           >
@@ -574,7 +574,7 @@ export default function CommandPalette({
       >
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#e8e2d8] dark:border-[#2a2520] shrink-0">
-          <Search size={16} strokeWidth={1.75} className="text-[#9a8f7e] shrink-0" aria-hidden="true" />
+          <Search size={16} strokeWidth={1.75} className="text-[#6f6455] shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"
@@ -583,13 +583,13 @@ export default function CommandPalette({
             onChange={(e) => { setQuery(e.target.value); setSelectedIdx(0); }}
             onKeyDown={handleKeyDown}
             placeholder="Search panels, tasks, drafts, shortcuts..."
-            className="flex-1 bg-transparent outline-none text-sm text-[#111010] dark:text-white placeholder:text-[#c5bdb0]"
+            className="flex-1 bg-transparent outline-none text-sm text-[#111010] dark:text-white placeholder:text-[#756a5a]"
           />
           {query && (
             <button
               onClick={() => { setQuery(""); setSelectedIdx(0); inputRef.current?.focus(); }}
               aria-label="Clear search"
-              className="w-8 h-8 flex items-center justify-center text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors shrink-0 rounded-lg"
+              className="w-8 h-8 flex items-center justify-center text-[#756a5a] hover:text-[#6f6455] transition-colors shrink-0 rounded-lg"
             >
               <X size={16} strokeWidth={2} />
             </button>
@@ -609,7 +609,7 @@ export default function CommandPalette({
           {items.length === 0 && query.trim().length > 0 && (
             <div className="px-4 py-10 text-center">
               <Search size={24} strokeWidth={1.5} className="mb-2 mx-auto opacity-60" />
-              <p className="text-sm text-[#9a8f7e]">
+              <p className="text-sm text-[#6f6455]">
                 No results for <strong>&ldquo;{query}&rdquo;</strong>
               </p>
             </div>
@@ -617,7 +617,7 @@ export default function CommandPalette({
 
           {indexedGroups.map(({ kind, items: groupItems }) => (
             <div key={kind}>
-              <div className="px-4 pt-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-[#9a8f7e] dark:text-[#7a6f60] font-mono">
+              <div className="px-4 pt-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-[#6f6455] dark:text-[#7a6f60] font-mono">
                 {kindLabels[kind]}
               </div>
               {groupItems.map((item) => {
@@ -643,7 +643,7 @@ export default function CommandPalette({
                         {highlightMatch(item.title, query)}
                       </div>
                       {item.subtitle && (
-                        <div className="text-[10px] text-[#9a8f7e] dark:text-[#b0a090] font-mono truncate mt-0.5">
+                        <div className="text-[10px] text-[#6f6455] dark:text-[#b0a090] font-mono truncate mt-0.5">
                           {item.subtitle}
                         </div>
                       )}
@@ -656,7 +656,7 @@ export default function CommandPalette({
                       </div>
                     )}
                     {!item.shortcut && item.panel && (
-                      <span className="text-[10px] font-mono text-[#c5bdb0] shrink-0 ml-2 hidden sm:block">
+                      <span className="text-[10px] font-mono text-[#756a5a] shrink-0 ml-2 hidden sm:block">
                         →
                       </span>
                     )}
@@ -682,20 +682,20 @@ export default function CommandPalette({
 
         {/* Footer */}
         <div className="border-t border-[#f3f0ea] dark:border-[#2a2520] px-4 py-2 flex items-center gap-4 shrink-0">
-          <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#c5bdb0]">
+          <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#756a5a]">
             <Kbd>↑↓</Kbd>
             <span>navigate</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#c5bdb0]">
+          <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#756a5a]">
             <Kbd>↵</Kbd>
             <span>select</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#c5bdb0]">
+          <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#756a5a]">
             <Kbd>Esc</Kbd>
             <span>close</span>
           </div>
           {items.length > 0 && (
-            <span className="text-[9px] font-mono text-[#c5bdb0] ml-auto">
+            <span className="text-[9px] font-mono text-[#756a5a] ml-auto">
               {items.length} result{items.length !== 1 ? "s" : ""}
             </span>
           )}

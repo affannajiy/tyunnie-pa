@@ -30,7 +30,7 @@ export default function EntertainmentHub({ onNavigate }: Props) {
         <h1 className="font-serif italic text-2xl text-[#111010] dark:text-[#f0ebe3] mb-1">
           Play
         </h1>
-        <p className="text-sm text-[#9a8f7e]">Rest is part of the work.</p>
+        <p className="text-sm text-[#6f6455]">Rest is part of the work.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {CARDS.map((card) => (
@@ -48,7 +48,7 @@ export default function EntertainmentHub({ onNavigate }: Props) {
             <div className="font-bold text-[#111010] dark:text-[#f0ebe3] mb-1 group-hover:text-(--accent) transition-colors">
               {card.title}
             </div>
-            <div className="text-xs text-[#9a8f7e]">{card.desc}</div>
+            <div className="text-xs text-[#6f6455]">{card.desc}</div>
           </button>
         ))}
       </div>

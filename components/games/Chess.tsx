@@ -858,13 +858,13 @@ export default function Chess() {
           <h1 className="font-serif italic text-2xl text-[#111010] mb-1">
             Chess
           </h1>
-          <p className="text-sm text-[#9a8f7e]">Set up your game.</p>
+          <p className="text-sm text-[#6f6455]">Set up your game.</p>
         </div>
 
         <div className="bg-white rounded-3xl border border-[#f0ece8] p-6 flex flex-col gap-6">
           {/* Game mode */}
           <div>
-            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#b09880] mb-3">
+            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#856348] mb-3">
               Game Mode
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -877,7 +877,7 @@ export default function Chess() {
                 <button
                   key={mode}
                   onClick={() => setGameMode(mode)}
-                  className={`py-3 rounded-2xl text-sm font-bold transition-all ${gameMode === mode ? "bg-[#f97316] text-white" : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"}`}
+                  className={`py-3 rounded-2xl text-sm font-bold transition-all ${gameMode === mode ? "bg-[#f97316] text-white" : "bg-[#faf8f5] border border-[#e8e2d8] text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316]"}`}
                 >
                   {label}
                 </button>
@@ -888,7 +888,7 @@ export default function Chess() {
           {/* Difficulty — only for vs-bot */}
           {gameMode === "vs-bot" && (
             <div>
-              <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#b09880] mb-3">
+              <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#856348] mb-3">
                 Difficulty
               </p>
               <div className="grid grid-cols-3 gap-2">
@@ -902,7 +902,7 @@ export default function Chess() {
                   <button
                     key={d}
                     onClick={() => setDifficulty(d)}
-                    className={`py-3 rounded-2xl text-sm font-bold transition-all ${difficulty === d ? "bg-[#f97316] text-white" : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"}`}
+                    className={`py-3 rounded-2xl text-sm font-bold transition-all ${difficulty === d ? "bg-[#f97316] text-white" : "bg-[#faf8f5] border border-[#e8e2d8] text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316]"}`}
                   >
                     {label}
                   </button>
@@ -914,7 +914,7 @@ export default function Chess() {
           {/* Color — only for vs-bot */}
           {gameMode === "vs-bot" && (
             <div>
-              <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#b09880] mb-3">
+              <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#856348] mb-3">
                 Play As
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -927,7 +927,7 @@ export default function Chess() {
                   <button
                     key={color}
                     onClick={() => setPlayerColor(color)}
-                    className={`py-3 rounded-2xl text-sm font-bold transition-all ${playerColor === color ? "bg-[#f97316] text-white" : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"}`}
+                    className={`py-3 rounded-2xl text-sm font-bold transition-all ${playerColor === color ? "bg-[#f97316] text-white" : "bg-[#faf8f5] border border-[#e8e2d8] text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316]"}`}
                   >
                     {label}
                   </button>
@@ -938,7 +938,7 @@ export default function Chess() {
 
           {/* Time Control */}
           <div>
-            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#b09880] mb-3">
+            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#856348] mb-3">
               Time Control
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -951,11 +951,11 @@ export default function Chess() {
                 <button
                   key={key}
                   onClick={() => setTimeControl(key)}
-                  className={`py-2.5 px-3 rounded-2xl text-left transition-all ${timeControl === key ? "bg-[#f97316] text-white" : "bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-[#f97316] hover:text-[#f97316]"}`}
+                  className={`py-2.5 px-3 rounded-2xl text-left transition-all ${timeControl === key ? "bg-[#f97316] text-white" : "bg-[#faf8f5] border border-[#e8e2d8] text-[#6f6455] hover:border-[#f97316] hover:text-[#f97316]"}`}
                 >
                   <div className="text-xs font-bold">{val.label}</div>
                   <div
-                    className={`text-[9px] font-mono ${timeControl === key ? "text-white/70" : "text-[#c5bdb0]"}`}
+                    className={`text-[9px] font-mono ${timeControl === key ? "text-white/70" : "text-[#756a5a]"}`}
                   >
                     {val.desc}
                   </div>
@@ -1001,12 +1001,12 @@ export default function Chess() {
       <div className="w-full max-w-sm flex items-center justify-between">
         <button
           onClick={() => setScreen("setup")}
-          className="flex items-center gap-2 text-[#9a8f7e] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest"
+          className="flex items-center gap-2 text-[#6f6455] hover:text-[#f97316] transition-colors text-xs font-mono font-bold uppercase tracking-widest"
         >
           ← New Game
         </button>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-[#b09880]">
+          <span className="text-[10px] font-mono text-[#856348]">
             Move {moveCount}
           </span>
           {gameMode === "vs-bot" && (
@@ -1023,12 +1023,12 @@ export default function Chess() {
           status === "checkmate"
             ? "bg-red-50 border border-red-200 text-red-600"
             : status === "stalemate"
-              ? "bg-[#f0ece8] border border-[#e8e2d8] text-[#9a8f7e]"
+              ? "bg-[#f0ece8] border border-[#e8e2d8] text-[#6f6455]"
               : status === "check"
                 ? "bg-orange-50 border border-orange-200 text-[#f97316]"
                 : thinking
                   ? "bg-[#fff0e6] border border-[#fed7aa] text-[#f97316]"
-                  : "bg-white border border-[#f0ece8] text-[#9a8f7e]"
+                  : "bg-white border border-[#f0ece8] text-[#6f6455]"
         }`}
       >
         {statusMsg()}
@@ -1043,7 +1043,7 @@ export default function Chess() {
               className={`flex-1 rounded-2xl px-4 py-2.5 flex items-center justify-between transition-all ${
                 turn === c && status !== "checkmate" && status !== "stalemate"
                   ? "bg-[#f97316] text-white"
-                  : "bg-white border border-[#f0ece8] text-[#9a8f7e]"
+                  : "bg-white border border-[#f0ece8] text-[#6f6455]"
               }`}
             >
               <span className="text-[10px] font-mono font-bold uppercase tracking-widest opacity-70">
@@ -1052,7 +1052,7 @@ export default function Chess() {
               <span
                 className={`font-mono font-bold text-lg tabular-nums ${
                   timeLeft[c] <= 10 && turn === c
-                    ? "text-red-400 animate-pulse"
+                    ? "text-red-600 animate-pulse"
                     : ""
                 }`}
               >
@@ -1071,7 +1071,7 @@ export default function Chess() {
             (n) => (
               <span
                 key={n}
-                className="text-[9px] font-mono text-[#b09880] w-4 text-center"
+                className="text-[9px] font-mono text-[#856348] w-4 text-center"
               >
                 {n}
               </span>
@@ -1086,7 +1086,7 @@ export default function Chess() {
           ).map((l) => (
             <span
               key={l}
-              className="text-[9px] font-mono text-[#b09880] w-8 text-center"
+              className="text-[9px] font-mono text-[#856348] w-8 text-center"
             >
               {l}
             </span>
@@ -1187,7 +1187,7 @@ export default function Chess() {
           >
             <p
               id="chess-promotion-title"
-              className="text-xs font-mono font-bold uppercase tracking-widest text-[#b09880] mb-4 text-center"
+              className="text-xs font-mono font-bold uppercase tracking-widest text-[#856348] mb-4 text-center"
             >
               Promote Pawn
             </p>
@@ -1211,12 +1211,12 @@ export default function Chess() {
       <div className="w-full max-w-sm flex flex-col gap-3 mt-2">
         {/* Captured by White */}
         <div className="bg-white rounded-2xl border border-[#f0ece8] px-4 py-3">
-          <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880] mb-1.5">
+          <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348] mb-1.5">
             White captured
           </p>
           <div className="flex flex-wrap gap-0.5 min-h-5">
             {captured.w.length === 0 ? (
-              <span className="text-[10px] text-[#c5bdb0] font-mono">—</span>
+              <span className="text-[10px] text-[#756a5a] font-mono">—</span>
             ) : (
               captured.w.map((p, i) => (
                 <span
@@ -1233,12 +1233,12 @@ export default function Chess() {
 
         {/* Captured by Black */}
         <div className="bg-white rounded-2xl border border-[#f0ece8] px-4 py-3">
-          <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880] mb-1.5">
+          <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348] mb-1.5">
             Black captured
           </p>
           <div className="flex flex-wrap gap-0.5 min-h-5">
             {captured.b.length === 0 ? (
-              <span className="text-[10px] text-[#c5bdb0] font-mono">—</span>
+              <span className="text-[10px] text-[#756a5a] font-mono">—</span>
             ) : (
               captured.b.map((p, i) => (
                 <span
@@ -1256,7 +1256,7 @@ export default function Chess() {
         {/* Move log */}
         {moveLog.length > 0 && (
           <div className="bg-white rounded-2xl border border-[#f0ece8] px-4 py-3">
-            <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#b09880] mb-2">
+            <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#856348] mb-2">
               Move Log
             </p>
             {/* Last 3 moves visible, rest scrollable */}
@@ -1268,13 +1268,13 @@ export default function Chess() {
                     Math.max(0, Math.ceil(moveLog.length / 2) - 3) + idx;
                   return (
                     <div key={i} className="flex gap-4 text-[11px] font-mono">
-                      <span className="text-[#c5bdb0] w-6 shrink-0">
+                      <span className="text-[#756a5a] w-6 shrink-0">
                         {i + 1}.
                       </span>
-                      <span className="text-[#9a8f7e] flex-1">
+                      <span className="text-[#6f6455] flex-1">
                         {moveLog[i * 2]}
                       </span>
-                      <span className="text-[#9a8f7e] flex-1">
+                      <span className="text-[#6f6455] flex-1">
                         {moveLog[i * 2 + 1] ?? ""}
                       </span>
                     </div>
@@ -1284,7 +1284,7 @@ export default function Chess() {
             {/* Full scrollable history */}
             {moveLog.length > 6 && (
               <details className="mt-2">
-                <summary className="text-[9px] font-mono text-[#c5bdb0] cursor-pointer hover:text-[#f97316] transition-colors">
+                <summary className="text-[9px] font-mono text-[#756a5a] cursor-pointer hover:text-[#f97316] transition-colors">
                   Show all {Math.ceil(moveLog.length / 2)} moves
                 </summary>
                 <div
@@ -1298,13 +1298,13 @@ export default function Chess() {
                           key={i}
                           className="flex gap-4 text-[11px] font-mono"
                         >
-                          <span className="text-[#c5bdb0] w-6 shrink-0">
+                          <span className="text-[#756a5a] w-6 shrink-0">
                             {i + 1}.
                           </span>
-                          <span className="text-[#9a8f7e] flex-1">
+                          <span className="text-[#6f6455] flex-1">
                             {moveLog[i * 2]}
                           </span>
-                          <span className="text-[#9a8f7e] flex-1">
+                          <span className="text-[#6f6455] flex-1">
                             {moveLog[i * 2 + 1] ?? ""}
                           </span>
                         </div>
@@ -1329,7 +1329,7 @@ export default function Chess() {
           </button>
           <button
             onClick={() => setScreen("setup")}
-            className="px-6 py-3 rounded-2xl border border-[#e8e2d8] text-[#9a8f7e] font-bold text-sm hover:border-[#f97316] hover:text-[#f97316] transition-all"
+            className="px-6 py-3 rounded-2xl border border-[#e8e2d8] text-[#6f6455] font-bold text-sm hover:border-[#f97316] hover:text-[#f97316] transition-all"
           >
             Change Settings
           </button>

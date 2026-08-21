@@ -5,6 +5,84 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.27.0] — 2026-08-22
+
+### Highlights
+
+**Improved**
+
+- **Text is readable now** — the grey used for secondary text across the whole app was too light to meet accessibility standards, and in some places barely visible. Every tier was darkened and measured. Your accent colour also gets a matching darker shade automatically, so accent-coloured text stays readable whichever colour you pick.
+- **Works properly on small screens** — on a narrow phone the "Add" buttons in Tasks and Writing rendered off the edge of the panel and could not be tapped. Sticky notes saved on a wide screen could end up stranded off-screen with no way back. Both fixed.
+- **Easier with a keyboard or screen reader** — every field now announces what it is, the page has proper landmarks, and there is a skip link to jump straight to the content.
+
+**Fixed**
+
+- **A stray Enter no longer deletes things** — the delete confirmation opened with the Delete button already selected, and pressing Enter anywhere on the page confirmed it. It now opens on "Keep it", and Enter does nothing.
+- **The wrong date before 8am** — anything filed early in the morning was recorded against the previous day. Due dates, finance entries and the daily greeting all use your real local date now.
+- **A stalled AI request no longer hangs the chat** — if the primary model accepts the connection and then goes quiet, the request gives up and the backup model answers instead.
+
+### Security
+
+Full pass against `rulebooks/SECURITY_Rulebook.md`. Audit log entry in `SECURITY.md`.
+
+- **`new Function()` removed from the app entirely.** `Calculator.tsx` evaluated keypad expressions through `new Function()` behind an allowlist regex. The allowlist had already failed once — the letters that spell `sin`, `cos` and `sqrt` also spell `alert`, so `alert(1)` passed it — and fixing the regex left the sink in place. Both call sites now use `lib/mathEval.ts`, a recursive-descent parser over the keypad's own vocabulary: an unknown identifier is not a rejected token, it is not a token at all. Extending the calculator means adding to `FUNCS`, not widening a pattern.
+- **`unsafe-eval` dropped from the production CSP.** `next.config.ts` grants it in development only, where React's dev build requires it.
+- **`sanitizeHtml()` rewritten as escape-then-restore.** It escapes everything, then re-opens only bare `b|strong|em|i|code|br`. The previous strip-regex approach required enumerating hostile shapes and left attributes able to survive at all — which is what makes `onerror=` reachable. Under escape-then-restore no attribute can exist in the output; the property is structural rather than a pattern list.
+- **`safeHref()` added (`lib/safeUrl.ts`) for user-supplied URLs.** React escapes text but not URL schemes, so `href={value}` with a `javascript:` URL executes on click. The vault's saved-website field was exactly this shape. Parse-then-allowlist against `http`/`https`/`mailto`, never a string prefix check.
+- **Vault PBKDF2 raised from 100 000 to 600 000 iterations.** `decryptData` keeps a read-only fallback to the legacy count so rows written before the bump still open; `encryptData` never uses it.
+- **`/api/chat` composes its system prompt server-side.** `SERVER_PREAMBLE` is always prepended and the client's prompt appended below it as untrusted framing. Four callers build their own prompts, so a rule that lives only in a client-built prompt is not a rule (LLM07). Caps: 20k prompt, 8k per message, 40k per conversation, 40 items per list.
+- **Every API route body parse moved inside `try`.** An unguarded `await req.json()` turns a malformed body into an uncontrolled 500 instead of a 400. `/api/vault-notify` now deletes the OTP if Resend fails, so an undelivered code is never verifiable.
+- **`no-store` for authenticated routes centralised** in `next.config.ts` across `/api/(chat|run|vault-notify)`, so a new authenticated route inherits it. `/api/changelog` and `/api/exchange-rates` are deliberately excluded — both set their own caching.
+- **CI enforces the security floor.** `.github/workflows/ci.yml` fails the build if `npm audit --omit=dev --audit-level=high` is non-zero; `codeql.yml` runs SAST per-PR and weekly; `dependabot.yml` covers npm and Actions.
+
+### Added
+
+- **`lib/dayKey.ts`** — `todayKey()`, `dayKeyIn()`, `daysAgoKey()`, `dayKeyOf()`, `dayKeyOfIso()`, built from local calendar getters.
+- **`lib/withTimeout.ts`** — deadline wrapper for vendor SDKs that expose no `AbortSignal`.
+- **`lib/mathEval.ts`** — recursive-descent expression parser for the calculator keypad.
+- **`lib/safeUrl.ts`** — `safeHref()` scheme allowlist.
+- **`rulebooks/`** — three portable principle references (UI-UX, Security, Engineering) plus a `README.md` routing table. Moved out of `docs/`, which held two of them, so they stay project-agnostic and droppable into another repo.
+- **`.claude/skills/tyun-engineer/`** — the Engineering rulebook had no owning skill; it now owns code quality, failure handling and the tracked-debt table.
+- Landmarks and a skip link on the dashboard: `<main id="main-content">`, `<header>`, and `<nav aria-label="Primary">` on both docks.
+
+### Changed
+
+- **Muted text tiers darkened and fixed as tokens.** `#9a8f7e` (305 uses) measured 3.18:1 on white and `#c5bdb0` (82 uses) measured 1.86:1 — the latter below even the 3:1 large-text floor, let alone WCAG 1.4.3's 4.5:1. Now `#6f6455` (5.79) and `#756a5a` (5.30); `#b09880` becomes `#856348`. `--muted` / `--muted2` in `globals.css` hold the same values with a `.dark body` override.
+- **The accent gained contrast-safe derivatives instead of a darker hex.** The raw accent is 2.8:1 as text on white and white-on-accent is also 2.8:1 — and the accent is user-selectable, so no fixed colour fixes it. `lib/accent.ts` walks HSL lightness until the pair clears 4.5:1 (`accentOn`) and picks white or near-black by measurement (`accentForeground`), exposing `--accent-text`, `--accent-text-dark` and `--accent-on`. The pre-paint script in `app/layout.tsx` computes the same three, or the first paint flashes the fallback.
+- **`.on-dark` introduced** for surfaces that are dark regardless of the theme toggle — FocusMode, the Music panel, the chat sheet and float, MiniPlayer, the Snippets code pane, both docks — so they take the light-walked accent locally.
+- **Theme custom properties scoped to `.dark body`, not `.dark`.** `setAccentVars()` writes `--accent-text` as an inline style on `<html>`, and inline beats a class rule on the same element, so a `.dark { --accent-text: ... }` rule silently never applied.
+- **`new Date().toISOString().split("T")[0]` removed from nine files.** It returns the day in UTC. In UTC+8 every moment between 00:00 and 08:00 local reported *yesterday*: "due today" filed against yesterday, the Desk one-liner cache rolling over eight hours early, a finance entry before breakfast landing on the wrong day. `Writing.tsx` had already hit this and patched only its own copy with a pinned `+8h` offset — one copy fixed, eight still wrong, and a hardcoded offset is its own bug.
+- **Every remote call now carries a deadline.** Gemini, Groq and Resend expose no `AbortSignal`, so they go through `withTimeout()`; direct `fetch` uses `AbortSignal.timeout` (`/api/run`, Weather, Desk).
+- **Provider failures are logged with their message.** The Gemini-to-Groq fallback swallowed its reason in a bare `catch {}`, so an expired `GEMINI_API_KEY` looked like a working app on a slower model. Message only — never the stack or the request body.
+- **`.claude/CLAUDE.md` restructured from 27.5KB to 16KB** as a one-line-per-rule invariant list, with the long-form reasoning moved into the skill that owns each area. All seven existing skills tightened and given accurate out-of-scope handoffs.
+- Sticky-note colour swatches enlarged from 12px on a 16px pitch to 20px on a 28px pitch; three further sub-24px controls given `.tap-target`.
+- Toggle pills carry `role="switch"` + `aria-checked`, tick boxes `role="checkbox"` + `aria-checked`, and the active dock item `aria-current="page"` — its state was an accent tint and nothing else.
+
+### Fixed
+
+- **The delete confirmation made destruction the default.** `confirmDialog` opened with `autoFocus` on the Delete button and bound Enter to confirm at the window level, so a stray Enter anywhere on the page destroyed the item. Focus now opens on Cancel, Enter does not confirm, Tab is trapped inside the card, Escape cancels, and focus returns to the element that opened the dialog.
+- **72 form controls had no programmatic name**, and there was no `htmlFor` anywhere in the codebase — 36 `<label>` elements sat beside their input purely visually, so a screen reader announced "edit text, blank". Every control now carries an `aria-label`.
+- **Two controls were unreachable at 320px.** Tasks' "Add" button rendered at x=339, outside the panel's `overflow-hidden` and genuinely unclickable; Writing's "New Draft" had the same shape. Those rows now wrap with `min-w-*` on the fields.
+- **Sticky notes could be stranded off-screen.** A note saved at a wide viewport had no way back on a narrow one — the same bug MiniPlayer had already fixed. They clamp on `resize` and `orientationchange`, in memory only, so widening the window restores the original position.
+- **Two `window.alert()` calls in the avatar upload** replaced with an inline message beside the control, icon plus text rather than colour alone.
+- Quote widget text on the Desk was `#e8ddd0` — 1.26:1, effectively invisible in light mode — and its loading skeleton used dark-mode bars on a light surface.
+
+### Verification
+
+- Contrast measured across every panel in both themes by resolving computed colours through a 1x1 canvas (`lab()` and `oklch()` will not parse by regex): **light 0 failures, dark 0 failures**, from 27 on the Desk alone and 56 cross-panel before the pass.
+- 320px reflow sweep across ten panels: zero unreachable controls, `scrollWidth` equal to 320 throughout.
+- `tsc --noEmit` clean, `npm run build` clean (13 static pages), browser console clean, `npm audit --omit=dev` 0.
+- ESLint 66 problems, down from 85 and unchanged by this pass — 0 unused-vars, the remainder `exhaustive-deps` (21), `set-state-in-effect` (22) and `no-unescaped-entities` (14).
+
+### Known limitations
+
+- **Visible labels are still not wired to their fields.** Controls have accessible names, but with no `htmlFor` anywhere, clicking a label does not focus its input. Needs `useId()` per field.
+- **`lib/database.ts` remains fire-and-forget** — 47 functions log write failures to the console and return `void`, and reads `return data ?? []`, so a failed fetch is indistinguishable from an empty list. The fix needs somewhere to put the message; that is the toast system, which also unblocks undo-over-confirm. One change, not two.
+- **Still no test runner.** `mathEval`, `dayKey` and `withTimeout` are pure and were verified by throwaway scripts that cannot re-run in CI; adding a runner touches the pinned lockfile.
+- **The in-memory rate limiter** stays the top scaling limitation — move to Upstash or Vercel KV before real traffic.
+
+---
+
 ## [3.26.3] — 2026-08-19
 
 ### Highlights

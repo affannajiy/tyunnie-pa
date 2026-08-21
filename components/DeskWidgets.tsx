@@ -24,6 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getWeather } from "@/lib/weatherIcon";
+import { todayKey } from "@/lib/dayKey";
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import Image from "next/image";
@@ -62,7 +63,6 @@ export interface DeskWidgetsProps {
   financeViewYear: number;
   onNavigate: (panel: Panel) => void;
   onTodoToggle: (id: string, done: boolean) => void;
-  onFocusMode: () => void;
   oneliner: string | null;
   userId?: string;
   savedLayout?: unknown | null;
@@ -238,14 +238,13 @@ export default function DeskWidgets({
   financeViewYear,
   onNavigate,
   onTodoToggle,
-  onFocusMode,
   oneliner,
   userId,
   savedLayout,
 }: DeskWidgetsProps) {
   const music = useMusicContext();
   const currency = profile?.currency ?? "RM";
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayKey();
 
   // ── Layout state ──────────────────────────────────────────────────────────
   const [layouts, setLayouts] = useState<WLayout[]>(DEFAULT_LAYOUT);
@@ -595,7 +594,7 @@ export default function DeskWidgets({
         return (
           <div className="flex flex-col gap-3 h-full">
             <div className="flex items-center justify-between shrink-0">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono">
                 Today's Focus
               </p>
               <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
@@ -603,7 +602,7 @@ export default function DeskWidgets({
               </div>
             </div>
             {dueSoonTodos.length === 0 ? (
-              <p className="text-xs text-[#c5bdb0] italic flex-1 py-2">
+              <p className="text-xs text-[#756a5a] italic flex-1 py-2">
                 All clear! Nothing due soon.
               </p>
             ) : (
@@ -612,7 +611,12 @@ export default function DeskWidgets({
                   <div key={t.id} className="flex items-start gap-2.5">
                     <button
                       onClick={() => onTodoToggle(t.id, !t.done)}
-                      className="mt-0.5 w-4 h-4 rounded-full border-2 border-[#e8e2d8] shrink-0 flex items-center justify-center transition-all"
+                      role="checkbox"
+                      aria-checked={t.done}
+                      aria-label={t.text}
+                      /* 16px box; .tap-target grows the hit area to 40px
+                         without moving the layout (WCAG 2.5.8). */
+                      className="tap-target mt-0.5 w-4 h-4 rounded-full border-2 border-[#e8e2d8] shrink-0 flex items-center justify-center transition-all"
                       style={
                         {
                           "--hover-border": "var(--accent)",
@@ -628,7 +632,7 @@ export default function DeskWidgets({
                       {t.done && (
                         <div
                           className="w-1.5 h-1.5 rounded-full"
-                          style={{ background: "var(--accent)" }}
+                          style={{ background: "var(--accent)", color: "var(--accent-on)" }}
                         />
                       )}
                     </button>
@@ -640,11 +644,11 @@ export default function DeskWidgets({
                         <p
                           className={`text-[9px] font-mono mt-0.5 ${
                             t.due < today
-                              ? "text-red-400 font-bold"
-                              : "text-[#b09880]"
+                              ? "text-red-600 font-bold"
+                              : "text-[#856348]"
                           }`}
                           style={
-                            t.due === today ? { color: "var(--accent)", fontWeight: "bold" } : {}
+                            t.due === today ? { color: "var(--accent-text)", fontWeight: "bold" } : {}
                           }
                         >
                           {t.due < today
@@ -662,7 +666,7 @@ export default function DeskWidgets({
             <button
               onClick={() => onNavigate("todo")}
               className="text-[10px] font-mono hover:underline self-start mt-auto pt-1 shrink-0"
-              style={{ color: "var(--accent)" }}
+              style={{ color: "var(--accent-text)" }}
             >
               All tasks →
             </button>
@@ -673,7 +677,7 @@ export default function DeskWidgets({
         return (
           <div className="flex flex-col gap-3 h-full">
             <div className="flex items-center justify-between shrink-0">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono">
                 Life Progress
               </p>
               <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
@@ -685,15 +689,15 @@ export default function DeskWidgets({
                 <div className="relative">
                   <CircularProgress value={todoCompletionPct} size={54} stroke={5} />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>
+                    <span className="text-[10px] font-bold" style={{ color: "var(--accent-text)" }}>
                       {todoCompletionPct}%
                     </span>
                   </div>
                 </div>
-                <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-wide">
+                <p className="text-[9px] font-mono text-[#856348] uppercase tracking-wide">
                   Tasks
                 </p>
-                <p className="text-[9px] text-[#b09880]">
+                <p className="text-[9px] text-[#856348]">
                   {doneTodos}/{totalTodos}
                 </p>
               </div>
@@ -702,24 +706,24 @@ export default function DeskWidgets({
                 <div className="relative">
                   <CircularProgress value={avgProjectProgress} size={54} stroke={5} />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>
+                    <span className="text-[10px] font-bold" style={{ color: "var(--accent-text)" }}>
                       {avgProjectProgress}%
                     </span>
                   </div>
                 </div>
-                <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-wide">
+                <p className="text-[9px] font-mono text-[#856348] uppercase tracking-wide">
                   Projects
                 </p>
-                <p className="text-[9px] text-[#b09880]">{projects.length} active</p>
+                <p className="text-[9px] text-[#856348]">{projects.length} active</p>
               </div>
             </div>
             <div className="pt-3 border-t border-[#f8f4f0] shrink-0">
-              <p className="text-[9px] text-[#b09880] font-mono mb-0.5">
+              <p className="text-[9px] text-[#856348] font-mono mb-0.5">
                 This month's balance
               </p>
               <p
                 className={`text-base font-bold font-serif ${
-                  monthBalance >= 0 ? "text-[#16a34a]" : "text-red-500"
+                  monthBalance >= 0 ? "text-[#15803d]" : "text-red-600"
                 }`}
               >
                 {monthBalance >= 0 ? "+" : ""}
@@ -734,10 +738,10 @@ export default function DeskWidgets({
         return (
           <div className="flex flex-col gap-3 h-full">
             <div className="flex items-center justify-between shrink-0">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono">
                 Focus Timer
               </p>
-              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center" style={{ color: "var(--accent)" }}>
+              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center" style={{ color: "var(--accent-text)" }}>
                 <Timer size={16} strokeWidth={1.75} />
               </div>
             </div>
@@ -750,7 +754,7 @@ export default function DeskWidgets({
                   </span>
                   <span
                     className="text-[9px] font-mono uppercase tracking-widest mt-0.5"
-                    style={{ color: pomMode === "focus" ? "var(--accent)" : "#16a34a" }}
+                    style={{ color: pomMode === "focus" ? "var(--accent-text)" : "#16a34a" }}
                   >
                     {pomMode}
                   </span>
@@ -761,10 +765,10 @@ export default function DeskWidgets({
                   onClick={() => setPomRunning((p) => !p)}
                   className={`flex-1 py-2 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     pomRunning
-                      ? "bg-[#f0ece8] text-[#8a6f5a] hover:bg-[#e8e2d8]"
+                      ? "bg-[#f0ece8] text-[#7d6350] hover:bg-[#e8e2d8]"
                       : "text-white shadow-sm"
                   }`}
-                  style={!pomRunning ? { background: "var(--accent)" } : {}}
+                  style={!pomRunning ? { background: "var(--accent)", color: "var(--accent-on)" } : {}}
                 >
                   {pomRunning ? (
                     <>
@@ -783,7 +787,7 @@ export default function DeskWidgets({
                     setPomSeconds(pomSettings.focusMins * 60);
                   }}
                   aria-label="Reset timer"
-                  className="w-9 h-9 rounded-2xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
+                  className="w-9 h-9 rounded-2xl border border-[#f0ece8] text-[#856348] hover:text-(--accent) hover:border-(--accent) transition-all flex items-center justify-center"
                 >
                   <RotateCcw size={16} strokeWidth={1.75} />
                 </button>
@@ -793,7 +797,7 @@ export default function DeskWidgets({
               <button
                 onClick={() => onNavigate("pomodoro")}
                 className="text-[10px] font-mono hover:underline"
-                style={{ color: "var(--accent)" }}
+                style={{ color: "var(--accent-text)" }}
               >
                 Full Pomodoro →
               </button>
@@ -805,7 +809,7 @@ export default function DeskWidgets({
         return (
           <div className="flex flex-col gap-3 h-full">
             <div className="flex items-center justify-between shrink-0">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#b09880] font-mono">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono">
                 Now Playing
               </p>
               <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
@@ -842,7 +846,7 @@ export default function DeskWidgets({
                     <p className="text-xs font-bold text-[#1a1208] truncate">
                       {music.currentTrack.title}
                     </p>
-                    <p className="text-[10px] text-[#b09880] font-mono truncate">
+                    <p className="text-[10px] text-[#856348] font-mono truncate">
                       {music.currentTrack.artist}
                     </p>
                   </div>
@@ -864,14 +868,14 @@ export default function DeskWidgets({
                   <button
                     onClick={music.prevTrack}
                     aria-label="Previous track"
-                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#856348] hover:text-(--accent) hover:border-(--accent) transition-all"
                   >
                     <SkipBack size={16} strokeWidth={1.75} fill="currentColor" />
                   </button>
                   <button
                     onClick={music.togglePlay}
                     className="flex-1 py-2 rounded-2xl text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5"
-                    style={{ background: "var(--accent)" }}
+                    style={{ background: "var(--accent)", color: "var(--accent-on)" }}
                   >
                     {music.isPlaying ? (
                       <>
@@ -886,7 +890,7 @@ export default function DeskWidgets({
                   <button
                     onClick={music.nextTrack}
                     aria-label="Next track"
-                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#b09880] hover:text-(--accent) hover:border-(--accent) transition-all"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#f0ece8] text-[#856348] hover:text-(--accent) hover:border-(--accent) transition-all"
                   >
                     <SkipForward size={16} strokeWidth={1.75} fill="currentColor" />
                   </button>
@@ -894,7 +898,7 @@ export default function DeskWidgets({
                 <button
                   onClick={() => onNavigate("music")}
                   className="text-[10px] font-mono hover:underline self-start shrink-0"
-                  style={{ color: "var(--accent)" }}
+                  style={{ color: "var(--accent-text)" }}
                 >
                   Open player →
                 </button>
@@ -902,13 +906,13 @@ export default function DeskWidgets({
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4">
                 <Music2 size={30} strokeWidth={1.5} className="opacity-20" />
-                <p className="text-xs text-[#c5bdb0] italic text-center">
+                <p className="text-xs text-[#756a5a] italic text-center">
                   Nothing playing.
                 </p>
                 <button
                   onClick={() => onNavigate("music")}
                   className="px-4 py-2 rounded-xl text-white text-xs font-bold transition-all mt-1"
-                  style={{ background: "var(--accent)" }}
+                  style={{ background: "var(--accent)", color: "var(--accent-on)" }}
                 >
                   Open Player
                 </button>
@@ -923,14 +927,14 @@ export default function DeskWidgets({
             <div className="flex items-center gap-3 shrink-0">
               <span
                 className="font-serif italic text-base"
-                style={{ color: "var(--accent)" }}
+                style={{ color: "var(--accent-text)" }}
               >
                 Recent Activity
               </span>
               <div className="flex-1 h-px bg-[#f0ece8]" />
             </div>
             {recentActivity.length === 0 ? (
-              <p className="text-xs text-[#c5bdb0] italic py-4 text-center">
+              <p className="text-xs text-[#756a5a] italic py-4 text-center">
                 No recent activity. Go do something amazing! 🧡
               </p>
             ) : (
@@ -939,7 +943,7 @@ export default function DeskWidgets({
                   <div key={i} className="flex gap-3">
                     <div className="flex flex-col items-center shrink-0 w-8">
                       <div className="w-8 h-8 rounded-xl bg-orange-50 border border-[#fde8d0] flex items-center justify-center text-sm shrink-0">
-                        <item.icon size={15} strokeWidth={1.75} style={{ color: "var(--accent)" }} />
+                        <item.icon size={15} strokeWidth={1.75} style={{ color: "var(--accent-text)" }} />
                       </div>
                       {i < Math.min(recentActivity.length, 3) - 1 && (
                         <div className="w-px flex-1 bg-[#f0ece8] my-1 min-h-3" />
@@ -953,7 +957,7 @@ export default function DeskWidgets({
                       <p className="text-xs font-semibold text-[#1a1208] truncate leading-tight">
                         {item.label}
                       </p>
-                      <p className="text-[10px] text-[#b09880] font-mono">
+                      <p className="text-[10px] text-[#856348] font-mono">
                         {item.sub}
                       </p>
                     </div>
@@ -964,7 +968,7 @@ export default function DeskWidgets({
             <div className="mt-auto pt-3 border-t border-[#f8f4f0] shrink-0">
               <button
                 onClick={() => onNavigate("todo")}
-                className="w-full py-3 rounded-2xl border-2 border-dashed border-[#f0d8c8] text-[#b09880] text-sm font-medium hover:border-(--accent) hover:text-(--accent) hover:bg-orange-50/50 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-2xl border-2 border-dashed border-[#f0d8c8] text-[#856348] text-sm font-medium hover:border-(--accent) hover:text-(--accent) hover:bg-orange-50/50 transition-all flex items-center justify-center gap-2"
               >
                 <span className="text-lg">+</span>
                 Quick add a task
@@ -978,19 +982,19 @@ export default function DeskWidgets({
           <div className="flex flex-col justify-center items-center text-center gap-3 h-full">
             <p
               className="text-[9px] font-mono uppercase tracking-[3px] opacity-70"
-              style={{ color: "var(--accent)" }}
+              style={{ color: "var(--accent-text)" }}
             >
               Tyunnie says
             </p>
             {oneliner ? (
-              <p className="text-base text-[#e8ddd0] leading-relaxed font-serif italic px-2">
+              <p className="text-base text-[#4a4038] dark:text-[#e8ddd0] leading-relaxed font-serif italic px-2">
                 &ldquo;{oneliner}&rdquo;
               </p>
             ) : (
               <div className="space-y-2 w-full px-4">
-                <div className="h-3 bg-[#2a2520] rounded animate-pulse w-full" />
-                <div className="h-3 bg-[#2a2520] rounded animate-pulse w-5/6 mx-auto" />
-                <div className="h-3 bg-[#2a2520] rounded animate-pulse w-3/4 mx-auto" />
+                <div className="h-3 bg-[#e8e2d8] dark:bg-[#e8e2d8] dark:bg-[#2a2520] rounded animate-pulse w-full" />
+                <div className="h-3 bg-[#e8e2d8] dark:bg-[#2a2520] rounded animate-pulse w-5/6 mx-auto" />
+                <div className="h-3 bg-[#e8e2d8] dark:bg-[#2a2520] rounded animate-pulse w-3/4 mx-auto" />
               </div>
             )}
           </div>
@@ -999,7 +1003,7 @@ export default function DeskWidgets({
       case "clock":
         return (
           <div className="flex flex-col items-center justify-center gap-1 h-full">
-            <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">
+            <p className="text-[9px] font-mono text-[#856348] uppercase tracking-widest">
               {clock.toLocaleDateString("en-MY", { weekday: "short" })}
             </p>
             <p className="text-2xl font-bold font-mono text-[#1a1208] leading-none tabular-nums">
@@ -1010,7 +1014,7 @@ export default function DeskWidgets({
                 hour12: false,
               })}
             </p>
-            <p className="text-[9px] font-mono text-[#b09880]">
+            <p className="text-[9px] font-mono text-[#856348]">
               {clock.toLocaleDateString("en-MY", {
                 day: "numeric",
                 month: "short",
@@ -1025,24 +1029,24 @@ export default function DeskWidgets({
           <div className="flex flex-col items-center justify-center gap-1 h-full">
             {weather ? (
               <>
-                <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">
+                <p className="text-[9px] font-mono text-[#856348] uppercase tracking-widest">
                   Weather
                 </p>
-                <weather.icon size={30} strokeWidth={1.5} style={{ color: "var(--accent)" }} />
+                <weather.icon size={30} strokeWidth={1.5} style={{ color: "var(--accent-text)" }} />
                 <p className="text-xl font-bold text-[#1a1208] font-mono leading-none">
                   {weather.temp}°C
                 </p>
-                <p className="text-[9px] font-mono text-[#b09880]">
+                <p className="text-[9px] font-mono text-[#856348]">
                   {weather.condition}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-[9px] font-mono text-[#b09880] uppercase tracking-widest">
+                <p className="text-[9px] font-mono text-[#856348] uppercase tracking-widest">
                   Weather
                 </p>
                 <CloudSun size={24} strokeWidth={1.5} className="opacity-20" />
-                <p className="text-[9px] text-[#c5bdb0] font-mono">No city set</p>
+                <p className="text-[9px] text-[#756a5a] font-mono">No city set</p>
               </>
             )}
           </div>
@@ -1075,7 +1079,7 @@ export default function DeskWidgets({
     <div>
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[10px] font-mono text-[#b09880] uppercase tracking-widest">
+        <p className="text-[10px] font-mono text-[#856348] uppercase tracking-widest">
           Dashboard
         </p>
         <div className="flex gap-2">
@@ -1083,7 +1087,7 @@ export default function DeskWidgets({
             <>
               <button
                 onClick={() => setShowTemplates(true)}
-                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all"
+                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all"
               >
                 Templates
               </button>
@@ -1092,7 +1096,7 @@ export default function DeskWidgets({
                   setLayouts(DEFAULT_LAYOUT);
                   setHidden([]);
                 }}
-                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all"
+                className="px-3 py-1.5 rounded-xl text-[10px] font-bold border border-[#f0ece8] text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all"
               >
                 Reset
               </button>
@@ -1103,9 +1107,9 @@ export default function DeskWidgets({
             className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
               editMode
                 ? "text-white shadow-sm"
-                : "border border-[#f0ece8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent)"
+                : "border border-[#f0ece8] text-[#6f6455] hover:border-(--accent) hover:text-(--accent)"
             }`}
-            style={editMode ? { background: "var(--accent)" } : {}}
+            style={editMode ? { background: "var(--accent)", color: "var(--accent-on)" } : {}}
           >
             {editMode ? "Done" : "Edit"}
           </button>
@@ -1138,7 +1142,7 @@ export default function DeskWidgets({
               <button
                 onClick={() => setShowTemplates(false)}
                 aria-label="Close layout templates"
-                className="text-[#c5bdb0] hover:text-[#9a8f7e] transition-colors text-sm"
+                className="text-[#756a5a] hover:text-[#6f6455] transition-colors text-sm"
               >
                 <X size={16} strokeWidth={2} />
               </button>
@@ -1154,12 +1158,12 @@ export default function DeskWidgets({
                   }}
                   className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl border border-[#f0ece8] hover:border-(--accent) hover:bg-orange-50 transition-all group"
                 >
-                  <t.icon size={18} strokeWidth={1.75} style={{ color: "var(--accent)" }} />
+                  <t.icon size={18} strokeWidth={1.75} style={{ color: "var(--accent-text)" }} />
                   <div>
                     <p className="text-sm font-bold text-[#2d2416] group-hover:text-(--accent) transition-colors">
                       {t.name}
                     </p>
-                    <p className="text-[10px] text-[#b09880] font-mono">
+                    <p className="text-[10px] text-[#856348] font-mono">
                       {t.layouts.length} widget{t.layouts.length !== 1 ? "s" : ""}
                       {t.hidden.length > 0 ? ` · ${t.hidden.length} hidden` : ""}
                     </p>
@@ -1317,7 +1321,8 @@ export default function DeskWidgets({
                 {/* Remove button (edit mode) */}
                 {editMode && (
                   <button
-                    className="absolute top-1.5 right-1.5 z-30 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 leading-none shadow-sm"
+                    aria-label={`Remove ${l.id} widget`}
+                    className="tap-target absolute top-1.5 right-1.5 z-30 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 leading-none shadow-sm"
                     onClick={() => {
                       setHidden((h) => [...h, l.id]);
                       setLayouts((prev) => prev.filter((w) => w.id !== l.id));
@@ -1365,7 +1370,7 @@ export default function DeskWidgets({
       {/* Add widgets panel */}
       {editMode && hidden.length > 0 && (
         <div className="mt-5 p-4 bg-white rounded-3xl border border-[#f0ece8] shadow-sm">
-          <p className="text-[10px] font-bold text-[#b09880] uppercase tracking-widest mb-3 font-mono">
+          <p className="text-[10px] font-bold text-[#856348] uppercase tracking-widest mb-3 font-mono">
             Add Widget
           </p>
           <div className="flex flex-wrap gap-2">
@@ -1383,7 +1388,7 @@ export default function DeskWidgets({
                   ]);
                   setHidden((h) => h.filter((i) => i !== id));
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-[#f0ece8] text-xs font-medium text-[#8a6f5a] transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-[#f0ece8] text-xs font-medium text-[#7d6350] transition-all"
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = "var(--accent)";
                   e.currentTarget.style.color = "var(--accent)";

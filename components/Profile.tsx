@@ -1,7 +1,7 @@
 // components/Profile.tsx
 "use client";
 
-import { X, Camera, Trash2, MapPin, Sun, Moon, KeyRound, Lock, Link2 } from "lucide-react";
+import { X, AlertTriangle, Camera, Trash2, MapPin, Sun, Moon, Link2 } from "lucide-react";
 
 import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useEffect, useCallback } from "react";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/database";
 import { saveAccent } from "@/lib/accent";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { safeHref } from "@/lib/safeUrl";
 import {
   encryptData,
   decryptData,
@@ -187,6 +188,10 @@ export default function Profile({
     return () => window.removeEventListener("keydown", onKey);
   }, [showCropModal]);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  /* Avatar upload rejections used to be window.alert(): a modal interrupt
+     for a small, recoverable problem, thrown away from the control that
+     caused it. Inline and next to the avatar instead (§7c.2, §7c.4). */
+  const [avatarError, setAvatarError] = useState("");
   const [cropScale, setCropScale] = useState(1);
   const [cropOffsetX, setCropOffsetX] = useState(0);
   const [cropOffsetY, setCropOffsetY] = useState(0);
@@ -672,19 +677,27 @@ export default function Profile({
             website?: string;
           }
         > = {};
-        for (const entry of entries) {
-          try {
-            const plain = await decryptData(
-              entry.encrypted_data,
-              entry.iv,
-              entry.salt,
-              next,
-            );
-            decrypted[entry.id] = JSON.parse(plain);
-          } catch {
-            decrypted[entry.id] = { username: "?", password: "?", notes: "" };
-          }
-        }
+        // Decrypt concurrently, not one after another. Every entry carries its
+        // own PBKDF2 salt, so unlocking runs one full key derivation per entry
+        // — and that derivation now costs 600,000 iterations (lib/crypto.ts).
+        // Serially that is n x the KDF in wall-clock time; WebCrypto runs off
+        // the main thread, so issuing them together collapses it to roughly the
+        // cost of the slowest one.
+        await Promise.all(
+          entries.map(async (entry) => {
+            try {
+              const plain = await decryptData(
+                entry.encrypted_data,
+                entry.iv,
+                entry.salt,
+                next,
+              );
+              decrypted[entry.id] = JSON.parse(plain);
+            } catch {
+              decrypted[entry.id] = { username: "?", password: "?", notes: "" };
+            }
+          }),
+        );
         setVaultEntries(entries);
         setDecryptedEntries(decrypted);
         setVaultPin(next);
@@ -983,13 +996,14 @@ export default function Profile({
     const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
     const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
     if (!ALLOWED_TYPES.has(file.type)) {
-      alert("Please upload a PNG, JPEG, GIF, or WebP image.");
+      setAvatarError("That file type won't work — use a PNG, JPEG, GIF, or WebP.");
       return;
     }
     if (file.size > MAX_SIZE) {
-      alert("Image must be under 5 MB.");
+      setAvatarError("That image is over 5 MB. Try a smaller one.");
       return;
     }
+    setAvatarError("");
     const reader = new FileReader();
     reader.onload = (ev) => {
       setCropSrc(ev.target?.result as string);
@@ -1120,7 +1134,7 @@ export default function Profile({
 
   if (loading)
     return (
-      <div className="flex items-center justify-center h-64 text-[#9a8f7e] text-sm">
+      <div className="flex items-center justify-center h-64 text-[#6f6455] text-sm">
         Loading profile...
       </div>
     );
@@ -1132,7 +1146,7 @@ export default function Profile({
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={onClose}
-          className="text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest"
+          className="text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest"
         >
           ← Back
         </button>
@@ -1145,7 +1159,7 @@ export default function Profile({
       <div className="flex flex-col gap-4">
         {/* Identity */}
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-4">
             Identity
           </p>
 
@@ -1178,7 +1192,7 @@ export default function Profile({
                   title="Upload photo"
                 >
                   <Camera size={15} strokeWidth={1.75} className="text-white" />
-                  <input
+                  <input aria-label="Upload profile photo"
                     type="file"
                     accept="image/*"
                     className="hidden"
@@ -1200,7 +1214,17 @@ export default function Profile({
               <p className="text-sm font-semibold text-[#111010]">
                 {displayName || "Your name"}
               </p>
-              <p className="text-[10px] text-[#9a8f7e]">
+              {avatarError && (
+                <p
+                  role="alert"
+                  className="flex items-start gap-1 text-[10px] text-red-600 dark:text-red-600 mt-1 leading-snug"
+                >
+                  {/* Icon + text, never colour on its own (WCAG 1.4.1). */}
+                  <AlertTriangle size={11} strokeWidth={2} className="shrink-0 mt-px" aria-hidden="true" />
+                  <span>{avatarError}</span>
+                </p>
+              )}
+              <p className="text-[10px] text-[#6f6455]">
                 {/* Not "hover" — the controls are permanently visible at 0.45
                     on a touchscreen (the `@media (hover: none)` rule in
                     globals.css), and hovering is not a thing a phone can do. */}
@@ -1212,10 +1236,10 @@ export default function Profile({
           </div>
 
           <div className="mb-3">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
               Display Name
             </label>
-            <input
+            <input aria-label="Display name"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -1226,10 +1250,10 @@ export default function Profile({
 
           <div className="flex gap-3 mb-3">
             <div className="flex-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 Birth Day
               </label>
-              <select
+              <select aria-label="Birth day"
                 value={birthDay}
                 onChange={(e) => setBirthDay(e.target.value)}
                 className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
@@ -1243,10 +1267,10 @@ export default function Profile({
               </select>
             </div>
             <div className="flex-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 Birth Month
               </label>
-              <select
+              <select aria-label="Birth month"
                 value={birthMonth}
                 onChange={(e) => setBirthMonth(e.target.value)}
                 className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
@@ -1263,7 +1287,7 @@ export default function Profile({
 
           {/* City */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
               City
             </label>
             {city ? (
@@ -1278,14 +1302,14 @@ export default function Profile({
                     setCityLon(null);
                   }}
                   aria-label="Clear saved city"
-                  className="text-[#c5bdb0] hover:text-red-400 transition-colors text-sm"
+                  className="text-[#756a5a] hover:text-red-600 transition-colors text-sm"
                 >
                   <X size={16} strokeWidth={2} />
                 </button>
               </div>
             ) : (
               <div className="flex gap-2">
-                <input
+                <input aria-label="Search city"
                   type="text"
                   value={citySearch}
                   onChange={(e) => setCitySearch(e.target.value)}
@@ -1303,23 +1327,23 @@ export default function Profile({
               </div>
             )}
             {cityError && (
-              <p className="text-[10px] text-red-400 mt-1">{cityError}</p>
+              <p className="text-[10px] text-red-600 mt-1">{cityError}</p>
             )}
           </div>
         </div>
 
         {/* About */}
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-4">
             About You
           </p>
 
           <div className="flex gap-3 mb-3">
             <div className="flex-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 Occupation
               </label>
-              <input
+              <input aria-label="Occupation"
                 type="text"
                 value={occupation}
                 onChange={(e) => setOccupation(e.target.value)}
@@ -1328,10 +1352,10 @@ export default function Profile({
               />
             </div>
             <div className="flex-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 University / Workplace
               </label>
-              <input
+              <input aria-label="University or workplace"
                 type="text"
                 value={workplace}
                 onChange={(e) => setWorkplace(e.target.value)}
@@ -1342,10 +1366,10 @@ export default function Profile({
           </div>
 
           <div className="mb-4">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
               Bio
             </label>
-            <textarea
+            <textarea aria-label="Bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="A short description Tyunnie can use to know you better..."
@@ -1355,7 +1379,7 @@ export default function Profile({
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-2">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-2">
               Interests
             </label>
             <div className="flex flex-wrap gap-2">
@@ -1366,7 +1390,7 @@ export default function Profile({
                   className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all border ${
                     interests.includes(i)
                       ? "bg-(--accent) text-white border-(--accent)"
-                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-(--accent) hover:text-(--accent)"
+                      : "bg-white text-[#6f6455] border-[#e8e2d8] hover:border-(--accent) hover:text-(--accent)"
                   }`}
                 >
                   {i}
@@ -1378,16 +1402,16 @@ export default function Profile({
 
         {/* Preferences */}
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-4">
             Preferences
           </p>
 
           <div className="flex gap-3 mb-3">
             <div className="flex-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 Language / Locale
               </label>
-              <select
+              <select aria-label="Language and locale"
                 value={locale}
                 onChange={(e) => setLocale(e.target.value)}
                 className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
@@ -1400,10 +1424,10 @@ export default function Profile({
               </select>
             </div>
             <div className="flex-1">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-1.5">
                 Currency
               </label>
-              <select
+              <select aria-label="Currency"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-(--accent) transition-colors"
@@ -1418,7 +1442,7 @@ export default function Profile({
           </div>
 
           <div className="mb-3">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-2">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-2">
               Tyunnie Greeting Style
             </label>
             <div className="flex gap-2">
@@ -1429,7 +1453,7 @@ export default function Profile({
                   className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${
                     greetingStyle === s
                       ? "bg-(--accent) text-white border-(--accent)"
-                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-(--accent)"
+                      : "bg-white text-[#6f6455] border-[#e8e2d8] hover:border-(--accent)"
                   }`}
                 >
                   {s}
@@ -1440,7 +1464,7 @@ export default function Profile({
 
           {/* Theme */}
           <div className="mb-3">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-2">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-2">
               Theme
             </label>
             <div className="flex gap-2">
@@ -1456,7 +1480,7 @@ export default function Profile({
                   className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${
                     (v === "dark") === isDark
                       ? "bg-(--accent) text-white border-(--accent)"
-                      : "bg-white text-[#9a8f7e] border-[#e8e2d8] hover:border-(--accent)"
+                      : "bg-white text-[#6f6455] border-[#e8e2d8] hover:border-(--accent)"
                   }`}
                 >
                   {label}
@@ -1467,7 +1491,7 @@ export default function Profile({
 
           {/* Accent Color */}
           <div className="mb-3 mt-3 pt-3 border-t border-[#e8e2d8]">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-3">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-3">
               Accent Color
             </label>
 
@@ -1494,7 +1518,7 @@ export default function Profile({
                 <span className="block text-xs font-semibold text-[#111010]">
                   Auto-Theme
                 </span>
-                <span className="block text-[10px] text-[#9a8f7e] leading-snug">
+                <span className="block text-[10px] text-[#6f6455] leading-snug">
                   Borrow the colour from whatever&apos;s playing
                 </span>
               </span>
@@ -1502,7 +1526,7 @@ export default function Profile({
 
             {/* Preset swatches + custom picker toggle */}
             {autoTheme && (
-              <p className="text-[10px] text-[#9a8f7e] mb-2 leading-snug">
+              <p className="text-[10px] text-[#6f6455] mb-2 leading-snug">
                 Auto-Theme is on — your pick below is still saved, and comes back
                 the moment the music stops.
               </p>
@@ -1562,7 +1586,7 @@ export default function Profile({
                     style={{ background: accentColor }}
                   />
                   <div className="flex-1">
-                    <p className="text-[9px] font-mono text-[#9a8f7e] uppercase tracking-widest">Preview</p>
+                    <p className="text-[9px] font-mono text-[#6f6455] uppercase tracking-widest">Preview</p>
                     <p className="text-xs font-mono font-semibold" style={{ color: accentColor }}>
                       {accentColor.toUpperCase()}
                     </p>
@@ -1636,8 +1660,8 @@ export default function Profile({
                 <div className="flex flex-col gap-2">
                   {/* Hex */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#9a8f7e] w-7 shrink-0">Hex</span>
-                    <input
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#6f6455] w-7 shrink-0">Hex</span>
+                    <input aria-label="Accent colour hex"
                       type="text"
                       value={pickerInputHex}
                       onChange={(e) => setPickerInputHex(e.target.value)}
@@ -1662,9 +1686,9 @@ export default function Profile({
 
                   {/* RGB */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#9a8f7e] w-7 shrink-0">RGB</span>
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#6f6455] w-7 shrink-0">RGB</span>
                     {(["r", "g", "b"] as const).map((ch) => (
-                      <input
+                      <input aria-label={`RGB ${ch.toUpperCase()}`}
                         key={ch}
                         type="number"
                         min={0}
@@ -1687,9 +1711,9 @@ export default function Profile({
 
                   {/* HSL */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#9a8f7e] w-7 shrink-0">HSL</span>
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#6f6455] w-7 shrink-0">HSL</span>
                     {(["h", "s", "l"] as const).map((ch, idx) => (
-                      <input
+                      <input aria-label={`HSL ${ch.toUpperCase()}`}
                         key={ch}
                         type="number"
                         min={0}
@@ -1714,7 +1738,7 @@ export default function Profile({
               </div>
             )}
 
-            <p className="text-[9px] text-[#c5bdb0] font-mono mt-2">
+            <p className="text-[9px] text-[#756a5a] font-mono mt-2">
               Applied immediately — no need to save
             </p>
           </div>
@@ -1725,12 +1749,18 @@ export default function Profile({
               <p className="text-sm font-semibold text-[#111010]">
                 Daily Briefing
               </p>
-              <p className="text-[10px] text-[#9a8f7e]">
+              <p className="text-[10px] text-[#6f6455]">
                 Show Tyunnie's morning summary card
               </p>
             </div>
             <button
               onClick={() => setShowBriefing((p) => !p)}
+              /* A bare <button> with a sliding pill inside announces as an
+                 unlabelled button in no particular state. role="switch" +
+                 aria-checked is the whole control (WCAG 4.1.2). */
+              role="switch"
+              aria-checked={showBriefing}
+              aria-label="Daily Briefing"
               className={`w-11 h-6 rounded-full transition-all relative ${showBriefing ? "bg-(--accent)" : "bg-[#e8e2d8]"}`}
             >
               <div
@@ -1748,12 +1778,18 @@ export default function Profile({
               <p className="text-sm font-semibold text-[#111010]">
                 Daily Quote Email
               </p>
-              <p className="text-[10px] text-[#9a8f7e]">
+              <p className="text-[10px] text-[#6f6455]">
                 Receive a daily message from Taehyun every morning
               </p>
             </div>
             <button
               onClick={() => setDailyQuoteEmail((p) => !p)}
+              /* A bare <button> with a sliding pill inside announces as an
+                 unlabelled button in no particular state. role="switch" +
+                 aria-checked is the whole control (WCAG 4.1.2). */
+              role="switch"
+              aria-checked={dailyQuoteEmail}
+              aria-label="Daily Quote Email"
               className={`w-11 h-6 rounded-full transition-all relative ${dailyQuoteEmail ? "bg-(--accent)" : "bg-[#e8e2d8]"}`}
             >
               <div
@@ -1767,7 +1803,7 @@ export default function Profile({
         {/* Vault */}
         <div className="bg-white border border-[#e8e2d8] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono">
               Password Vault
             </p>
             {!guest && !vaultLocked && (
@@ -1780,7 +1816,7 @@ export default function Profile({
                     setNewPinStep("enter");
                     setNewPinError("");
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#faf8f5] border border-[#e8e2d8] text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#faf8f5] border border-[#e8e2d8] text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
                 >
                   Change PIN
                 </button>
@@ -1798,7 +1834,7 @@ export default function Profile({
                     setOtpInput("");
                     setOtpError("");
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-400 hover:bg-red-100 hover:border-red-300 hover:text-red-500 transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 hover:text-red-600 transition-all text-[10px] font-bold uppercase tracking-widest font-mono"
                 >
                   Lock
                 </button>
@@ -1810,7 +1846,7 @@ export default function Profile({
               {/* Step 1 — Request OTP */}
               {otpStep === "idle" && (
                 <div>
-                  <p className="text-xs text-[#9a8f7e] mb-4 leading-relaxed">
+                  <p className="text-xs text-[#6f6455] mb-4 leading-relaxed">
                     To change your vault PIN, we'll send a verification code to
                     your email first.
                   </p>
@@ -1828,13 +1864,13 @@ export default function Profile({
                         setOtpStep("idle");
                         setOtpError("");
                       }}
-                      className="px-4 py-2.5 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-(--accent) transition-all"
+                      className="px-4 py-2.5 rounded-xl border border-[#e8e2d8] text-xs text-[#6f6455] hover:border-(--accent) transition-all"
                     >
                       Cancel
                     </button>
                   </div>
                   {otpError && (
-                    <p className="text-[10px] text-red-400 mt-2 font-mono">
+                    <p className="text-[10px] text-red-600 mt-2 font-mono">
                       {otpError}
                     </p>
                   )}
@@ -1844,12 +1880,12 @@ export default function Profile({
               {/* Step 2 — Enter OTP */}
               {otpStep === "verify" && (
                 <div>
-                  <p className="text-xs text-[#9a8f7e] mb-4 leading-relaxed">
+                  <p className="text-xs text-[#6f6455] mb-4 leading-relaxed">
                     Enter the 6-digit code sent to your email. It expires in 10
                     minutes.
                   </p>
                   <div className="flex gap-2 mb-2">
-                    <input
+                    <input aria-label="Vault PIN"
                       type="text"
                       inputMode="numeric"
                       maxLength={6}
@@ -1875,7 +1911,7 @@ export default function Profile({
                     <button
                       onClick={handleRequestOtp}
                       disabled={otpSending}
-                      className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors"
+                      className="text-[10px] font-mono text-[#6f6455] hover:text-(--accent) transition-colors"
                     >
                       Resend code
                     </button>
@@ -1886,13 +1922,13 @@ export default function Profile({
                         setOtpError("");
                         setOtpInput("");
                       }}
-                      className="text-[10px] font-mono text-[#c5bdb0] hover:text-red-400 transition-colors"
+                      className="text-[10px] font-mono text-[#756a5a] hover:text-red-600 transition-colors"
                     >
                       Cancel
                     </button>
                   </div>
                   {otpError && (
-                    <p className="text-[10px] text-red-400 mt-2 font-mono">
+                    <p className="text-[10px] text-red-600 mt-2 font-mono">
                       {otpError}
                     </p>
                   )}
@@ -1902,7 +1938,7 @@ export default function Profile({
               {/* Step 3 — Set new PIN */}
               {otpStep === "new_pin" && (
                 <div>
-                  <p className="text-xs text-[#9a8f7e] mb-4 leading-relaxed">
+                  <p className="text-xs text-[#6f6455] mb-4 leading-relaxed">
                     {newPinStep === "enter"
                       ? "Enter your new 6-digit PIN."
                       : "Confirm your new PIN."}
@@ -1951,7 +1987,7 @@ export default function Profile({
                           key === ""
                             ? "invisible"
                             : key === "⌫"
-                              ? "text-[#9a8f7e] hover:bg-white border border-[#e8e2d8]"
+                              ? "text-[#6f6455] hover:bg-white border border-[#e8e2d8]"
                               : "bg-white border border-[#e8e2d8] text-[#111010] hover:border-(--accent) hover:text-(--accent) active:scale-95"
                         }`}
                       >
@@ -1960,12 +1996,12 @@ export default function Profile({
                     ))}
                   </div>
                   {newPinError && (
-                    <p className="text-[10px] text-red-400 text-center font-mono">
+                    <p className="text-[10px] text-red-600 text-center font-mono">
                       {newPinError}
                     </p>
                   )}
                   {savingPin && (
-                    <p className="text-[10px] text-[#9a8f7e] text-center font-mono mt-2">
+                    <p className="text-[10px] text-[#6f6455] text-center font-mono mt-2">
                       Re-encrypting entries...
                     </p>
                   )}
@@ -1978,26 +2014,26 @@ export default function Profile({
               <p className="text-xs text-[#111010] font-semibold">
                 The vault needs an account.
               </p>
-              <p className="text-[11px] text-[#9a8f7e] leading-relaxed mt-1 mb-3">
+              <p className="text-[11px] text-[#6f6455] leading-relaxed mt-1 mb-3">
                 Everything in here is encrypted with a PIN we never see, so it
                 can&rsquo;t live in a browser-only demo.
               </p>
               <a
                 href="/auth"
                 className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-white text-[12px] font-bold transition-colors"
-                style={{ background: "var(--accent)" }}
+                style={{ background: "var(--accent)", color: "var(--accent-on)" }}
               >
                 Sign up to use the vault
               </a>
             </div>
           ) : vaultMetaLoading ? (
-            <p className="text-xs text-[#c5bdb0] font-mono text-center py-4">
+            <p className="text-xs text-[#756a5a] font-mono text-center py-4">
               Loading...
             </p>
           ) : vaultLocked ? (
             <div>
               {/* Setup vs unlock heading */}
-              <p className="text-xs text-[#9a8f7e] mb-4 leading-relaxed">
+              <p className="text-xs text-[#6f6455] mb-4 leading-relaxed">
                 {!vaultMeta
                   ? pinStep === "enter"
                     ? "Set a 6-digit PIN to protect your vault. This PIN is never stored — keep it safe."
@@ -2054,7 +2090,7 @@ export default function Profile({
                           key === ""
                             ? "invisible"
                             : key === "⌫"
-                              ? "text-[#9a8f7e] hover:bg-[#faf8f5] border border-[#e8e2d8]"
+                              ? "text-[#6f6455] hover:bg-[#faf8f5] border border-[#e8e2d8]"
                               : "bg-[#faf8f5] border border-[#e8e2d8] text-[#111010] hover:border-(--accent) hover:text-(--accent) active:scale-95"
                         }`}
                       >
@@ -2066,7 +2102,7 @@ export default function Profile({
               )}
 
               {pinError && (
-                <p className="text-[10px] text-red-400 text-center mt-2 font-mono">
+                <p className="text-[10px] text-red-600 text-center mt-2 font-mono">
                   {pinError}
                 </p>
               )}
@@ -2076,7 +2112,7 @@ export default function Profile({
               {/* Entry list */}
               <div className="flex flex-col gap-2 mb-3">
                 {vaultEntries.length === 0 && (
-                  <p className="text-xs text-[#c5bdb0] font-mono text-center py-4">
+                  <p className="text-xs text-[#756a5a] font-mono text-center py-4">
                     No entries yet. Add your first password below.
                   </p>
                 )}
@@ -2092,35 +2128,35 @@ export default function Profile({
                     >
                       {isEditing ? (
                         <div className="flex flex-col gap-2">
-                          <input
+                          <input aria-label="Site or app name"
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             placeholder="Site / App name *"
                             className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
-                          <input
+                          <input aria-label="Username or email"
                             type="text"
                             value={editUsername}
                             onChange={(e) => setEditUsername(e.target.value)}
                             placeholder="Username / Email"
                             className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
-                          <input
+                          <input aria-label="Password"
                             type="password"
                             value={editPassword}
                             onChange={(e) => setEditPassword(e.target.value)}
                             placeholder="Password *"
                             className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
-                          <input
+                          <input aria-label="Website URL"
                             type="text"
                             value={editWebsite}
                             onChange={(e) => setEditWebsite(e.target.value)}
                             placeholder="Website URL (optional)"
                             className="w-full bg-white border border-[#e8e2d8] rounded-xl px-3 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                           />
-                          <input
+                          <input aria-label="Notes"
                             type="text"
                             value={editNotes}
                             onChange={(e) => setEditNotes(e.target.value)}
@@ -2130,7 +2166,7 @@ export default function Profile({
                           <div className="flex gap-2 mt-1">
                             <button
                               onClick={() => setEditingId(null)}
-                              className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-(--accent) transition-all"
+                              className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#6f6455] hover:border-(--accent) transition-all"
                             >
                               Cancel
                             </button>
@@ -2154,13 +2190,12 @@ export default function Profile({
                                 onClick={() =>
                                   setRevealedIds((prev) => {
                                     const next = new Set(prev);
-                                    next.has(entry.id)
-                                      ? next.delete(entry.id)
-                                      : next.add(entry.id);
+                                    if (next.has(entry.id)) next.delete(entry.id);
+                                    else next.add(entry.id);
                                     return next;
                                   })
                                 }
-                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors"
+                                className="text-[10px] font-mono text-[#6f6455] hover:text-(--accent) transition-colors"
                               >
                                 {revealed ? "Hide" : "Show"}
                               </button>
@@ -2170,7 +2205,7 @@ export default function Profile({
                                     dec?.password ?? "",
                                   )
                                 }
-                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors"
+                                className="text-[10px] font-mono text-[#6f6455] hover:text-(--accent) transition-colors"
                               >
                                 Copy
                               </button>
@@ -2183,39 +2218,50 @@ export default function Profile({
                                   setEditNotes(dec?.notes ?? "");
                                   setEditWebsite(dec?.website ?? "");
                                 }}
-                                className="text-[10px] font-mono text-[#9a8f7e] hover:text-(--accent) transition-colors"
+                                className="text-[10px] font-mono text-[#6f6455] hover:text-(--accent) transition-colors"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteEntry(entry.id)}
                                 aria-label={`Delete vault entry ${entry.name}`}
-                                className="text-[10px] font-mono text-[#c5bdb0] hover:text-red-400 transition-colors"
+                                className="text-[10px] font-mono text-[#756a5a] hover:text-red-600 transition-colors"
                               >
                                 <X size={16} strokeWidth={2} />
                               </button>
                             </div>
                           </div>
                           {dec?.username && (
-                            <p className="text-[11px] text-[#9a8f7e] font-mono">
+                            <p className="text-[11px] text-[#6f6455] font-mono">
                               {dec.username}
                             </p>
                           )}
-                          <p className="text-[11px] font-mono text-[#9a8f7e] mt-0.5">
+                          <p className="text-[11px] font-mono text-[#6f6455] mt-0.5">
                             {revealed ? dec?.password : "••••••••••••"}
                           </p>
-                          {dec?.website && (
-                            <a
-                              href={dec.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[10px] text-(--accent) font-mono mt-1 hover:underline block truncate"
-                            >
-                              <Link2 size={12} strokeWidth={2} className="inline -mt-0.5" /> {dec.website}
-                            </a>
-                          )}
+                          {dec?.website &&
+                            // A vault entry's website is user-supplied and
+                            // decrypted straight into an href, so the scheme is
+                            // checked before it becomes a link. When it is not
+                            // a real http(s) URL we still show the text — the
+                            // user needs to see what they saved — just not as
+                            // something clickable.
+                            (safeHref(dec.website) ? (
+                              <a
+                                href={safeHref(dec.website)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-(--accent) font-mono mt-1 hover:underline block truncate"
+                              >
+                                <Link2 size={12} strokeWidth={2} className="inline -mt-0.5" /> {dec.website}
+                              </a>
+                            ) : (
+                              <p className="text-[10px] text-[#6f6455] font-mono mt-1 block truncate">
+                                <Link2 size={12} strokeWidth={2} className="inline -mt-0.5" /> {dec.website}
+                              </p>
+                            ))}
                           {revealed && dec?.notes && (
-                            <p className="text-[10px] text-[#c5bdb0] font-mono mt-1">
+                            <p className="text-[10px] text-[#756a5a] font-mono mt-1">
                               {dec.notes}
                             </p>
                           )}
@@ -2229,35 +2275,35 @@ export default function Profile({
               {/* Add entry */}
               {showAddEntry ? (
                 <div className="border border-[#e8e2d8] rounded-xl p-4 flex flex-col gap-2">
-                  <input
+                  <input aria-label="Site or app name"
                     type="text"
                     value={newEntryName}
                     onChange={(e) => setNewEntryName(e.target.value)}
                     placeholder="Site / App name *"
                     className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
-                  <input
+                  <input aria-label="Username or email"
                     type="text"
                     value={newEntryUsername}
                     onChange={(e) => setNewEntryUsername(e.target.value)}
                     placeholder="Username / Email"
                     className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
-                  <input
+                  <input aria-label="Password"
                     type="password"
                     value={newEntryPassword}
                     onChange={(e) => setNewEntryPassword(e.target.value)}
                     placeholder="Password *"
                     className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
-                  <input
+                  <input aria-label="Website URL"
                     type="text"
                     value={newEntryWebsite}
                     onChange={(e) => setNewEntryWebsite(e.target.value)}
                     placeholder="Website URL (optional)"
                     className="w-full bg-[#faf8f5] border border-[#e8e2d8] rounded-xl px-4 py-2 text-sm outline-none focus:border-(--accent) transition-colors"
                   />
-                  <input
+                  <input aria-label="Notes"
                     type="text"
                     value={newEntryNotes}
                     onChange={(e) => setNewEntryNotes(e.target.value)}
@@ -2267,7 +2313,7 @@ export default function Profile({
                   <div className="flex gap-2 mt-1">
                     <button
                       onClick={() => setShowAddEntry(false)}
-                      className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-(--accent) transition-all"
+                      className="flex-1 py-2 rounded-xl border border-[#e8e2d8] text-xs text-[#6f6455] hover:border-(--accent) transition-all"
                     >
                       Cancel
                     </button>
@@ -2283,7 +2329,7 @@ export default function Profile({
               ) : (
                 <button
                   onClick={() => setShowAddEntry(true)}
-                  className="w-full py-2.5 rounded-xl border border-dashed border-[#e8e2d8] text-xs text-[#9a8f7e] hover:border-(--accent) hover:text-(--accent) transition-all font-mono"
+                  className="w-full py-2.5 rounded-xl border border-dashed border-[#e8e2d8] text-xs text-[#6f6455] hover:border-(--accent) hover:text-(--accent) transition-all font-mono"
                 >
                   + Add entry
                 </button>
@@ -2313,7 +2359,7 @@ export default function Profile({
           >
             <p
               id="crop-photo-title"
-              className="text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] font-mono mb-4"
+              className="text-[10px] font-bold uppercase tracking-widest text-[#6f6455] font-mono mb-4"
             >
               Adjust Photo
             </p>
@@ -2359,10 +2405,10 @@ export default function Profile({
 
             {/* Scale slider */}
             <div className="mb-5">
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] mb-2">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] mb-2">
                 Zoom
               </label>
-              <input
+              <input aria-label="Zoom"
                 type="range"
                 min={0.5}
                 max={3}
@@ -2381,7 +2427,7 @@ export default function Profile({
                   setShowCropModal(false);
                   setCropSrc(null);
                 }}
-                className="flex-1 py-2.5 rounded-xl border border-[#e8e2d8] text-sm text-[#9a8f7e] hover:border-(--accent) transition-all"
+                className="flex-1 py-2.5 rounded-xl border border-[#e8e2d8] text-sm text-[#6f6455] hover:border-(--accent) transition-all"
               >
                 Cancel
               </button>

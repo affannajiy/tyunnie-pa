@@ -7,6 +7,11 @@ import { authHeader } from "@/lib/supabase";
 import { isGuest } from "@/lib/guest";
 import { useAccentColor } from "@/lib/useAccentColor";
 import {
+  evaluateExpression,
+  isValidExpression,
+  type EvalEnv,
+} from "@/lib/mathEval";
+import {
   differenceInDays,
   differenceInCalendarMonths,
   differenceInCalendarYears,
@@ -20,26 +25,6 @@ import {
 // Scientific helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function factorial(n: number): number {
-  if (!Number.isInteger(n) || n < 0) return NaN;
-  if (n > 170) return Infinity;
-  let r = 1;
-  for (let i = 2; i <= n; i++) r *= i;
-  return r;
-}
-
-function nCr(n: number, r: number): number {
-  if (!Number.isInteger(n) || !Number.isInteger(r) || r < 0 || r > n)
-    return NaN;
-  return factorial(n) / (factorial(r) * factorial(n - r));
-}
-
-function nPr(n: number, r: number): number {
-  if (!Number.isInteger(n) || !Number.isInteger(r) || r < 0 || r > n)
-    return NaN;
-  return factorial(n) / factorial(n - r);
-}
-
 function formatResult(n: number): string {
   if (isNaN(n)) return "Math Error";
   if (!isFinite(n)) return n > 0 ? "+∞" : "-∞";
@@ -52,66 +37,19 @@ function formatResult(n: number): string {
   return parseFloat(n.toPrecision(10)).toString();
 }
 
-function buildEval(
-  expr: string,
-  mode: "DEG" | "RAD",
-  memory: number,
-  ans: number,
-): string {
-  let e = expr.trim();
-  e = e.replace(/\bAns\b/g, `(${ans})`);
-  e = e.replace(/\bMem\b/g, `(${memory})`);
-  e = e.replace(/×/g, "*").replace(/÷/g, "/");
-  e = e.replace(/π/g, "(Math.PI)");
-  e = e.replace(/ℯ(?!\^)/g, "(Math.E)");
-  e = e.replace(/ℯ\^/g, "(Math.E)**");
-  e = e.replace(/(\d+(?:\.\d+)?)\s*!/g, (_, n) => `factorial(${n})`);
-  e = e.replace(/\^/g, "**");
-  const toRad = mode === "DEG" ? "(Math.PI/180)*" : "";
-  const fromRad = mode === "DEG" ? "(180/Math.PI)*" : "";
-  e = e.replace(/\basinh\(/g, "Math.asinh(");
-  e = e.replace(/\bacosh\(/g, "Math.acosh(");
-  e = e.replace(/\batanh\(/g, "Math.atanh(");
-  e = e.replace(/\basin\(/g, `${fromRad}Math.asin(`);
-  e = e.replace(/\bacos\(/g, `${fromRad}Math.acos(`);
-  e = e.replace(/\batan\(/g, `${fromRad}Math.atan(`);
-  e = e.replace(/\bsinh\(/g, "Math.sinh(");
-  e = e.replace(/\bcosh\(/g, "Math.cosh(");
-  e = e.replace(/\btanh\(/g, "Math.tanh(");
-  e = e.replace(/\bsin\(/g, `Math.sin(${toRad}`);
-  e = e.replace(/\bcos\(/g, `Math.cos(${toRad}`);
-  e = e.replace(/\btan\(/g, `Math.tan(${toRad}`);
-  e = e.replace(/\blog\(/g, "Math.log10(");
-  e = e.replace(/\bln\(/g, "Math.log(");
-  e = e.replace(/√\(/g, "Math.sqrt(");
-  e = e.replace(/∛\(/g, "Math.cbrt(");
-  e = e.replace(/\babs\(/g, "Math.abs(");
-  // nCr( and nPr( deliberately have no rewrite: unlike sin/cos/abs they are not
-  // Math members, they're passed into `new Function()` as their own parameters
-  // (see tryEval), so the identifier is already correct. Two `.replace(x, x)`
-  // no-ops used to sit here — CodeQL flagged them as replacing a substring with
-  // itself, which is exactly what they did.
-  e = e.replace(/(\d)\s*\(/g, "$1*(");
-  e = e.replace(/(\d)\s*(Math\.)/g, "$1*$2");
-  e = e.replace(/\)\s*(\d)/g, ")*$1");
-  e = e.replace(/\)\s*\(/g, ")*(");
-  e = e.replace(/\)\s*(Math\.)/g, ")*$1");
-  return e;
-}
+// The keypad's display syntax IS the evaluator's input language — there is no
+// rewrite step any more. `buildEval`'s chain of ~30 regex replacements used to
+// translate the display string into JavaScript for `new Function()`; both are
+// gone (see lib/mathEval.ts for why). Anything the keypad can emit, the parser
+// can read directly.
 
-// Expressions that arrive from outside the keypad (Tyun's `calculate` action, or
-// a restored `tyunnie_calc_pending`) are untrusted: they reach `new Function()`
-// below. The keypad can only ever emit the vocabulary allowlisted here, so
-// anything left over after stripping known tokens is not a calculation.
-// Same intent as GRAPH_SAFE, but token-based — an unknown identifier such as
-// `constructor` or `fetch` leaves letters behind and is rejected.
-const CALC_KNOWN_TOKENS =
-  /\b(?:asinh|acosh|atanh|asin|acos|atan|sinh|cosh|tanh|sin|cos|tan|log|ln|abs|nCr|nPr|Ans|Mem)\b/g;
-const CALC_SAFE_REST = /^[0-9+\-*/^().,%!×÷√∛πℯ\s]*$/;
-
+/**
+ * Screens an expression arriving from outside the keypad — Tyun's `calculate`
+ * action, or a restored `tyunnie_calc_pending`. Kept as a named export because
+ * "is this a calculation" is a question the rest of the app asks.
+ */
 export function isSafeCalcExpr(raw: string): boolean {
-  if (typeof raw !== "string" || raw.length > 200) return false;
-  return CALC_SAFE_REST.test(raw.replace(CALC_KNOWN_TOKENS, ""));
+  return isValidExpression(raw);
 }
 
 function tryEval(
@@ -120,21 +58,10 @@ function tryEval(
   memory: number,
   ans: number,
 ): number | null {
-  try {
-    const e = buildEval(expr, mode, memory, ans);
-    if (!e) return null;
-     
-    const v = new Function(
-      "Math",
-      "factorial",
-      "nCr",
-      "nPr",
-      `"use strict"; return (${e});`,
-    )(Math, factorial, nCr, nPr);
-    return typeof v === "number" ? v : null;
-  } catch {
-    return null;
-  }
+  const env: EvalEnv = { mode, memory, ans };
+  // NaN is passed through unchanged — callers render it as "Math Error", the
+  // same as they always have. `null` means it did not parse at all.
+  return evaluateExpression(expr, env);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -237,46 +164,20 @@ interface GraphFn {
   error: string | null;
 }
 
-// Allowed vocabulary for graphing expressions.
-// A character-class allowlist is NOT enough here: the letters needed to spell
-// `sin`/`cos`/`sqrt`/`abs` also spell `alert`, `location` and `escape`, and the
-// result is handed straight to `new Function()` in `evalGraphFn`. So strip the
-// known vocabulary first and require that nothing but math punctuation is left —
-// an unknown identifier leaves letters behind and is rejected. Same shape as
-// `isSafeCalcExpr` above; keep the two in step.
-const GRAPH_KNOWN_TOKENS = /\b(?:sqrt|sin|cos|tan|abs|log|ln|x|e)\b/gi;
-const GRAPH_SAFE_REST = /^[0-9+\-*/^().,π\s]*$/;
+// Graphing shares the same parser, with `x` bound. There is no separate
+// allowlist to keep in step with the calculator's any more — one grammar
+// defines what both accept, so the two cannot drift apart.
 
 export function isSafeGraphExpr(raw: string): boolean {
-  if (typeof raw !== "string" || raw.length > 200) return false;
-  return GRAPH_SAFE_REST.test(raw.replace(GRAPH_KNOWN_TOKENS, ""));
+  return isValidExpression(raw, { x: true });
 }
 
-function sanitizeGraphExpr(raw: string): string | null {
-  if (!isSafeGraphExpr(raw)) return null;
-  let e = raw.trim();
-  e = e.replace(/\^/g, "**");
-  e = e.replace(/\bπ\b/g, "Math.PI");
-  e = e.replace(/\be\b/g, "Math.E");
-  e = e.replace(/\bsin\b/g, "Math.sin");
-  e = e.replace(/\bcos\b/g, "Math.cos");
-  e = e.replace(/\btan\b/g, "Math.tan");
-  e = e.replace(/\babs\b/g, "Math.abs");
-  e = e.replace(/\bsqrt\b/g, "Math.sqrt");
-  e = e.replace(/\blog\b/g, "Math.log10");
-  e = e.replace(/\bln\b/g, "Math.log");
-  // implicit multiply: 2x → 2*x, 2( → 2*(
-  e = e.replace(/(\d)(x)/g, "$1*$2");
-  e = e.replace(/(\d)\s*\(/g, "$1*(");
-  return e;
-}
+const GRAPH_ENV: Omit<EvalEnv, "x"> = { mode: "RAD", ans: 0, memory: 0 };
 
-function evalGraphFn(sanitized: string, x: number): number {
-   
-  return new Function("x", "Math", `"use strict"; return (${sanitized});`)(
-    x,
-    Math,
-  );
+/** Evaluate `expr` at one x. Returns NaN for a point the function cannot take. */
+function evalGraphFn(expr: string, x: number): number {
+  const v = evaluateExpression(expr, { ...GRAPH_ENV, x });
+  return v === null ? NaN : v;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -697,39 +598,39 @@ function ScientificCalc() {
     if (id === "EQ")
       return (
         base +
-        "bg-[var(--accent)] text-white text-lg font-bold shadow-lg shadow-[rgba(var(--accent-rgb),0.4)]"
+        "bg-[var(--accent)] text-[var(--accent-on)] text-lg font-bold shadow-lg shadow-[rgba(var(--accent-rgb),0.4)]"
       );
     if (id === "AC")
       return (
         base +
-        "bg-red-100 dark:bg-[#3a1010] text-red-500 dark:text-[#f87171] font-bold text-sm"
+        "bg-red-100 dark:bg-[#3a1010] text-red-700 dark:text-[#f87171] font-bold text-sm"
       );
     if (id === "DEL")
       return (
         base +
-        "bg-amber-50 dark:bg-[#2a1e0e] text-amber-500 dark:text-[#fbbf24] text-sm"
+        "bg-amber-50 dark:bg-[#2a1e0e] text-amber-700 dark:text-[#fbbf24] text-sm"
       );
     if (id === "SHIFT")
       return (
         base +
         (shift
-          ? "bg-[var(--accent)] text-white font-bold text-xs shadow-sm shadow-[rgba(var(--accent-rgb),0.5)]"
-          : "bg-orange-50 dark:bg-[#2a2218] text-[var(--accent)] text-xs")
+          ? "bg-[var(--accent)] text-[var(--accent-on)] font-bold text-xs shadow-sm shadow-[rgba(var(--accent-rgb),0.5)]"
+          : "bg-orange-50 dark:bg-[#2a2218] text-[var(--accent-text)] text-xs")
       );
     if (id === "MODE")
       return (
         base +
-        "bg-blue-50 dark:bg-[#1c2235] text-blue-500 dark:text-[#93c5fd] text-xs font-bold"
+        "bg-blue-50 dark:bg-[#1c2235] text-blue-800 dark:text-[#93c5fd] text-xs font-bold"
       );
     if (["MC", "MR", "Mpl", "Mmi"].includes(id))
       return (
         base +
-        "bg-green-50 dark:bg-[#0b2016] text-green-600 dark:text-[#4ade80] text-xs"
+        "bg-green-50 dark:bg-[#0b2016] text-green-700 dark:text-[#4ade80] text-xs"
       );
     if (["sin", "cos", "tan", "sinh", "cosh", "tanh", "log", "ln"].includes(id))
       return (
         base +
-        "bg-blue-50 dark:bg-[#151e30] text-blue-500 dark:text-[#93c5fd] text-xs"
+        "bg-blue-50 dark:bg-[#151e30] text-blue-800 dark:text-[#93c5fd] text-xs"
       );
     if (
       [
@@ -747,17 +648,17 @@ function ScientificCalc() {
     )
       return (
         base +
-        "bg-violet-50 dark:bg-[#151e30] text-violet-500 dark:text-[#c4b5fd] text-xs"
+        "bg-violet-50 dark:bg-[#151e30] text-violet-700 dark:text-[#c4b5fd] text-xs"
       );
     if (["plus", "minus", "mul", "div"].includes(id))
       return (
         base +
-        "bg-orange-50 dark:bg-[#2a1e10] text-[var(--accent)] text-lg font-bold"
+        "bg-orange-50 dark:bg-[#2a1e10] text-[var(--accent-text)] text-lg font-bold"
       );
     if (["lp", "rp", "comma", "neg", "exp10", "ANS"].includes(id))
       return (
         base +
-        "bg-slate-100 dark:bg-[#1e1c18] text-slate-500 dark:text-[#c5b8a8] text-xs"
+        "bg-slate-100 dark:bg-[#1e1c18] text-slate-700 dark:text-[#c5b8a8] text-xs"
       );
     return (
       base +
@@ -788,7 +689,7 @@ function ScientificCalc() {
                 mode === "DEG"
                   ? "rgba(249,115,22,0.18)"
                   : "rgba(96,165,250,0.18)",
-              color: mode === "DEG" ? "var(--accent)" : "#93c5fd",
+              color: mode === "DEG" ? "var(--accent-text)" : "#93c5fd",
             }}
           >
             {mode}
@@ -799,7 +700,7 @@ function ScientificCalc() {
             </span>
           )}
           {memory !== 0 && (
-            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-green-500/20 text-green-600 dark:text-green-400">
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400">
               M
             </span>
           )}
@@ -807,7 +708,10 @@ function ScientificCalc() {
         <div
           className="text-right font-mono text-sm min-h-5.5 break-all leading-snug"
           style={{
-            color: error ? "#f87171" : justCalced ? "#9ca3af" : "#6b7280",
+            /* Fixed greys here read 4.1:1 light and 3.7:1 dark. --muted is the
+               themed token and clears 4.5:1 on both grounds. */
+            color: error ? "#dc2626" : "var(--muted)",
+            opacity: justCalced ? 0.75 : 1,
           }}
         >
           {displayExpr}
@@ -822,14 +726,14 @@ function ScientificCalc() {
             </span>
           ) : previewResult ? (
             <span
-              className="text-gray-400 dark:text-[#6a5a4a]"
+              className="text-gray-600 dark:text-[#b0a090]"
               style={{ fontSize: "clamp(18px, 4vw, 28px)" }}
             >
               {previewResult}
             </span>
           ) : (
             <span
-              className="text-gray-300 dark:text-[#2a2418]"
+              className="text-gray-600 dark:text-[#9c8f80]"
               style={{ fontSize: "clamp(20px, 5vw, 32px)" }}
             >
               0
@@ -854,7 +758,10 @@ function ScientificCalc() {
                   <span
                     className="absolute top-0.75 text-[7px] font-bold leading-none"
                     style={{
-                      color: shift ? "#fde68a" : "#9ca3af",
+                      /* 7px hints at gray-400 measured 2.33:1 light / 2.15:1
+                         dark. At this size they need the full 4.5:1 both ways,
+                         so the resting colour is a themed token, not a hex. */
+                      color: shift ? "#fde68a" : "var(--muted)",
                       transition: "color 0.15s",
                     }}
                   >
@@ -988,8 +895,7 @@ function GraphingCalc() {
     // Plot functions
     functions.forEach((fn) => {
       if (fn.error) return;
-      const sanitized = sanitizeGraphExpr(fn.expr);
-      if (!sanitized) return;
+      if (!isSafeGraphExpr(fn.expr)) return;
 
       // Resolve CSS variable color to actual color for canvas
       const color = fn.color.startsWith("var(")
@@ -1004,13 +910,7 @@ function GraphingCalc() {
       let penDown = false;
       for (let px = 0; px < W; px++) {
         const x = (px - ox) / scale;
-        let y: number;
-        try {
-          y = evalGraphFn(sanitized, x);
-        } catch {
-          penDown = false;
-          continue;
-        }
+        const y = evalGraphFn(fn.expr, x);
         if (!isFinite(y) || isNaN(y)) {
           penDown = false;
           continue;
@@ -1068,15 +968,8 @@ function GraphingCalc() {
 
   function addFunction() {
     if (!inputExpr.trim()) return;
-    const sanitized = sanitizeGraphExpr(inputExpr);
-    if (!sanitized) {
-      setInputError("Invalid expression. Only math characters allowed.");
-      return;
-    }
-    try {
-      evalGraphFn(sanitized, 1);
-    } catch {
-      setInputError("Could not parse expression.");
+    if (!isSafeGraphExpr(inputExpr)) {
+      setInputError("Could not read that expression.");
       return;
     }
     if (functions.length >= 5) {
@@ -1136,7 +1029,7 @@ function GraphingCalc() {
               key={label}
               onClick={action}
               className="w-7 h-7 rounded-lg text-sm font-bold flex items-center justify-center transition-opacity hover:opacity-100 opacity-70 bg-slate-200 dark:bg-[#1e1c18]"
-              style={{ color: "var(--accent)" }}
+              style={{ color: "var(--accent-text)" }}
             >
               {label}
             </button>
@@ -1165,7 +1058,7 @@ function GraphingCalc() {
               <button
                 onClick={() => removeFunction(i)}
                 aria-label={`Remove function ${fn.expr}`}
-                className="text-gray-400 dark:text-[#5a4a3a] hover:text-red-400 transition-colors text-xs"
+                className="text-gray-600 dark:text-[#b0a090] hover:text-red-600 transition-colors text-xs"
               >
                 <X size={16} strokeWidth={2} />
               </button>
@@ -1176,7 +1069,7 @@ function GraphingCalc() {
 
       {/* Add function input */}
       <div className="flex gap-2">
-        <input
+        <input aria-label="Function expression"
           type="text"
           value={inputExpr}
           onChange={(e) => {
@@ -1190,13 +1083,13 @@ function GraphingCalc() {
         <button
           onClick={addFunction}
           className="px-4 py-2 rounded-xl text-sm font-bold transition-opacity hover:opacity-90 active:scale-95"
-          style={{ background: "var(--accent)", color: "white" }}
+          style={{ background: "var(--accent)", color: "var(--accent-on)" }}
         >
           Plot
         </button>
       </div>
-      {inputError && <p className="text-xs text-red-400">{inputError}</p>}
-      <p className="text-[10px] text-gray-400 dark:text-[#4a3a2a]">
+      {inputError && <p className="text-xs text-red-600">{inputError}</p>}
+      <p className="text-[10px] text-gray-600 dark:text-[#9c8f80]">
         Drag to pan · +/− to zoom · Supports: sin, cos, tan, sqrt, log, ln, abs,
         π, e, ^
       </p>
@@ -1328,11 +1221,11 @@ function ConverterCalc() {
               "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95 " +
               (category === cat
                 ? ""
-                : "bg-slate-100 dark:bg-[#1a1814] text-gray-500 dark:text-[#7a6a56]")
+                : "bg-slate-100 dark:bg-[#1a1814] text-gray-600 dark:text-[#b0a090]")
             }
             style={
               category === cat
-                ? { background: "var(--accent)", color: "white" }
+                ? { background: "var(--accent)", color: "var(--accent-on)" }
                 : undefined
             }
           >
@@ -1345,14 +1238,14 @@ function ConverterCalc() {
       <div className="flex flex-col gap-2">
         {/* From row */}
         <div className="flex gap-2 items-center">
-          <input
+          <input aria-label="Value to convert"
             type="number"
             value={fromVal}
             onChange={(e) => setFromVal(e.target.value)}
             placeholder="0"
             className={inputClass + " flex-1 min-w-0"}
           />
-          <select
+          <select aria-label="Convert from unit"
             value={fromIdx}
             onChange={(e) => setFromIdx(Number(e.target.value))}
             className={selectClass}
@@ -1370,7 +1263,7 @@ function ConverterCalc() {
           <button
             onClick={swap}
             className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-transform hover:scale-110 active:scale-90 bg-slate-100 dark:bg-[#1a1814]"
-            style={{ color: "var(--accent)" }}
+            style={{ color: "var(--accent-text)" }}
             title="Swap"
           >
             ⇅
@@ -1379,14 +1272,14 @@ function ConverterCalc() {
 
         {/* To row */}
         <div className="flex gap-2 items-center">
-          <input
+          <input aria-label="Converted result"
             type="text"
             value={toVal}
             readOnly
             placeholder="0"
             className={inputClass + " flex-1 min-w-0 opacity-80 cursor-default"}
           />
-          <select
+          <select aria-label="Convert to unit"
             value={toIdx}
             onChange={(e) => setToIdx(Number(e.target.value))}
             className={selectClass}
@@ -1402,7 +1295,7 @@ function ConverterCalc() {
 
       {/* Currency status */}
       {category === "Currency" && (
-        <p className="text-[10px] text-gray-400 dark:text-[#4a3a2a]">
+        <p className="text-[10px] text-gray-600 dark:text-[#9c8f80]">
           {!ratesLoaded
             ? "Loading rates\u2026"
             : ratesError
@@ -1467,7 +1360,7 @@ function DateCalc() {
   })();
 
   const pillBase =
-    "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95 bg-slate-100 dark:bg-[#1a1814] text-gray-500 dark:text-[#7a6a56]";
+    "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95 bg-slate-100 dark:bg-[#1a1814] text-gray-600 dark:text-[#b0a090]";
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -1484,7 +1377,7 @@ function DateCalc() {
             }
             style={
               subMode === m
-                ? { background: "var(--accent)", color: "white" }
+                ? { background: "var(--accent)", color: "var(--accent-on)" }
                 : undefined
             }
           >
@@ -1497,10 +1390,10 @@ function DateCalc() {
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-gray-400 dark:text-[#5a4a3a] uppercase tracking-wide">
+              <label className="text-[10px] text-gray-600 dark:text-[#b0a090] uppercase tracking-wide">
                 From
               </label>
-              <input
+              <input aria-label="From date"
                 type="date"
                 value={dateA}
                 onChange={(e) => setDateA(e.target.value)}
@@ -1508,10 +1401,10 @@ function DateCalc() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-gray-400 dark:text-[#5a4a3a] uppercase tracking-wide">
+              <label className="text-[10px] text-gray-600 dark:text-[#b0a090] uppercase tracking-wide">
                 To
               </label>
-              <input
+              <input aria-label="To date"
                 type="date"
                 value={dateB}
                 onChange={(e) => setDateB(e.target.value)}
@@ -1523,7 +1416,7 @@ function DateCalc() {
           {durationResult && (
             <div className="rounded-2xl p-4 flex flex-col gap-3 bg-gray-50 dark:bg-[#0f0d0a] border border-gray-200 dark:border-[#1e1a16]">
               {durationResult.negative && (
-                <p className="text-[10px] text-amber-500">
+                <p className="text-[10px] text-amber-700">
                   Note: From date is later than To date
                 </p>
               )}
@@ -1539,17 +1432,17 @@ function DateCalc() {
                   >
                     <span
                       className="text-2xl font-bold font-mono"
-                      style={{ color: "var(--accent)" }}
+                      style={{ color: "var(--accent-text)" }}
                     >
                       {value}
                     </span>
-                    <span className="text-[10px] text-gray-400 dark:text-[#5a4a3a]">
+                    <span className="text-[10px] text-gray-600 dark:text-[#b0a090]">
                       {label}
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="text-center text-xs font-mono text-gray-400 dark:text-[#7a6a56]">
+              <div className="text-center text-xs font-mono text-gray-600 dark:text-[#b0a090]">
                 = {durationResult.totalDays.toLocaleString()} total days
               </div>
             </div>
@@ -1558,10 +1451,10 @@ function DateCalc() {
       ) : (
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] text-gray-400 dark:text-[#5a4a3a] uppercase tracking-wide">
+            <label className="text-[10px] text-gray-600 dark:text-[#b0a090] uppercase tracking-wide">
               Start date
             </label>
-            <input
+            <input aria-label="Start date"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -1579,12 +1472,12 @@ function DateCalc() {
                   className={
                     "px-3 py-2 text-xs font-semibold capitalize transition-all " +
                     (direction !== d
-                      ? "bg-gray-50 dark:bg-[#0f0d0a] text-gray-400 dark:text-[#5a4a3a]"
+                      ? "bg-gray-50 dark:bg-[#0f0d0a] text-gray-600 dark:text-[#b0a090]"
                       : "")
                   }
                   style={
                     direction === d
-                      ? { background: "var(--accent)", color: "white" }
+                      ? { background: "var(--accent)", color: "var(--accent-on)" }
                       : undefined
                   }
                 >
@@ -1592,14 +1485,14 @@ function DateCalc() {
                 </button>
               ))}
             </div>
-            <input
+            <input aria-label="Amount to add or subtract"
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               min="0"
               className="flex-1 min-w-0 bg-gray-50 dark:bg-[#0f0d0a] border border-gray-200 dark:border-[#2a2418] rounded-xl px-3 py-2 text-sm font-mono text-gray-900 dark:text-[#f5f0e8] outline-none focus:border-(--accent)"
             />
-            <select
+            <select aria-label="Unit"
               value={unit}
               onChange={(e) =>
                 setUnit(e.target.value as "days" | "months" | "years")
@@ -1614,12 +1507,12 @@ function DateCalc() {
 
           {addResult && (
             <div className="rounded-2xl p-4 text-center bg-gray-50 dark:bg-[#0f0d0a] border border-gray-200 dark:border-[#1e1a16]">
-              <p className="text-[10px] text-gray-400 dark:text-[#5a4a3a] mb-1 uppercase tracking-wide">
+              <p className="text-[10px] text-gray-600 dark:text-[#b0a090] mb-1 uppercase tracking-wide">
                 Result
               </p>
               <p
                 className="text-lg font-semibold font-mono"
-                style={{ color: "var(--accent)" }}
+                style={{ color: "var(--accent-text)" }}
               >
                 {addResult}
               </p>
@@ -1645,11 +1538,11 @@ export default function Calculator() {
       <div className="mb-3 shrink-0">
         <h1
           className="font-serif italic text-2xl mb-0.5"
-          style={{ color: "var(--accent)" }}
+          style={{ color: "var(--accent-text)" }}
         >
           Calculator
         </h1>
-        <p className="text-xs text-gray-400 dark:text-[#9a8f7e]">
+        <p className="text-xs text-gray-600 dark:text-[#b0a090]">
           {activeMode}
         </p>
       </div>
@@ -1671,14 +1564,14 @@ export default function Calculator() {
             className={
               "shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95 whitespace-nowrap " +
               (activeMode !== m
-                ? "bg-slate-100 dark:bg-[#1a1814] text-gray-500 dark:text-[#7a6a56]"
+                ? "bg-slate-100 dark:bg-[#1a1814] text-gray-600 dark:text-[#b0a090]"
                 : "")
             }
             style={
               activeMode === m
                 ? {
                     background: "var(--accent)",
-                    color: "white",
+                    color: "var(--accent-on)",
                     boxShadow: "0 2px 8px rgba(var(--accent-rgb),0.35)",
                   }
                 : undefined

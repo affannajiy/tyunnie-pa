@@ -98,7 +98,7 @@ export default function AuthPage() {
 
   if (signupSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-[#faf8f5] dark:bg-[#0e0d0b]">
+      <div className="min-h-dvh flex items-center justify-center px-4 bg-[#faf8f5] dark:bg-[#0e0d0b]">
         <div className="bg-white dark:bg-[#1a1815] border border-[#e8e2d8] dark:border-[#2a2620] rounded-2xl p-10 w-full max-w-md text-center shadow-xl">
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center text-2xl mx-auto mb-5"
@@ -116,13 +116,13 @@ export default function AuthPage() {
             Almost there
           </p>
           <div className="bg-[#faf8f5] dark:bg-[#111010] border border-[#e8e2d8] dark:border-[#2a2620] rounded-xl px-5 py-4 mb-6 text-left">
-            <p className="text-sm text-[#9a8f7e] dark:text-[#7a7060] leading-relaxed">
+            <p className="text-sm text-[#6f6455] dark:text-[#7a7060] leading-relaxed">
               We sent a confirmation link to{" "}
               <span className="font-semibold text-[#111010] dark:text-[#f5f0e8]">{email}</span>.
               Click it to activate your account, then come back and log in.
             </p>
           </div>
-          <p className="text-[10px] font-mono text-[#c5bdb0] dark:text-[#4a4540] mb-6 leading-relaxed">
+          <p className="text-[10px] font-mono text-[#756a5a] dark:text-[#9c8f80] mb-6 leading-relaxed">
             Didn't receive it? Check your spam folder. The link expires in 24 hours.
           </p>
           <button
@@ -138,12 +138,12 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#faf8f5] dark:bg-[#0e0d0b]">
+    <main className="min-h-dvh flex bg-[#faf8f5] dark:bg-[#0e0d0b]">
 
       {/* Version badge — links to the About page / changelog */}
       <Link
         href="/about"
-        className="fixed top-3 right-4 z-50 text-[10px] font-mono text-[#c5bdb0] dark:text-[#4a4540] hover:opacity-70 transition-opacity"
+        className="fixed top-3 right-4 z-50 text-[10px] font-mono text-[#756a5a] dark:text-[#9c8f80] hover:opacity-70 transition-opacity"
       >
         v{APP_VERSION}
       </Link>
@@ -184,7 +184,7 @@ export default function AuthPage() {
           >
             Tyunnie
           </span>
-          <p className="text-[#9a8f7e] dark:text-[#7a7060] text-sm mt-1">
+          <p className="text-[#6f6455] dark:text-[#7a7060] text-sm mt-1">
             Your personal AI assistant
           </p>
           <div className="mt-4 space-y-1.5">
@@ -222,7 +222,7 @@ export default function AuthPage() {
         {/* Mobile logo */}
         <div className="lg:hidden mb-8 text-center">
           <span className="text-3xl font-bold" style={{ color: accent }}>Tyunnie</span>
-          <p className="text-[#9a8f7e] text-sm mt-1">Your personal AI assistant</p>
+          <p className="text-[#6f6455] text-sm mt-1">Your personal AI assistant</p>
         </div>
 
         <div className="w-full max-w-sm">
@@ -231,7 +231,7 @@ export default function AuthPage() {
           <h1 className="text-2xl font-serif italic text-[#111010] dark:text-[#f5f0e8] mb-1">
             {mode === "login" ? "Welcome back" : "Create account"}
           </h1>
-          <p className="text-sm text-[#9a8f7e] dark:text-[#6a6050] mb-8">
+          <p className="text-sm text-[#6f6455] dark:text-[#6a6050] mb-8">
             {mode === "login"
               ? "Sign in to continue to your dashboard."
               : "Set up your Tyunnie account in seconds."}
@@ -257,7 +257,7 @@ export default function AuthPage() {
           {/* Divider */}
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-px bg-[#e8e2d8] dark:bg-[#2a2620]" />
-            <span className="text-[10px] font-mono text-[#c5bdb0] dark:text-[#3a3530] uppercase tracking-widest">
+            <span className="text-[10px] font-mono text-[#756a5a] dark:text-[#9c8f80] uppercase tracking-widest">
               or
             </span>
             <div className="flex-1 h-px bg-[#e8e2d8] dark:bg-[#2a2620]" />
@@ -266,16 +266,16 @@ export default function AuthPage() {
           {/* Email / password form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] dark:text-[#6a6050] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] dark:text-[#6a6050] mb-1.5">
                 Email
               </label>
-              <input
+              <input aria-label="Email address"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                className="w-full bg-[#faf8f5] dark:bg-[#111010] border border-[#e8e2d8] dark:border-[#2a2620] rounded-xl px-4 py-3 text-sm text-[#111010] dark:text-[#f5f0e8] placeholder:text-[#c5bdb0] dark:placeholder:text-[#3a3530] outline-none transition-all"
+                className="w-full bg-[#faf8f5] dark:bg-[#111010] border border-[#e8e2d8] dark:border-[#2a2620] rounded-xl px-4 py-3 text-sm text-[#111010] dark:text-[#f5f0e8] placeholder:text-[#756a5a] dark:placeholder:text-[#8f8272] outline-none transition-all"
                 style={{ boxShadow: "none" }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = accent)}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "")}
@@ -283,24 +283,24 @@ export default function AuthPage() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#9a8f7e] dark:text-[#6a6050] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#6f6455] dark:text-[#6a6050] mb-1.5">
                 Password
               </label>
-              <input
+              <input aria-label="Password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
                 minLength={6}
-                className="w-full bg-[#faf8f5] dark:bg-[#111010] border border-[#e8e2d8] dark:border-[#2a2620] rounded-xl px-4 py-3 text-sm text-[#111010] dark:text-[#f5f0e8] placeholder:text-[#c5bdb0] dark:placeholder:text-[#3a3530] outline-none transition-all"
+                className="w-full bg-[#faf8f5] dark:bg-[#111010] border border-[#e8e2d8] dark:border-[#2a2620] rounded-xl px-4 py-3 text-sm text-[#111010] dark:text-[#f5f0e8] placeholder:text-[#756a5a] dark:placeholder:text-[#8f8272] outline-none transition-all"
                 onFocus={(e) => (e.currentTarget.style.borderColor = accent)}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "")}
               />
             </div>
 
             {error && (
-              <p className="text-red-500 text-xs bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg px-4 py-3">
+              <p className="text-red-600 text-xs bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg px-4 py-3">
                 {error}
               </p>
             )}
@@ -320,7 +320,7 @@ export default function AuthPage() {
           </form>
 
           {/* Toggle */}
-          <p className="text-center text-sm text-[#9a8f7e] dark:text-[#6a6050] mt-6">
+          <p className="text-center text-sm text-[#6f6455] dark:text-[#6a6050] mt-6">
             {mode === "login" ? "Don't have an account? " : "Already have an account? "}
             <button
               onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); }}
@@ -334,7 +334,7 @@ export default function AuthPage() {
           {/* Guest preview — explore without an account */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-[#e8e2d8] dark:bg-[#2a2620]" />
-            <span className="text-[10px] font-mono text-[#c5bdb0] dark:text-[#3a3530] uppercase tracking-widest">
+            <span className="text-[10px] font-mono text-[#756a5a] dark:text-[#9c8f80] uppercase tracking-widest">
               just looking?
             </span>
             <div className="flex-1 h-px bg-[#e8e2d8] dark:bg-[#2a2620]" />
@@ -348,12 +348,12 @@ export default function AuthPage() {
             <span aria-hidden="true">🧡</span>
             Explore as a guest
           </button>
-          <p className="text-center text-[11px] text-[#c5bdb0] dark:text-[#4a4540] mt-2">
+          <p className="text-center text-[11px] text-[#756a5a] dark:text-[#9c8f80] mt-2">
             Sample data, no sign-up. Nothing is saved to an account.
           </p>
 
         </div>
       </div>
-    </div>
+    </main>
   );
 }

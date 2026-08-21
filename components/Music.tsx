@@ -264,7 +264,7 @@ export default function Music() {
     // *hidden*, so the bottom of the panel sits under the browser chrome and the
     // dock. `min-h-` below lg because the two columns stack there — a fixed
     // height would have to fit both, and it can't.
-    <div className="flex flex-col lg:flex-row min-h-[calc(100dvh-120px)] lg:h-[calc(100dvh-120px)] bg-[#111010] rounded-2xl overflow-hidden border border-[#2a2520] relative">
+    <div className="on-dark flex flex-col lg:flex-row min-h-[calc(100dvh-120px)] lg:h-[calc(100dvh-120px)] bg-[#111010] rounded-2xl overflow-hidden border border-[#2a2520] relative">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -298,7 +298,7 @@ export default function Music() {
 
         <div className="text-center mb-5 w-full max-w-xs">
           {tracks.length === 0 ? (
-            <div className="text-[#9a8f7e] text-sm">
+            <div className="text-[#b0a090] text-sm">
               <p className="mb-1">No tracks yet.</p>
               <p className="text-[10px] font-mono text-(--accent)">
                 Use the + button to add your first song.
@@ -309,7 +309,7 @@ export default function Music() {
               <h2 className="font-serif italic text-xl text-white mb-1 truncate">
                 {currentTrack?.title ?? "Unknown"}
               </h2>
-              <p className="text-[#9a8f7e] text-xs font-mono">
+              <p className="text-[#b0a090] text-xs font-mono">
                 {currentTrack?.artist ?? ""}
               </p>
             </>
@@ -317,7 +317,7 @@ export default function Music() {
         </div>
 
         <div className="w-full max-w-xs mb-4">
-          <input
+          <input aria-label="Seek position"
             type="range"
             min={0}
             max={duration || 100}
@@ -330,10 +330,10 @@ export default function Music() {
             }}
           />
           <div className="flex justify-between mt-1">
-            <span className="text-[10px] font-mono text-[#9a8f7e]">
+            <span className="text-[10px] font-mono text-[#b0a090]">
               {formatTime(progress)}
             </span>
-            <span className="text-[10px] font-mono text-[#9a8f7e]">
+            <span className="text-[10px] font-mono text-[#b0a090]">
               {formatTime(duration)}
             </span>
           </div>
@@ -343,19 +343,20 @@ export default function Music() {
           <button
             onClick={toggleShuffle}
             title="Shuffle"
-            className={`transition-all ${shuffle ? "text-(--accent)" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
+            className={`transition-all ${shuffle ? "text-(--accent)" : "text-[#8f8272] hover:text-[#b0a090]"}`}
           >
             <Shuffle size={16} strokeWidth={1.75} />
           </button>
           <button
             onClick={() => skipBack(10)}
             title="Back 10s"
-            className="text-[10px] font-mono text-[#4a4038] hover:text-[#9a8f7e] transition-colors w-7 text-center leading-none"
+            className="text-[10px] font-mono text-[#8f8272] hover:text-[#b0a090] transition-colors w-7 text-center leading-none"
           >
             −10
           </button>
           <button
             onClick={prevTrack}
+            aria-label="Previous track"
             className="w-9 h-9 flex items-center justify-center text-white hover:text-(--accent) transition-colors"
           >
             <SkipBack size={18} strokeWidth={1.75} fill="currentColor" />
@@ -374,6 +375,7 @@ export default function Music() {
           </button>
           <button
             onClick={nextTrack}
+            aria-label="Next track"
             className="w-9 h-9 flex items-center justify-center text-white hover:text-(--accent) transition-colors"
           >
             <SkipForward size={18} strokeWidth={1.75} fill="currentColor" />
@@ -381,14 +383,14 @@ export default function Music() {
           <button
             onClick={() => skipForward(10)}
             title="Forward 10s"
-            className="text-[10px] font-mono text-[#4a4038] hover:text-[#9a8f7e] transition-colors w-7 text-center leading-none"
+            className="text-[10px] font-mono text-[#8f8272] hover:text-[#b0a090] transition-colors w-7 text-center leading-none"
           >
             +10
           </button>
           <button
             onClick={cycleRepeat}
             title={`Repeat: ${repeat}`}
-            className={`transition-all ${repeat !== "none" ? "text-(--accent)" : "text-[#4a4038] hover:text-[#9a8f7e]"}`}
+            className={`transition-all ${repeat !== "none" ? "text-(--accent)" : "text-[#8f8272] hover:text-[#b0a090]"}`}
           >
             {repeat === "one" ? (
               <Repeat1 size={16} strokeWidth={1.75} />
@@ -401,11 +403,12 @@ export default function Music() {
         <div className="flex items-center gap-3 w-full max-w-xs">
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="text-[#9a8f7e] hover:text-(--accent) transition-colors text-sm w-5"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+            className="text-[#b0a090] hover:text-(--accent) transition-colors text-sm w-5"
           >
             {isMuted || volume === 0 ? <VolumeX size={16} strokeWidth={1.75} /> : volume < 0.5 ? <Volume1 size={16} strokeWidth={1.75} /> : <Volume2 size={16} strokeWidth={1.75} />}
           </button>
-          <input
+          <input aria-label="Volume"
             type="range"
             min={0}
             max={1}
@@ -421,7 +424,7 @@ export default function Music() {
               accentColor: "var(--accent)",
             }}
           />
-          <span className="text-[10px] font-mono text-[#9a8f7e] w-7 text-right">
+          <span className="text-[10px] font-mono text-[#b0a090] w-7 text-right">
             {Math.round((isMuted ? 0 : volume) * 100)}
           </span>
         </div>
@@ -437,7 +440,7 @@ export default function Music() {
           {view === "manage" ? (
             <button
               onClick={() => setView("queue")}
-              className="text-[#9a8f7e] hover:text-(--accent) transition-colors text-xs font-mono flex items-center gap-1"
+              className="text-[#b0a090] hover:text-(--accent) transition-colors text-xs font-mono flex items-center gap-1"
             >
               ← Queue
             </button>
@@ -448,7 +451,7 @@ export default function Music() {
           )}
           <div className="flex-1 h-px bg-[#2a2520]" />
           {view === "queue" && (
-            <span className="text-[10px] font-mono text-[#9a8f7e]">
+            <span className="text-[10px] font-mono text-[#b0a090]">
               {tracks.length} tracks
             </span>
           )}
@@ -469,7 +472,7 @@ export default function Music() {
         {view === "queue" && (
           <>
             {tracks.length === 0 && (
-              <div className="text-center py-16 text-[#4a4038]">
+              <div className="text-center py-16 text-[#8f8272]">
                 <Music2 size={36} strokeWidth={1.5} className="mb-4 mx-auto" />
                 <p className="text-sm font-mono">No tracks yet.</p>
                 <button
@@ -508,7 +511,7 @@ export default function Music() {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-[11px] font-mono text-[#4a4038] group-hover:text-[#9a8f7e]">
+                      <span className="text-[11px] font-mono text-[#8f8272] group-hover:text-[#b0a090]">
                         {i + 1}
                       </span>
                     )}
@@ -532,7 +535,7 @@ export default function Music() {
                     >
                       {track.title}
                     </div>
-                    <div className="text-[11px] text-[#9a8f7e] font-mono truncate">
+                    <div className="text-[11px] text-[#b0a090] font-mono truncate">
                       {track.artist}
                       {track.isUserTrack && (
                         <span className="ml-2 text-(--accent)/50">↑</span>
@@ -555,7 +558,7 @@ export default function Music() {
               </p>
 
               <div className="flex flex-col gap-3">
-                <input
+                <input aria-label="Track title"
                   type="text"
                   placeholder="Title"
                   value={title}
@@ -563,7 +566,7 @@ export default function Music() {
                   required
                   className="w-full px-3 py-2 rounded-lg bg-[#1a1410] border border-[#2a2520] text-white text-sm placeholder-[#4a4038] focus:outline-none focus:border-(--accent)/50 transition-colors"
                 />
-                <input
+                <input aria-label="Artist"
                   type="text"
                   placeholder="Artist"
                   value={artist}
@@ -574,7 +577,7 @@ export default function Music() {
 
                 {/* Audio file */}
                 <label className="flex flex-col gap-1 cursor-pointer group">
-                  <span className="text-[10px] font-mono text-[#9a8f7e]">
+                  <span className="text-[10px] font-mono text-[#b0a090]">
                     Audio file <span className="text-(--accent)">*</span>
                   </span>
                   <div
@@ -585,7 +588,7 @@ export default function Music() {
                     }`}
                   >
                     <Music2 size={16} strokeWidth={1.75} />
-                    <span className="text-xs text-[#9a8f7e] truncate flex-1">
+                    <span className="text-xs text-[#b0a090] truncate flex-1">
                       {audioFile ? audioFile.name : "Choose MP3 / M4A / WAV / FLAC"}
                     </span>
                     {audioFile && (
@@ -597,13 +600,13 @@ export default function Music() {
                           if (audioInputRef.current) audioInputRef.current.value = "";
                         }}
                         aria-label="Clear selected audio file"
-                        className="text-[#4a4038] hover:text-[#9a8f7e] text-xs shrink-0"
+                        className="text-[#8f8272] hover:text-[#b0a090] text-xs shrink-0"
                       >
                         <X size={16} strokeWidth={2} />
                       </button>
                     )}
                   </div>
-                  <input
+                  <input aria-label="Audio file"
                     ref={audioInputRef}
                     type="file"
                     accept=".mp3,.m4a,.wav,.flac,audio/*"
@@ -614,9 +617,9 @@ export default function Music() {
 
                 {/* Cover image */}
                 <label className="flex flex-col gap-1 cursor-pointer group">
-                  <span className="text-[10px] font-mono text-[#9a8f7e]">
+                  <span className="text-[10px] font-mono text-[#b0a090]">
                     Cover image{" "}
-                    <span className="text-[#4a4038]">(optional)</span>
+                    <span className="text-[#8f8272]">(optional)</span>
                   </span>
                   <div
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
@@ -626,7 +629,7 @@ export default function Music() {
                     }`}
                   >
                     <ImageIcon size={16} strokeWidth={1.75} />
-                    <span className="text-xs text-[#9a8f7e] truncate flex-1">
+                    <span className="text-xs text-[#b0a090] truncate flex-1">
                       {coverFile ? coverFile.name : "Choose JPG / PNG / WebP"}
                     </span>
                     {coverFile && (
@@ -638,13 +641,13 @@ export default function Music() {
                           if (coverInputRef.current) coverInputRef.current.value = "";
                         }}
                         aria-label="Clear selected cover image"
-                        className="text-[#4a4038] hover:text-[#9a8f7e] text-xs shrink-0"
+                        className="text-[#8f8272] hover:text-[#b0a090] text-xs shrink-0"
                       >
                         <X size={16} strokeWidth={2} />
                       </button>
                     )}
                   </div>
-                  <input
+                  <input aria-label="Cover image"
                     ref={coverInputRef}
                     type="file"
                     accept=".jpg,.jpeg,.png,.webp,image/*"
@@ -665,7 +668,7 @@ export default function Music() {
               )}
 
               {uploadState === "error" && (
-                <p className="text-xs text-red-400 font-mono">{uploadError}</p>
+                <p className="text-xs text-red-600 font-mono">{uploadError}</p>
               )}
 
               {uploadState === "done" && (
@@ -686,7 +689,7 @@ export default function Music() {
             {/* Divider */}
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-[#2a2520]" />
-              <span className="text-[10px] font-mono text-[#4a4038]">
+              <span className="text-[10px] font-mono text-[#8f8272]">
                 your uploads · {userTracks.length}
               </span>
               <div className="flex-1 h-px bg-[#2a2520]" />
@@ -694,7 +697,7 @@ export default function Music() {
 
             {/* User-uploaded track list */}
             {userTracks.length === 0 ? (
-              <p className="text-center text-xs font-mono text-[#4a4038] py-4">
+              <p className="text-center text-xs font-mono text-[#8f8272] py-4">
                 No uploads yet.
               </p>
             ) : (
@@ -721,7 +724,7 @@ export default function Music() {
                       <div className="text-sm text-white truncate">
                         {track.title}
                       </div>
-                      <div className="text-[11px] text-[#9a8f7e] font-mono truncate">
+                      <div className="text-[11px] text-[#b0a090] font-mono truncate">
                         {track.artist}
                       </div>
                     </div>
@@ -745,7 +748,7 @@ export default function Music() {
                       }}
                       title="Remove track"
                       aria-label={`Remove track ${track.title ?? ""}`}
-                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#4a4038] hover:text-red-400 hover:bg-red-400/10 transition-all text-sm shrink-0"
+                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#8f8272] hover:text-red-600 hover:bg-red-400/10 transition-all text-sm shrink-0"
                     >
                       <X size={16} strokeWidth={2} />
                     </button>

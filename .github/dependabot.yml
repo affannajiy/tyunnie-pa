@@ -1,6 +1,6 @@
 version: 2
 
-# Dependency hygiene (SECURITY_Rulebook §3.2) — CVEs get found by the pipeline
+# Dependency hygiene (SECURITY_Rulebook §5b) — CVEs get found by the pipeline
 # on a schedule, not by someone remembering to run `npm audit` before a deploy.
 #
 # Security updates are raised by Dependabot immediately and ignore the schedule

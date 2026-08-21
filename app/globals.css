@@ -14,8 +14,8 @@
   --orange-dim: #c2500f;
   --black: #111010;
   --text: #2d2416;
-  --muted: #9a8f7e;
-  --muted2: #c5bdb0;
+  --muted: #6f6455;
+  --muted2: #756a5a;
 
   /* ── ACCENT COLOR SYSTEM ── */
   /* These default to orange and are overridden by the accent script in layout.tsx */
@@ -24,6 +24,12 @@
   --accent-mid: #fed7aa;
   --accent-dim: #c2500f;
   --accent-rgb: 249, 115, 22;
+  /* Contrast-safe derivatives of the accent (see lib/accent.ts). These are the
+     fallbacks for the default orange; the pre-paint script in app/layout.tsx
+     and setAccentVars() recompute them for whatever colour the user picked. */
+  --accent-text: #96410a;
+  --accent-text-dark: #fb9a52;
+  --accent-on: #16120c;
 }
 
 /* Custom properties only animate once registered with a type — a plain
@@ -343,12 +349,21 @@ body {
   color: #e8ddd0 !important;
 }
 
-.dark .text-\[\#9a8f7e\] {
+/* Dark remaps for the muted text tiers. The light values were darkened in
+   3.27.0 to clear WCAG 1.4.3 (4.5:1) — #9a8f7e was 3.18:1 on white and
+   #c5bdb0 was 1.86:1, i.e. below even the 3:1 floor for large text. These
+   selectors are keyed on the new hexes; #7a6a5a here failed too (3.36:1 on
+   #1c1917) and is now #9c8f80 (5.54:1). */
+.dark .text-\[\#6f6455\] {
   color: #b0a090 !important;
 }
 
-.dark .text-\[\#c5bdb0\] {
-  color: #7a6a5a !important;
+.dark .text-\[\#756a5a\] {
+  color: #9c8f80 !important;
+}
+
+.dark .text-\[\#856348\] {
+  color: #c9ab8c !important;
 }
 
 .dark input,
@@ -359,9 +374,35 @@ body {
   border-color: #2a2520 !important;
 }
 
+/* A placeholder is still text (WCAG 1.4.3). #4a4038 was 1.73:1 on the dark
+   input surface — legible to nobody. */
+.dark body { --muted: #b0a090; --muted2: #9c8f80; }
+
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #4a4038 !important;
+  color: #8f8272 !important;
+}
+
+/* Skip link — WCAG 2.4.1. Off-screen until focused, then a normal-looking
+   control at the top-left. Not `display:none`: a hidden element is not
+   focusable, which is the usual way this pattern is shipped broken. */
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 200;
+  padding: 0.6rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--accent, #f97316);
+  color: var(--accent-on, #16120c);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transform: translateY(-150%);
+  transition: transform 0.15s ease;
+}
+.skip-link:focus-visible,
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 /* Small controls that must stay visually small but need a real touch target.
@@ -411,7 +452,19 @@ body {
 
 .dark .border-\[\#f0ece8\] { border-color: #2a2520 !important; }
 .dark .text-\[\#1a1208\] { color: #e8ddd0 !important; }
-.dark .text-\[\#8a6f5a\] { color: #a9968a !important; }
+.dark .text-\[\#2a1f15\] { color: #e8ddd0 !important; }
+/* The palette steps darkened in 3.27.0 to clear contrast on light surfaces are
+   too dark on the dark one. Each gets the mirrored step. */
+.dark .text-red-600, .dark .text-red-700 { color: #fca5a5 !important; }
+.dark .text-blue-700, .dark .text-blue-800 { color: #93c5fd !important; }
+.dark .text-green-700 { color: #86efac !important; }
+.dark .text-violet-700 { color: #c4b5fd !important; }
+.dark .text-purple-700 { color: #d8b4fe !important; }
+.dark .text-amber-700 { color: #fcd34d !important; }
+.dark .text-slate-700 { color: #cbd5e1 !important; }
+.dark .text-gray-600, .dark .text-gray-700 { color: #c4b9a8 !important; }
+
+.dark .text-\[\#7d6350\] { color: #a9968a !important; }
 
 /* Dark-mode remaps for the semantic Tailwind badge palettes used by
    Todo tags and Project statuses. Without these they stay pastel-light
@@ -426,7 +479,7 @@ body {
 .dark .text-\[\#15803d\]   { color: #6ee7a0 !important; }
 .dark .border-\[\#86efac\] { border-color: #1f5136 !important; }
 .dark .bg-\[\#eff6ff\]     { background-color: #10203a !important; }
-.dark .text-\[\#3b82f6\]   { color: #7ab0f5 !important; }
+.dark .text-\[\#1d4ed8\]   { color: #7ab0f5 !important; }
 .dark .border-\[\#bfdbfe\] { border-color: #23406b !important; }
 
 /* ── ACCENT COLOR OVERRIDES ──
@@ -443,13 +496,43 @@ body {
 .hover\:bg-\[\#fff0e6\]:hover { background-color: var(--accent-soft) !important; }
 .bg-\[\#fed7aa\] { background-color: var(--accent-mid) !important; }
 
-/* Text colors */
-.text-\[\#f97316\] { color: var(--accent) !important; }
-.hover\:text-\[\#f97316\]:hover { color: var(--accent) !important; }
-.text-\[\#c2500f\] { color: var(--accent-dim) !important; }
-.hover\:text-\[\#c2500f\]:hover { color: var(--accent-dim) !important; }
+/* Text colors.
+   Text takes --accent-text, NOT --accent. The raw accent is 2.8:1 on white at
+   the default orange, under WCAG 1.4.3's 4.5:1 floor; the derivative is the
+   same hue walked dark enough to clear it (UI/UX §8: contrast wins on text and
+   controls, the brand colour keeps the fills). Fills, borders, rings and glows
+   below all still use --accent. */
+.text-\(--accent\) { color: var(--accent-text) !important; }
+.text-\[var\(--accent\)\] { color: var(--accent-text) !important; }
+.hover\:text-\(--accent\):hover { color: var(--accent-text) !important; }
+.group:hover .group-hover\:text-\(--accent\) { color: var(--accent-text) !important; }
+.text-\[\#f97316\] { color: var(--accent-text) !important; }
+.hover\:text-\[\#f97316\]:hover { color: var(--accent-text) !important; }
+/* #c2500f reads as "the darker accent" and is only ever used on text, but
+   --accent-dim is a fixed -18% lightness step that landed at 4.24:1 on the
+   tinted chip backgrounds. Text takes the measured walk instead. */
+.text-\[\#c2500f\] { color: var(--accent-text) !important; }
+.hover\:text-\[\#c2500f\]:hover { color: var(--accent-text) !important; }
 .text-\[\#fff0e6\] { color: var(--accent-soft) !important; }
-.group:hover .group-hover\:text-\[\#f97316\] { color: var(--accent) !important; }
+.group:hover .group-hover\:text-\[\#f97316\] { color: var(--accent-text) !important; }
+
+/* Text sitting ON an accent fill. White-on-orange was 2.8:1; --accent-on picks
+   white or near-black by measurement, whichever the chosen accent supports.
+   !important so it outranks a `text-white` utility on the same element — but
+   an inline style still wins, which is why those sites were changed directly. */
+.bg-\[\#f97316\], .bg-\(--accent\) { color: var(--accent-on) !important; }
+
+/* Surfaces that are dark regardless of the theme toggle (the music panel, focus
+   mode, the chat sheet). They opt into the light-walked accent locally, so one
+   variable name works on both grounds. */
+.on-dark,
+/* NOT `.dark { ... }`: setAccentVars() writes --accent-text as an INLINE style
+   on <html>, and inline beats a class rule on the same element, so the dark
+   swap silently never applied. Scoping it to body puts it on a descendant,
+   where the cascade works as intended. */
+.dark body {
+  --accent-text: var(--accent-text-dark);
+}
 
 /* Border colors */
 .border-\[\#f97316\] { border-color: var(--accent) !important; }
@@ -464,6 +547,20 @@ body {
 .focus\:ring-\[\#f97316\]:focus { --tw-ring-color: var(--accent) !important; }
 
 /* Dark mode overrides that reference orange tones — keep them accent-aware */
+/* Tint chips that had no dark counterpart. `dark:` utilities exist in these
+   components but the custom variant is wrapped in :where(), which is
+   zero-specificity — it ties with the base utility and loses on ordering for
+   arbitrary values. These explicit rules are what the manual remap list above
+   exists for; they are not a second system, they are the same one. */
+.dark .bg-orange-50 { background-color: #2a2218 !important; }
+.dark .bg-red-100   { background-color: #3a1414 !important; }
+.dark .bg-red-50    { background-color: #2a1414 !important; }
+.dark .bg-blue-50   { background-color: #12203a !important; }
+.dark .bg-violet-50 { background-color: #1e1633 !important; }
+.dark .bg-amber-50  { background-color: #2a1e0e !important; }
+.dark .bg-gray-50, .dark .bg-slate-100 { background-color: #1a1814 !important; }
+.dark .border-red-200 { border-color: #5a2222 !important; }
+
 .dark .bg-\[\#fff0e6\] { background-color: color-mix(in srgb, var(--accent) 18%, #1a0f00) !important; }
 .dark .border-\[\#fed7aa\] { border-color: color-mix(in srgb, var(--accent) 45%, #000) !important; }
 

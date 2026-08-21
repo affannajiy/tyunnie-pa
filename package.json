@@ -1,6 +1,6 @@
 {
   "name": "tyunnie",
-  "version": "3.26.3",
+  "version": "3.27.0",
   "private": true,
   "engines": {
     "node": ">=22"

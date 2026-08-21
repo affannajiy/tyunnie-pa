@@ -91,5 +91,7 @@ exactly how the vault shipped broken until 3.25.0. Two questions before you fini
 ## Out of scope
 
 Auth flows, JWT verification, rate limiting, crypto → `tyun-security`. Query caching
-and request waterfalls → `tyun-network`. Don't add an ORM or a query builder; the app
+and request waterfalls → `tyun-network`. The fire-and-forget write path in
+`lib/database.ts` is tracked debt, owned by `tyun-engineer` — don't add a `boolean`
+return before a caller exists to read it. Don't add an ORM or a query builder; the app
 uses the Supabase client directly and `lib/database.ts` is the single seam.

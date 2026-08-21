@@ -91,8 +91,9 @@ export default function Sidebar({
   return (
     <>
       {/* ── DESKTOP: macOS-style bottom dock ── */}
-      <div
-        className="hidden md:flex fixed bottom-5 left-1/2 -translate-x-1/2 z-50 items-end gap-1 px-3 py-2.5"
+      <nav
+        aria-label="Primary"
+        className="on-dark hidden md:flex fixed bottom-5 left-1/2 -translate-x-1/2 z-50 items-end gap-1 px-3 py-2.5"
         style={{
           background: "rgba(15, 14, 13, 0.72)",
           backdropFilter: "blur(24px) saturate(180%)",
@@ -135,6 +136,13 @@ export default function Sidebar({
               <button
                 onClick={() => onChange(panel)}
                 title={label}
+                aria-label={label}
+                /* The active item is otherwise signalled by an accent tint
+                   alone — colour is never the only carrier of meaning
+                   (WCAG 1.4.1), and a screen reader has no tint to read. */
+                aria-current={isActive ? "page" : undefined}
+                onFocus={() => setHoveredIdx(idx)}
+                onBlur={() => setHoveredIdx(null)}
                 {...pressProps(idx)}
                 className="flex items-center justify-center rounded-[13px] cursor-pointer border-none outline-none transition-colors duration-100"
                 style={{
@@ -159,7 +167,7 @@ export default function Sidebar({
                 <Icon
                   size={22}
                   strokeWidth={1.75}
-                  color={isActive ? "var(--accent)" : "rgba(255,255,255,0.62)"}
+                  color={isActive ? "var(--accent-text)" : "rgba(255,255,255,0.62)"}
                 />
               </button>
 
@@ -169,7 +177,7 @@ export default function Sidebar({
                 style={{
                   width: 5,
                   height: 5,
-                  background: isActive ? "var(--accent)" : "transparent",
+                  background: isActive ? "var(--accent-text)" : "transparent",
                   transform: isActive ? "scale(1)" : "scale(0)",
                   boxShadow: isActive ? `0 0 5px rgba(var(--accent-rgb), 0.8)` : "none",
                   transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, box-shadow 0.2s ease",
@@ -233,7 +241,7 @@ export default function Sidebar({
             style={{
               width: 5,
               height: 5,
-              background: tyunnieOpen ? "var(--accent)" : "transparent",
+              background: tyunnieOpen ? "var(--accent-text)" : "transparent",
               transform: tyunnieOpen ? "scale(1)" : "scale(0)",
               boxShadow: tyunnieOpen ? `0 0 5px rgba(var(--accent-rgb), 0.8)` : "none",
               transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, box-shadow 0.2s ease",
@@ -331,11 +339,12 @@ export default function Sidebar({
         </div>
 
         {/* Logout moved to the header avatar menu (Profile ▸ Log out) */}
-      </div>
+      </nav>
 
       {/* ── MOBILE: compact bottom tab bar ── */}
-      <div
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around"
+      <nav
+        aria-label="Primary"
+        className="on-dark md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around"
         style={{
           background: "rgba(15, 14, 13, 0.92)",
           backdropFilter: "blur(20px) saturate(160%)",
@@ -350,9 +359,14 @@ export default function Sidebar({
             <button
               key={panel}
               onClick={() => onChange(panel)}
+              aria-current={isActive ? "page" : undefined}
               className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
               style={{
-                color: isActive ? "var(--accent)" : "rgba(255,255,255,0.45)",
+                /* 0.45 white composited over the bar reads 4.53:1, but the
+                   label below dimmed it again to 0.55 — 2.17:1 in effect,
+                   under the 4.5:1 floor (WCAG 1.4.3). Both raised so the
+                   product still clears it. */
+                color: isActive ? "var(--accent-text)" : "rgba(255,255,255,0.72)",
                 transition: "color 0.2s ease",
               }}
             >
@@ -368,7 +382,7 @@ export default function Sidebar({
               </span>
               <span
                 className="text-[9px] font-bold uppercase tracking-wide font-mono"
-                style={{ opacity: isActive ? 1 : 0.55, transition: "opacity 0.2s ease" }}
+                style={{ opacity: isActive ? 1 : 0.85, transition: "opacity 0.2s ease" }}
               >
                 {label}
               </span>
@@ -377,7 +391,7 @@ export default function Sidebar({
                 style={{
                   width: 5,
                   height: 5,
-                  background: isActive ? "var(--accent)" : "transparent",
+                  background: isActive ? "var(--accent-text)" : "transparent",
                   transform: isActive ? "scale(1)" : "scale(0)",
                   boxShadow: isActive ? `0 0 5px rgba(var(--accent-rgb), 0.8)` : "none",
                   transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, box-shadow 0.2s ease",
@@ -392,7 +406,7 @@ export default function Sidebar({
           onClick={onTyunnieToggle}
           className="flex-1 flex flex-col items-center justify-center pt-3 pb-2 gap-1 min-w-0 active:opacity-60"
           style={{
-            color: tyunnieOpen ? "var(--accent)" : "rgba(255,255,255,0.45)",
+            color: tyunnieOpen ? "var(--accent-text)" : "rgba(255,255,255,0.45)",
             transition: "color 0.2s ease",
           }}
         >
@@ -417,7 +431,7 @@ export default function Sidebar({
             style={{
               width: 5,
               height: 5,
-              background: tyunnieOpen ? "var(--accent)" : "transparent",
+              background: tyunnieOpen ? "var(--accent-text)" : "transparent",
               transform: tyunnieOpen ? "scale(1)" : "scale(0)",
               boxShadow: tyunnieOpen ? `0 0 5px rgba(var(--accent-rgb), 0.8)` : "none",
               transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.2s ease, box-shadow 0.2s ease",
@@ -454,7 +468,7 @@ export default function Sidebar({
         </button>
 
         {/* Logout moved to the header avatar menu (Profile ▸ Log out) */}
-      </div>
+      </nav>
     </>
   );
 }
