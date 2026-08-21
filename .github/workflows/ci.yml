@@ -56,7 +56,7 @@ jobs:
       # push protection catches known provider formats at push time; this
       # catches what it does not, and covers history on every PR.
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
