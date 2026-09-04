@@ -3,6 +3,9 @@ import { Resend } from "resend";
 import Groq from "groq-sdk";
 import { timingSafeEqual } from "crypto";
 import { TYUN_CORE, isTyunBirthday } from "@/lib/tyunPersona";
+import { withTimeout } from "@/lib/withTimeout";
+import { mailFrom, isSandboxSender } from "@/lib/mailFrom";
+import { GROQ_MODEL, GROQ_REASONING_EFFORT } from "@/lib/aiModels";
 
 // Concrete angles to seed each message so Taehyun ranges widely instead of
 // drifting back to the same 3 safe lines. One is picked at random per send.
@@ -113,6 +116,12 @@ function groq() {
   return (_groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY }));
 }
 
+// Neither SDK takes a timeout. The whole batch is raced against a 9s ceiling
+// below, so a single stalled call used to burn the budget for everyone —
+// per-call deadlines let one bad send fail on its own (§3.11).
+const LLM_TIMEOUT_MS = 5_000;
+const MAIL_TIMEOUT_MS = 4_000;
+
 // Verify cron secret so random people can't spam this endpoint
 function verifyCronSecret(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -161,7 +170,9 @@ export async function GET(req: NextRequest) {
         profile.id,
       );
       const email = userData?.user?.email;
-      if (!email) return;
+      // No address is not a send. Returning here used to settle as "fulfilled"
+      // and inflate the count below, so it throws and lands in the failure log.
+      if (!email) throw new Error(`no email for profile ${profile.id}`);
 
       // On Feb 5 every note becomes a birthday note from Taehyun himself —
       // it's HIS birthday, not the reader's. Otherwise pick a random angle so
@@ -172,8 +183,10 @@ export async function GET(req: NextRequest) {
         : pick(TOPICS);
       const tone = tyunBday ? "teasing" : pick(TONES);
 
-      const completion = await groq().chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+      const completion = await withTimeout(
+        groq().chat.completions.create({
+        model: GROQ_MODEL,
+        reasoning_effort: GROQ_REASONING_EFFORT,
         messages: [
           {
             role: "system",
@@ -197,9 +210,12 @@ RULES
             content: `Write today's one line. Angle: ${topic}. Tone: ${tone}. SUBJECT line first, then the single sentence.`,
           },
         ],
-        max_tokens: 70,
+        max_tokens: 120,
         temperature: 1.0,
-      });
+        }),
+        LLM_TIMEOUT_MS,
+        "Groq",
+      );
 
       const { subject, body } = parseMessage(
         completion.choices[0]?.message?.content ??
@@ -209,8 +225,9 @@ RULES
       const subjectLabel = escapeHtml(subject);
 
       // Send email
-      await resend().emails.send({
-        from: "Taehyun via Tyunnie <onboarding@resend.dev>",
+      await withTimeout(
+        resend().emails.send({
+        from: mailFrom("Taehyun via Tyunnie"),
         to: email,
         subject: `${subject} — Taehyun`,
         html: `
@@ -226,7 +243,10 @@ RULES
             </p>
           </div>
         `,
-      });
+        }),
+        MAIL_TIMEOUT_MS,
+        "Resend",
+      );
     }),
     );
 
@@ -247,8 +267,32 @@ RULES
     const recipientCount = raceResult.filter(
       (r) => r.status === "fulfilled",
     ).length;
-    console.log(`[daily-quote] sent to ${recipientCount} users`);
-    return NextResponse.json({ ok: true, sent: recipientCount });
+
+    // Every rejection used to be dropped on the floor: the route logged a
+    // success and returned ok:true while nobody received anything, so an
+    // expired key or a rejected sender looked exactly like a normal morning.
+    // Message only — never the stack or the provider body.
+    const failures = raceResult.filter((r) => r.status === "rejected");
+    for (const f of failures) {
+      console.error(
+        `[daily-quote] send failed: ${
+          f.reason instanceof Error ? f.reason.message : String(f.reason)
+        }`,
+      );
+    }
+    if (isSandboxSender()) {
+      console.warn(
+        "[daily-quote] RESEND_FROM unset — sending from the Resend sandbox, which only delivers to the account owner",
+      );
+    }
+    console.log(
+      `[daily-quote] sent to ${recipientCount} users, ${failures.length} failed`,
+    );
+    return NextResponse.json({
+      ok: failures.length === 0,
+      sent: recipientCount,
+      failed: failures.length,
+    });
   } catch (err) {
     console.error("[daily-quote] error", err);
     return NextResponse.json({ error: "internal" }, { status: 500 });

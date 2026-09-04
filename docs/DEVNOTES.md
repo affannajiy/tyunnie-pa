@@ -310,7 +310,7 @@ key = { pomodoroTask }; // resets to "default" when task clears
 
 ### Trailing garbage in LLM JSON output
 
-Chat runs Gemini 2.0 Flash primary with a Groq llama-3.3-70b fallback (`app/api/chat/route.ts`). Either model occasionally appends `%`, spaces, or newlines after the closing `}` of the action JSON. Strip before parsing:
+Chat runs Gemini 3.5 Flash primary with a Groq gpt-oss-120b fallback (`app/api/chat/route.ts`). Either model occasionally appends `%`, spaces, or newlines after the closing `}` of the action JSON. Strip before parsing:
 
 ```ts
 JSON.parse(
@@ -360,8 +360,8 @@ Required in `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-GEMINI_API_KEY=          # /api/chat primary LLM (Gemini 2.0 Flash)
-GROQ_API_KEY=            # /api/chat fallback + /api/daily-quote sole LLM (llama-3.3-70b)
+GEMINI_API_KEY=          # /api/chat primary LLM (Gemini 3.5 Flash)
+GROQ_API_KEY=            # /api/chat fallback + /api/daily-quote sole LLM (gpt-oss-120b)
 JDOODLE_CLIENT_ID=
 JDOODLE_CLIENT_SECRET=
 RESEND_API_KEY=

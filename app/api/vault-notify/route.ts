@@ -4,6 +4,7 @@ import { randomInt, timingSafeEqual } from "crypto";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
 import { getAuthUser } from "@/lib/apiAuth";
 import { withTimeout } from "@/lib/withTimeout";
+import { mailFrom } from "@/lib/mailFrom";
 
 // Lazy + memoised — see app/api/chat/route.ts.
 let _resend: Resend | null = null;
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
 
     try {
       await sendMail({
-      from: "Tyunnie <onboarding@resend.dev>",
+      from: mailFrom("Tyunnie"),
       to: email,
       subject: "Your Tyunnie vault PIN change code",
       html: `
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await sendMail({
-      from: "Tyunnie <onboarding@resend.dev>",
+      from: mailFrom("Tyunnie"),
       to: email,
       subject,
       html: `

@@ -5,6 +5,49 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.27.1] — 2026-09-04
+
+### Highlights
+
+**Fixed**
+
+- **The daily note from Taehyun is arriving again** — it had stopped on 16 August and nothing said so. Both AI providers retired the models the app was using, days apart, and the morning email had been failing silently ever since.
+- **Chat works again** — the same retirement took out the assistant's primary model and its backup on the same day, so every message returned an error.
+- **A failed email is no longer reported as a sent one** — the send counter only ever counted successes, so a morning where nothing went out looked identical to a normal one in the logs. Failures are now counted and named.
+
+### Fixed
+
+- **Both AI models were retired by their vendors.** Groq removed `llama-3.3-70b-versatile` and Google removed `gemini-2.0-flash`; `/api/chat` and `/api/daily-quote` each returned `model_not_found`. The ids were hard-coded at their call sites, so the same string had to be found in two unrelated files. Now `gemini-3.5-flash` and `openai/gpt-oss-120b`, both read from `lib/aiModels.ts`.
+- **`/api/daily-quote` swallowed every rejection.** `Promise.allSettled` counted only fulfilled results and the rejected ones were dropped without being read, so the route logged a success and returned `ok: true` while nobody received anything — which is why an outage ran for eighteen days unnoticed. Rejections are now logged with their message (message only, never the stack or the provider body) and returned as a `failed` count.
+- **A profile with no email address counted as a delivery.** The missing-address branch returned early, which settles as *fulfilled*, inflating the sent total. It throws now and lands in the failure log.
+- **Gemini replies truncated mid-sentence.** Gemini 3.x bills thinking tokens against `maxOutputTokens`, and 381 of the 400-token budget went to thoughts — the reply finished at `MAX_TOKENS` partway through a word, occasionally leaking internal scaffolding into the visible text. `thinkingConfig: { thinkingBudget: 0 }` returns the whole budget to the answer.
+- **Groq returned an empty string.** `openai/gpt-oss-120b` spends its budget reasoning before it emits any content, so the old 70-token cap produced nothing at all. `reasoning_effort` is pinned to `low` and `max_tokens` raised to 120. Both are required for a reply to come back, not tuning.
+
+### Added
+
+- **`lib/aiModels.ts`** — every model id in one place, with `GROQ_REASONING_EFFORT` beside the model it constrains. Two routes referenced the same retired string independently; the next retirement is a one-line change.
+- **`lib/mailFrom.ts`** — `RESEND_FROM` holds the sending identity, as a bare address or a full `Name <addr>`. Unset, it falls back to Resend's `onboarding@resend.dev` sandbox and warns once per batch that mail only reaches the account owner. The sandbox address was hard-coded at three call sites; buying a domain is now an env change, not a code change.
+
+### Changed
+
+- **The Groq and Resend calls in `/api/daily-quote` carry deadlines.** Neither SDK accepts one. The whole batch already raced a 9s ceiling under Vercel's 10s function cap, so one stalled call used to consume the budget for every other recipient; per-call timeouts (5s LLM, 4s mail) let one bad send fail alone.
+- **`RESEND_FROM` documented** in `docs/DEPLOYMENT.md`. Model names swept through `docs/DEVNOTES.md` and `.claude/CLAUDE.md`.
+- **`AGENTS.md` and root `CLAUDE.md` committed.** `next dev` writes both on every run; leaving them untracked reproduced the same uncommitted diff after each start. The project's own instructions stay in `.claude/CLAUDE.md`.
+
+### Verification
+
+- Live end-to-end send against the real providers: `{ ok: true, sent: 2, failed: 0 }`, HTTP 200 in 3.3s — inside the 9s ceiling.
+- Three live Groq runs with the production persona: `finish_reason: stop` each time, 35/44/44 completion tokens, `SUBJECT:` parsed on every one. One live Gemini run: `STOP`, 210 tokens, no thoughts.
+- Cron auth rejects both a missing and a wrong `Authorization` header with 401.
+- `tsc --noEmit` clean, `npm run build` clean, ESLint 66 problems — unchanged from 3.27.0, no new debt.
+
+### Known limitations
+
+- **Mail still sends from the Resend sandbox.** `onboarding@resend.dev` only delivers to the address that owns the Resend account, so a second opted-in reader would not receive anything. A verified domain is the fix; the code no longer stands in the way of one.
+- **The subject line drifted to Title Case.** The old model wrote `rain outside`; the new one writes `Hydration Reminder`. The prompt says lowercase-casual "is fine", which is a permission rather than an instruction.
+
+---
+
 ## [3.27.0] — 2026-08-22
 
 ### Highlights

@@ -2,12 +2,14 @@ import {
   GoogleGenerativeAI,
   HarmCategory,
   HarmBlockThreshold,
+  type GenerationConfig,
 } from "@google/generative-ai";
 import Groq from "groq-sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
 import { getAuthUser } from "@/lib/apiAuth";
 import { withTimeout } from "@/lib/withTimeout";
+import { GEMINI_MODEL, GROQ_MODEL, GROQ_REASONING_EFFORT } from "@/lib/aiModels";
 
 // ── Clients ──
 // Lazy + memoised. These SDKs throw on a missing key AT CONSTRUCTION, and
@@ -95,6 +97,23 @@ interface IncomingMessage {
   content: string;
 }
 
+// Gemini 3.x reasons before it answers, and those thinking tokens are billed
+// against `maxOutputTokens` — at 400 a real question spent 381 of them thinking
+// and returned a truncated fragment with its own scaffolding leaking into the
+// text ("Transition to Logic*:"). `thinkingBudget: 0` turns it off; the same
+// prompt then answered in 210 tokens and finished cleanly.
+//
+// The cast is deliberate. `@google/generative-ai` is the legacy SDK and has no
+// `thinkingConfig` in its types, but it serialises `generationConfig` straight
+// into the request body without a whitelist, so the field reaches the API. The
+// alternative was swapping to `@google/genai`, which means moving the pinned
+// lockfile to fix an outage — not the change to make in the same breath.
+const GENERATION_CONFIG = {
+  maxOutputTokens: 400,
+  temperature: 0.85,
+  thinkingConfig: { thinkingBudget: 0 },
+} as unknown as GenerationConfig;
+
 // ── Gemini helper ──
 // Converts OpenAI-style { role, content }[] + systemPrompt into Gemini's
 // startChat() / sendMessage() format. Gemini roles are "user" / "model"
@@ -105,13 +124,10 @@ async function callGemini(
   messages: IncomingMessage[],
 ): Promise<string> {
   const model = gemini().getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: GEMINI_MODEL,
     systemInstruction: systemPrompt,
     safetySettings: SAFETY_SETTINGS,
-    generationConfig: {
-      maxOutputTokens: 400,
-      temperature: 0.85,
-    },
+    generationConfig: GENERATION_CONFIG,
   });
 
   // Split history (all turns except the last) from the final user message.
@@ -151,7 +167,8 @@ async function callGroq(
 ): Promise<string> {
   const response = await withTimeout(
     groq().chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: GROQ_MODEL,
+      reasoning_effort: GROQ_REASONING_EFFORT,
       max_tokens: 400,
       messages: [
         { role: "system", content: systemPrompt },
@@ -231,7 +248,7 @@ export async function POST(req: NextRequest) {
     try {
       text = await callGemini(prompt, messages);
     } catch (err) {
-      // ── Fallback: Groq llama-3.3-70b ──
+      // ── Fallback: Groq ──
       // Log the reason. An empty catch here made the primary provider's health
       // invisible: an expired GEMINI_API_KEY looked exactly like a working app,
       // just slower and on the fallback model, and nothing said so (§1.17,

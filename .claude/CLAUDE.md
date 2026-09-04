@@ -26,7 +26,7 @@ Boundaries: RLS *audit* = security, RLS *change* = database. Skills run in-sessi
 ## Layout
 
 - `app/` — `dashboard/` (shell, auth guard 15s, renders all panels) · `auth/` (Supabase email + Google OAuth) · `about/` (public changelog) · `error.tsx`/`not-found.tsx`.
-- `app/api/` — `chat` (Gemini 2.0 Flash → Groq llama-3.3-70b fallback, 400 tok) · `run` (JDoodle) · `daily-quote` (cron `0 0 * * *` = 8am MYT, Groq→Resend) · `vault-notify` (OTP + PIN mail) · `changelog` · `exchange-rates`.
+- `app/api/` — `chat` (Gemini 3.5 Flash → Groq gpt-oss-120b fallback, 400 tok) · `run` (JDoodle) · `daily-quote` (cron `0 0 * * *` = 8am MYT, Groq→Resend) · `vault-notify` (OTP + PIN mail) · `changelog` · `exchange-rates`.
 - `components/` — Desk, TyunniePanel (chat), Sidebar (dock), Profile (vault), Todo, Writing, Projects, Snippets, Finance, Music + MiniPlayer, Pomodoro, Weather, FocusMode, StickyLayer/StickyNote, hubs, `games/`, `ui/Kbd.tsx`, `ui/ConfirmDialog.tsx`, `AppProviders.tsx`.
 - `lib/` — `database.ts` (all CRUD, guest-routed) · `guest.ts` · `supabase.ts` · `crypto.ts` (AES-GCM + PBKDF2) · `apiAuth.ts` · `rateLimit.ts` · `accent.ts` · `dayKey.ts` · `withTimeout.ts` · `mathEval.ts` · `safeUrl.ts` · `platform.ts` · `useFocusTrap.ts` · `useAccentColor.ts` · `MusicContext.tsx` · `WorkspaceContext.tsx` · `tyunPersona.ts` · `changelog.ts` · `version.ts` · `activePanel.ts`.
 

@@ -1,13 +1,13 @@
 # Tyunnie — Your Personal AI Assistant
 
-> A full-stack personal assistant web app inspired by Taehyun from TXT. Built with Next.js, Supabase, and Groq AI.
+> A full-stack personal assistant web app inspired by Taehyun from TXT. Built with Next.js, Supabase, Gemini, and Groq AI.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.27.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.27.1-f97316?style=flat-square)
 
 ---
 
@@ -15,7 +15,7 @@
 
 ### Tyunnie AI Panel
 
-- Context-aware assistant powered by **Groq (Llama 3.3 70B)**
+- Context-aware assistant powered by **Gemini 3.5 Flash**, with **Groq (gpt-oss-120b)** as an automatic fallback
 - Knows your tasks, drafts, projects, finances, snippets, sticky notes, and memories
 - Natural language actions: add/delete tasks, create drafts, log finance (with account tagging), run snippets, start Pomodoro (**set preset** via chat — Classic, Extended, Short Sprint, Deep Work), toggle theme, enter focus mode, control music (play/pause/next/volume), **calculate** (evaluates math and sends the expression to the Calculator panel), **filter panels** (narrow Tasks by tag or search Writing drafts by keyword via chat)
 - **Live workspace awareness** — Tyunnie reads the content you're actively editing (code, draft, or task list) and injects it into every chat request; ask "what does this do?" or "fix this bug" without pasting anything
@@ -128,7 +128,7 @@ All modes follow the app's light/dark theme and chosen accent colour.
 - **Lazy panel loading with skeletons** — each panel chunk downloads only on first visit; pulsing skeleton shown while the chunk loads so the UI is never blank
 - **Immutable static asset cache** — hashed JS/CSS chunks cached for 1 year; public images cached 1 day with stale-while-revalidate
 - **Bundle tree-shaking** — `recharts` and `date-fns` tree-shaken via `optimizePackageImports`; only imported symbols included in the final bundle
-- **Preconnect hints** — Supabase, Groq, and Open-Meteo DNS + TLS resolved before first request fires
+- **Preconnect hints** — Supabase and Open-Meteo DNS + TLS resolved before first request fires
 - **No `X-Powered-By` header** — reduces response size and hides tech fingerprint
 
 ---
@@ -141,7 +141,7 @@ All modes follow the app's light/dark theme and chosen accent colour.
 | Language        | TypeScript 5                           |
 | Styling         | Tailwind CSS v4                        |
 | Database / Auth | Supabase (PostgreSQL + Auth)           |
-| AI              | Groq API (Llama 3.3 70B)               |
+| AI              | Gemini 3.5 Flash → Groq gpt-oss-120b   |
 | Code Execution  | JDoodle API                            |
 | Charts          | Recharts 3                             |
 | Weather         | Open-Meteo API (free, no key)          |
