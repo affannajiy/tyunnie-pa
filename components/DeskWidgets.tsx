@@ -597,8 +597,8 @@ export default function DeskWidgets({
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono">
                 Today's Focus
               </p>
-              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
-                <CheckCircle2 size={26} strokeWidth={1.5} />
+              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center" style={{ color: "var(--accent-text)" }}>
+                <CheckCircle2 size={16} strokeWidth={1.75} />
               </div>
             </div>
             {dueSoonTodos.length === 0 ? (
@@ -680,8 +680,8 @@ export default function DeskWidgets({
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono">
                 Life Progress
               </p>
-              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
-                <BarChart3 size={26} strokeWidth={1.5} />
+              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center" style={{ color: "var(--accent-text)" }}>
+                <BarChart3 size={16} strokeWidth={1.75} />
               </div>
             </div>
             <div className="flex items-center justify-around flex-1">
@@ -812,8 +812,8 @@ export default function DeskWidgets({
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#856348] font-mono">
                 Now Playing
               </p>
-              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-sm">
-                <Music2 size={26} strokeWidth={1.5} />
+              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center" style={{ color: "var(--accent-text)" }}>
+                <Music2 size={16} strokeWidth={1.75} />
               </div>
             </div>
             {music.currentTrack ? (

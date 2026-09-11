@@ -3,33 +3,16 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 
-type Suit = "♠" | "♥" | "♦" | "♣";
-type Color = "black" | "red";
+import {
+  type Card,
+  SUITS,
+  SUIT_COLOR,
+  valueIdx,
+  createDeck,
+  shuffle,
+  CardView,
+} from "./cards";
 
-const SUITS: Suit[] = ["♠", "♥", "♦", "♣"];
-const VALUES = [
-  "A",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "J",
-  "Q",
-  "K",
-];
-const SUIT_COLOR: Record<Suit, Color> = {
-  "♠": "black",
-  "♣": "black",
-  "♥": "red",
-  "♦": "red",
-};
-
-type Card = { suit: Suit; value: string; faceUp: boolean };
 type Source = "waste" | "tableau" | "foundation";
 type Selection = {
   source: Source;
@@ -37,25 +20,6 @@ type Selection = {
   cardIndex?: number;
   cards: Card[];
 };
-
-function valueIdx(v: string) {
-  return VALUES.indexOf(v);
-}
-
-function createDeck(): Card[] {
-  return SUITS.flatMap((suit) =>
-    VALUES.map((value) => ({ suit, value, faceUp: false })),
-  );
-}
-
-function shuffle(deck: Card[]): Card[] {
-  const d = [...deck];
-  for (let i = d.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [d[i], d[j]] = [d[j], d[i]];
-  }
-  return d;
-}
 
 function deal() {
   const deck = shuffle(createDeck());
@@ -98,37 +62,6 @@ const WIN_QUIPS = [
   "That's my person 🧡",
   "Okay I'm genuinely impressed.",
 ];
-
-// ── Card component ──
-function CardView({ card, selected }: { card: Card; selected?: boolean }) {
-  const red = SUIT_COLOR[card.suit] === "red";
-  if (!card.faceUp)
-    return (
-      <div
-        className={`w-full h-full rounded border-2 ${selected ? "border-yellow-400" : "border-[#c2500f]"} bg-[#f97316] flex items-center justify-center`}
-      >
-        <div className="w-3/4 h-3/4 border border-[#c2500f]/40 rounded" />
-      </div>
-    );
-  return (
-    <div
-      className={`w-full h-full rounded border-2 bg-white flex flex-col px-0.5 pt-0.5 overflow-hidden transition-all
-      ${selected ? "border-[#f97316] shadow-lg" : "border-[#e8e2d8] hover:border-[#f97316]"}`}
-    >
-      <div
-        className={`text-[11px] font-bold leading-tight ${red ? "text-red-600" : "text-[#111010]"}`}
-      >
-        {card.value}
-        {card.suit}
-      </div>
-      <div
-        className={`flex-1 flex items-center justify-center text-2xl font-bold ${red ? "text-red-600" : "text-[#6f6455]"}`}
-      >
-        {card.suit}
-      </div>
-    </div>
-  );
-}
 
 // ── Placeholder slot ──
 function Slot({ onClick, label }: { onClick?: () => void; label?: string }) {

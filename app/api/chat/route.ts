@@ -28,11 +28,13 @@ function groq() {
 // Limits
 const MAX_MESSAGES      = 30;
 const MAX_MESSAGE_CHARS = 8_000;
-// 60k was a number with nothing behind it. The largest prompt the app actually
-// builds is TyunniePanel's, which inlines the user's todo/snippet/note titles
-// with their UUIDs; 20k covers that with room to spare and bounds per-request
+// 60k was a number with nothing behind it; 20k was a number with too little.
+// TyunniePanel's static template (persona + action catalogue + examples) is
+// ~18k on its own before a single todo is inlined, so a real account tripped
+// "System prompt too large" on every message. 40k gives the capped data lists
+// (40 items each, see buildSystemPrompt) room and still bounds per-request
 // token spend (§4 LLM10 — unbounded consumption).
-const MAX_PROMPT_CHARS  = 20_000;
+const MAX_PROMPT_CHARS  = 40_000;
 // Total characters across the conversation, so 30 messages x 8k cannot add up
 // to a 240k-character request that passes every individual check.
 const MAX_TOTAL_CHARS   = 40_000;
@@ -242,7 +244,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Primary: Gemini 2.0 Flash ──
+    // ── Primary: Gemini (GEMINI_MODEL) ──
     const prompt = composePrompt(systemPrompt);
     let text: string;
     try {

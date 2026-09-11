@@ -89,6 +89,55 @@ const MOOD_SPRITES: Record<MoodType, string> = {
  * The static character/voice of Tyun. Edit HERE to tune his personality —
  * this is intentionally separate from the live-data assembly in buildSystemPrompt().
  */
+// ── Error voice ──
+// One generic "something broke" line hid four different failures behind the
+// same words. Each status class gets its own pool, so the user can tell a
+// dead session (401) from a rate limit (429) from a request the server refused
+// (400) without opening devtools. The pool is randomised so a repeated failure
+// doesn't read like a stuck bot; the raw status and the server's reason ride
+// along in a trailing parenthetical for anyone who needs the real cause.
+const CHAT_ERROR_LINES: Record<string, string[]> = {
+  network: [
+    "Can't reach the server. Check your connection and try me again.",
+    "You're offline, or close to it. I'll be here when you're back.",
+  ],
+  "400": [
+    "That one got mangled on the way over. Try a shorter message, or refresh me.",
+    "The request came in wrong on my side. Refresh and say it again.",
+  ],
+  "401": [
+    "Your session slipped. Sign in again and I'm right here.",
+    "I don't know who's talking. Log back in and try me.",
+  ],
+  "429": [
+    "Slow down a little. Give me a minute before the next one.",
+    "You're sending faster than I can think. Wait a beat.",
+  ],
+  "5xx": [
+    "Both my brains are down right now. Give it a minute and try again.",
+    "The server dropped the call. Not you — me. Try again shortly.",
+  ],
+  other: ["Something odd came back. Try me again."],
+};
+
+function chatErrorLine(status: number, serverReason?: unknown): string {
+  // The daily quota has its own wording server-side; show it verbatim, it is
+  // more specific than anything the pool says.
+  if (status === 429 && typeof serverReason === "string" && /daily/i.test(serverReason)) {
+    return serverReason;
+  }
+  const key =
+    status === 0 ? "network"
+    : status >= 500 ? "5xx"
+    : String(status) in CHAT_ERROR_LINES ? String(status)
+    : "other";
+  const pool = CHAT_ERROR_LINES[key];
+  const line = pool[Math.floor(Math.random() * pool.length)];
+  if (status === 0) return line;
+  const reason = typeof serverReason === "string" ? `: ${serverReason}` : "";
+  return `${line} (${status}${reason})`;
+}
+
 const TYUN_PERSONA = `${TYUN_CORE}
 
 You happen to be able to help with their tasks, notes, money, and music inside this app, and you do — gladly, the way you'd help any close friend who asked — but that's something you do, not who you are. The conversation is the point; helping is just you caring.
@@ -744,15 +793,16 @@ ${
   appData.stickyNotes?.filter((s) => s.content.trim()).length
     ? appData.stickyNotes
         .filter((s) => s.content.trim())
-        .map((s, i) => `${i + 1}. [id:${s.id}] [${s.color}] ${s.content.trim()}`)
-        .join("\n")
+        .slice(0, MAX_ITEMS)
+        .map((s, i) => `${i + 1}. [id:${s.id}] [${s.color}] ${s.content.trim().slice(0, 200)}`)
+        .join("\n") + more(MAX_ITEMS, appData.stickyNotes.filter((s) => s.content.trim()).length)
     : "None"
 }
 
 MUSIC:
   Now playing: ${music.currentTrack ? `"${music.currentTrack.title}" by ${music.currentTrack.artist}` : "Nothing"}
   State: ${music.isPlaying ? "Playing" : "Paused"} | Shuffle: ${music.shuffle ? "on" : "off"} | Repeat: ${music.repeat}
-  Playlist (${music.tracks.length} tracks): ${music.tracks.map((t) => t.title).join(", ") || "Empty"}
+  Playlist (${music.tracks.length} tracks): ${music.tracks.slice(0, MAX_ITEMS).map((t) => t.title).join(", ") || "Empty"}${music.tracks.length > MAX_ITEMS ? `, …and ${music.tracks.length - MAX_ITEMS} more` : ""}
 
 ACTIVE WORKSPACE:
 ${snapshot
@@ -762,7 +812,7 @@ ${snapshot.content.slice(0, 600)}`
   : "  None — user is not actively editing anything right now"}
 
 GAMES (in the Games panel):
-  Available: Tetris, Chess, Sudoku, Minesweeper, TicTacToe, Solitaire
+  Available: Tetris, Chess, Sudoku, Minesweeper, TicTacToe, Solitaire, Blackjack, Mahjong
 
 CALCULATOR (in the Calculator panel):
   Modes: Scientific (full function calc + memory), Graphing (plot up to 5 functions), Converter (Length/Weight/Temperature/Area/Volume/Speed/Currency), Date (duration & add/subtract)
@@ -770,7 +820,7 @@ CALCULATOR (in the Calculator panel):
 MEMORIES (facts you know about the user across sessions):
 ${
   appData.memories?.length
-    ? appData.memories.map((m) => `• [id:${m.id}] ${m.content}`).join("\n")
+    ? appData.memories.slice(0, MAX_ITEMS).map((m) => `• [id:${m.id}] ${m.content.slice(0, 200)}`).join("\n") + more(MAX_ITEMS, appData.memories.length)
     : "None yet"
 }
 
@@ -891,7 +941,7 @@ NAVIGATION:
 - NEVER navigate automatically. Only navigate when user EXPLICITLY says "go to / open / take me to / show me [panel]"
 - Known panels: desk, profile, focus, create, play, todo, writing, projects, snippets, finance, music, pomodoro, games, calculator
 - "open calculator / go to calculator" → navigate calculator
-- "play a game / open games / what games are there" → navigate games (then tell them: Tetris, Chess, Sudoku, Minesweeper, TicTacToe, Solitaire)
+- "play a game / open games / what games are there" → navigate games (then tell them: Tetris, Chess, Sudoku, Minesweeper, TicTacToe, Solitaire, Blackjack, Mahjong)
 
 MUSIC:
 - "play / resume" → music_control play
@@ -1502,13 +1552,21 @@ casual chat (no data action — still set a mood):
         }),
       });
 
-      const data = await res.json();
-      // The server writes its user-facing refusals to `error`, not `text` — e.g.
-      // "Daily chat limit reached. Come back tomorrow 🧡". Reading only `text`
-      // meant a user past the 300/day cap got "I'm here." to every message,
-      // forever, with no explanation. Prefer the server's own words.
-      const fullReply: string =
-        data.text ?? data.error ?? "I'm here.";
+      const data = await res.json().catch(() => ({}));
+
+      // A non-2xx is not a reply, so don't run it through the action parser or
+      // push it into the model's history — a "System prompt too large" bubble
+      // once sat in `messages` as an assistant turn and confused every request
+      // after it. Speak in Tyun's voice, but keep the status and the server's
+      // own reason visible so the failure is diagnosable from the chat itself.
+      if (!res.ok) {
+        setThinking(false);
+        setCurrentMood(null);
+        addBubble("tyunnie", chatErrorLine(res.status, data.error));
+        return;
+      }
+
+      const fullReply: string = data.text ?? "I'm here.";
 
       const normalized = fullReply
         .replace(/\$action>/gi, "<action>")
@@ -1547,8 +1605,11 @@ casual chat (no data action — still set a mood):
         }
       })();
     } catch {
+      // fetch itself threw — offline, DNS, or the connection dropped mid-flight.
+      // Nothing reached the server, so there is no status to report.
       setThinking(false);
-      addBubble("tyunnie", "Something broke on my end. Try me again.");
+      setCurrentMood(null);
+      addBubble("tyunnie", chatErrorLine(0));
     }
   }
 

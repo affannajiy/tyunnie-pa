@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.27.1-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.28.0-f97316?style=flat-square)
 
 ---
 
@@ -76,7 +76,7 @@ All modes follow the app's light/dark theme and chosen accent colour.
 
 ### Games Hub
 
-- Tetris, Chess (3 difficulties, 8 time controls), Sudoku, Minesweeper, Solitaire, Tic Tac Toe
+- Tetris, Chess (3 difficulties, 8 time controls), Sudoku, Minesweeper, Solitaire, Blackjack, Mahjong (Hong Kong rules, 3 bot difficulties, built-in guide), Tic Tac Toe
 
 ### Navigation Dock
 

@@ -1,7 +1,7 @@
 // components/Games.tsx
 "use client";
 
-import { Hash, Grid3x3, Bomb, Spade, Crown, Blocks } from "lucide-react";
+import { Hash, Grid3x3, Bomb, Spade, Crown, Blocks, Diamond, LayoutGrid } from "lucide-react";
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
@@ -11,6 +11,8 @@ const TicTacToe  = dynamic(() => import("./games/TicTacToe"),  { ssr: false });
 const Sudoku     = dynamic(() => import("./games/Sudoku"),     { ssr: false });
 const Minesweeper = dynamic(() => import("./games/Minesweeper"), { ssr: false });
 const Solitaire  = dynamic(() => import("./games/Solitaire"),  { ssr: false });
+const Blackjack  = dynamic(() => import("./games/Blackjack"),  { ssr: false });
+const Mahjong    = dynamic(() => import("./games/mahjong/Mahjong"), { ssr: false });
 const Chess      = dynamic(() => import("./games/Chess"),      { ssr: false });
 const Tetris     = dynamic(() => import("./games/Tetris"),     { ssr: false });
 
@@ -19,6 +21,8 @@ type Game =
   | "sudoku"
   | "minesweeper"
   | "solitaire"
+  | "blackjack"
+  | "mahjong"
   | "chess"
   | "tetris"
   | null;
@@ -50,6 +54,20 @@ const GAME_CARDS = [
     title: "Solitaire",
     desc: "Klondike. Tyunnie will judge your card choices.",
     icon: Spade,
+    available: true,
+  },
+  {
+    id: "blackjack" as Game,
+    title: "Blackjack",
+    desc: "Hit or stand. Tyunnie deals and pretends not to count.",
+    icon: Diamond,
+    available: true,
+  },
+  {
+    id: "mahjong" as Game,
+    title: "Mahjong",
+    desc: "Hong Kong rules vs three bots. Tyunnie sits opposite and swears he isn't counting.",
+    icon: LayoutGrid,
     available: true,
   },
   {
@@ -155,6 +173,50 @@ export default function Games() {
           </span>
         </div>
         <Solitaire />
+      </div>
+    );
+  }
+
+  if (activeGame === "blackjack") {
+    return (
+      <div>
+        <button
+          onClick={() => setActiveGame(null)}
+          className="flex items-center gap-2 text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+        >
+          ← Back to Games
+        </button>
+        <div className="flex items-center gap-3 mb-6">
+          <span className="font-serif italic text-2xl text-[#111010]">
+            Blackjack
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-[2px] text-(--accent) bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+            21
+          </span>
+        </div>
+        <Blackjack />
+      </div>
+    );
+  }
+
+  if (activeGame === "mahjong") {
+    return (
+      <div>
+        <button
+          onClick={() => setActiveGame(null)}
+          className="flex items-center gap-2 text-[#6f6455] hover:text-(--accent) transition-colors text-xs font-mono font-bold uppercase tracking-widest mb-6"
+        >
+          ← Back to Games
+        </button>
+        <div className="flex items-center gap-3 mb-6">
+          <span className="font-serif italic text-2xl text-[#111010]">
+            Mahjong
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-[2px] text-(--accent) bg-[#fff0e6] border border-[#fed7aa] px-3 py-1 rounded-full">
+            Hong Kong · 3 fan
+          </span>
+        </div>
+        <Mahjong />
       </div>
     );
   }

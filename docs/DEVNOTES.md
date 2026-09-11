@@ -249,6 +249,16 @@ Put it in `global.d.ts` at the repo root instead.
 
 Use `flex-1` vs `flex-none` (not `w-0`) for collapsible panel transitions. Using `w-0` causes layout collapse issues with flex children that have `min-width`.
 
+### A `fixed` overlay inside a panel is not fixed to the viewport
+
+The panel wrapper in `app/dashboard/page.tsx` carries `animate-panel-in`, and that animation uses `fill-mode: both`, so the wrapper keeps `transform: translateY(0)` forever. An identity transform still makes the element the **containing block for every `position: fixed` descendant** and a new stacking context. Inside it, `fixed inset-0` covers the panel — not the header — its `100dvh` runs past the viewport bottom, and no `z-*` value can get above the root-level dock (z-50).
+
+Two ways out: `createPortal(…, document.body)` (the Mahjong `Guide` does this — a slide-over has to reach the viewport edges), or accept the offset when the content is centred anyway (the Chess promotion/game-over modal, the Profile vault modal). `ConfirmHost` avoids the problem by mounting at the dashboard root.
+
+### New colour utilities need a `.dark` remap — nothing enforces it
+
+Dark mode is class-selector overrides in `globals.css` (`.dark .bg-white`, `.dark .text-\[\#6f6455\]`, …), not `dark:` variants. A new arbitrary colour (`bg-[#f3ede4]`) simply stays light in dark mode, while the text on it is remapped to light — invisible in light mode, broken in dark. Before introducing a hex, grep `globals.css` for it; prefer a token that is already mapped (`#f3f0ea`, `#faf8f5`, `#e8e2d8`, `bg-white`, the Tailwind `-700` colour ramps). Mahjong shipped with four unmapped ones in 3.28.0 and only dark-mode screenshots caught it.
+
 ---
 
 ## Sticky Notes

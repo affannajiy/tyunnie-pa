@@ -5,6 +5,57 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.28.0] — 2026-09-11
+
+### Highlights
+
+**Added**
+
+- **Mahjong** in the Games panel — Hong Kong rules against three bots, with Taehyun sitting opposite. Full fan table with the 3-fan minimum, flowers, kongs, robbing the kong, chow-from-the-left, 16-hand games with rotating dealer and round wind. Easy / Normal / Hard bots. A built-in guide (how to play · fan table · tips) and optional hints — suggested discard, what you're waiting on, and whether your hand clears 3 fan — for anyone learning at the table. Plays in portrait, but landscape gets the full table.
+- **Blackjack** in the Games panel — single deck, dealer stands on 17, blackjack pays 3:2, 500 session chips. Taehyun deals and comments on your choices.
+
+**Fixed**
+
+- **Chat rejected every message with "System prompt too large"** — the 3.27.1 model fix restored the providers, but the request never reached them. The app's own context (your tasks, notes, memories, playlist) had outgrown the size the server accepted. The limit is now sized to the real prompt and the unbounded lists are capped.
+- **The assistant now says what actually went wrong** — a dead session, a rate limit, a rejected request, an offline connection and a server outage each get their own reply in Taehyun's voice, with the status code and reason attached, instead of one generic "something broke".
+
+### Fixed
+
+- **`/api/chat` `MAX_PROMPT_CHARS` was 20k against an ~18k static template.** TyunniePanel's persona, action catalogue and examples alone nearly filled the cap, so any account with data returned 400 on every send. Raised to 40k — still a bound on per-request token spend, now one the real prompt fits inside.
+- **Sticky notes, memories and playlist titles were inlined uncapped.** The other lists were held at `MAX_ITEMS` (40) with a "…and N more" line; these three grew with the account. Now capped the same way, content sliced to 200 chars.
+- **A 4xx/5xx body was treated as a reply.** The error string was pushed into the model's history as an assistant turn and run through the action parser. Non-2xx now short-circuits to an error bubble and leaves history untouched.
+- **Mahjong in dark mode.** Four colours the tiles and pools introduced had no `.dark` remap (`#f3ede4`, `#fdfaf6`, `#d9d2c6`, `text-green-800`), so the discard pools stayed cream while the tiles went dark, bamboo numerals were dark green on a dark face, and the guide was light text on a light sheet. Swapped for the tokens the app already remaps (`#f3f0ea`, `bg-white`, `#e8e2d8`, `text-green-700`; flowers `text-amber-700`; 白 draws its frame in `border-current`). No new remap rules — the rule is to reuse a mapped token, not add one per component.
+- **The Mahjong guide sat below the header and under the dock.** The dashboard's panel wrapper keeps a `transform` from `animate-panel-in` (`fill-mode: both`), which makes it the containing block for any `fixed` descendant: the slide-over was positioned against the panel, ran `100dvh` past the viewport, and lost to the z-50 dock. Now portalled to `document.body`. Chess's and Profile's in-panel modals have the same containment and are left as they are — centred content hides the offset.
+- **A phone held sideways got the "rotate your phone" banner.** The landscape switch compared the *board* width against 640, but `<main>` takes 32px of padding, so a 640–667px landscape phone measured 608–635 and was laid out as portrait. Threshold is now 560.
+- **`text-[9px] md:text-[9px]` on the discard-pool labels** — the mobile type floor is 10px below `md:`.
+
+### Security
+
+- **`sharp <0.35.4` (GHSA-rgj7-g3m4-5g8c, libheif) was in the production tree** via `next`, so `npm audit --omit=dev --audit-level=high` — the CI gate — was red. Bumped to 0.35.4 inside the existing `^0.35.0` override; lockfile-only, `npm ci --dry-run` resolves.
+- **`js-yaml 4.3.1` (GHSA-2883-xcg3-v3hh)** — dev tree only (`eslint` → `@eslint/eslintrc`), so not a gate failure, but a fix existed inside the `^4.3.1` override: 4.3.2. Full `npm audit` is 0 again.
+
+### Added
+
+- **`components/games/mahjong/`** — five files, rules kept out of React:
+  - `tiles.ts` — 144-tile wall (34 kinds × 4 + 8 flowers), sort order, seat helpers.
+  - `scoring.ts` — hand decomposition (all partitions into 4 sets + pair, plus Thirteen Orphans and Nine Gates), the HK fan table (27 entries, 3-fan floor, 13 limit), the fan→points table and the half-spicy payout (self-draw: all pay full; discard: shooter full, others half). `waitingOn()` drives the hints.
+  - `bot.ts` — a partial-set efficiency search plus a `fanPotential()` steering term so bots build toward a *declarable* hand instead of the fastest chicken hand. Easy: half-random discards, never chows. Normal: efficiency + fan. Hard: also throws tiles the human has already discarded and won't open a concealed hand for a small gain.
+  - `engine.ts` — pure state machine: deal, flower replacement from the wall end, draw, discard → claim resolution by priority (win › pung/kong › chow, nearest to the shooter first), kongs and robbing, dealer/round rotation, 16-hand game. Every transition bumps a `tick` so the component's timer effect fires exactly once per state.
+  - `TileView.tsx` — hand-drawn tile (numeral + suit character, 東南西北 / 中發白, a bordered square for 白). The Unicode mahjong block tofus on most Android fallback fonts.
+  - `Mahjong.tsx` + `Guide.tsx` — the table, the setup screen (difficulty, hints), the slide-over guide with the same fan table the scorer awards. Hints preference in `tyunnie_mahjong_hints`.
+  - Verified headlessly: 60 full games per difficulty with a random human — zero-sum scores, 13/14-tile invariants, no stuck phases.
+- **`components/games/Blackjack.tsx`** — hit / stand, bet chips 10–100, dealer draws on a 450ms timer (cancelled on unmount), auto-reshuffle under 15 cards. Chips are per-session only; a persistent bankroll is a Finance feature, not a game one.
+- **`components/games/cards.tsx`** — deck, shuffle, suit colour and `CardView` extracted from Solitaire so both card games draw the same card. Solitaire imports it; no visual change.
+
+### Changed
+
+- **Desk widget header icons standardised.** Today's Focus, Life Progress and Now Playing drew at 26px / 1.5 stroke; Focus Timer at 16px / 1.75 in the accent. All four are now the 16 / 1.75 accent glyph the rest of the app uses for in-card headers.
+- **Blackjack cards size to the board** (same ResizeObserver measure as Solitaire, 54–88px) so a long hand fits seven across at 320px instead of scrolling sideways.
+- **Mahjong bots draw ~55% of hands at a four-bot table.** Real 3-fan tables sit nearer 30–40%. The steering term is the lever (`handValue` in `bot.ts`); tuned once, left as tracked debt rather than over-fit against a random human.
+- **Per-status error lines in `TyunniePanel`** (`chatErrorLine`): pools for network / 400 / 401 / 429 / 5xx, randomised so a repeat doesn't read like a stuck bot; the raw `(status: reason)` trails the line. The server's daily-quota wording is shown verbatim.
+
+---
+
 ## [3.27.1] — 2026-09-04
 
 ### Highlights

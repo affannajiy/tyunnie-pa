@@ -1,6 +1,6 @@
 # CLAUDE.md — Tyunnie PA
 
-Personal AI assistant web app, Taehyun (TXT) themed. Next.js 16 · TypeScript · Tailwind v4 · Supabase · Gemini + Groq · Vercel. v3.27.0.
+Personal AI assistant web app, Taehyun (TXT) themed. Next.js 16 · TypeScript · Tailwind v4 · Supabase · Gemini + Groq · Vercel. v3.28.0.
 
 **This file is the invariant list, not the manual.** One line per rule. Depth lives in the skills and docs below.
 
@@ -91,6 +91,7 @@ Boundaries: RLS *audit* = security, RLS *change* = database. Skills run in-sessi
 - Dock: `dockScale` `1.55/1.22/1.08/1.0` by distance. NAV 0–3 `[desk,focus,create,play]`; TYUN=4 STICKY=5 FOCUS=6 LOGOUT=7. **Mobile dock is 7 items and stays 7** (measured 54×72 @375, 51×72 @360).
 - **`PANEL_MEASURE` in `app/dashboard/page.tsx` owns every panel width.** A panel must not set its own top-level `max-w-*`.
 - Collapsible panels toggle `flex-1`/`flex-none`, never `w-0`.
+- The panel wrapper keeps a `transform` from `animate-panel-in` (`fill-mode: both`), so a `fixed` overlay rendered inside a panel is positioned against the panel and sits under the z-50 dock. Edge-to-edge overlays `createPortal` to `document.body` (Mahjong Guide); centred modals may accept the offset (Chess, Profile).
 - `flex-1` in a `flex-col` sets `flex-basis:0` on the **height** axis — scope it (`w-full sm:flex-1`) on any row that stacks.
 - `dvh`, never `vh`, including inline styles.
 - Command palette: the modal widens to `max-w-3xl` if any result is previewable and holds it — never resize per selection.
@@ -111,7 +112,7 @@ Boundaries: RLS *audit* = security, RLS *change* = database. Skills run in-sessi
 ### Icons
 - **`lucide-react` only.** No emoji as UI icons, ever. Import per-icon.
 - Sizes `16` body · `18` panel header · `22` dock · `20` hub cards · `strokeWidth={1.75}` (`2` for small ✕/✓). `fill="currentColor"` on solid transport glyphs.
-- Three standing exemptions: 🧡 brand mark · chess/card typographic glyphs · emoji inside prompt strings (never rendered). Don't "clean up" any.
+- Three standing exemptions: 🧡 brand mark · chess/card/mahjong typographic glyphs (mahjong tiles are hand-drawn text, not the Unicode block — it tofus on Android) · emoji inside prompt strings (never rendered). Don't "clean up" any.
 - Hand-rolled `<svg>` only for non-icons: six progress rings, two sticky corner folds, the Google mark.
 
 ### Destructive actions
