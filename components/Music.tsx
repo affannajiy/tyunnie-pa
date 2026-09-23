@@ -20,11 +20,12 @@ import {
 import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import Image from "next/image";
 import { useMusicContext } from "@/lib/MusicContext";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { addMusicTrack } from "@/lib/database";
 import { isGuest } from "@/lib/guest";
 import { useAccentColor } from "@/lib/useAccentColor";
+import Visualizer from "@/components/visualizer/Visualizer";
 
 type UploadState = "idle" | "uploading" | "done" | "error";
 
@@ -53,6 +54,7 @@ const MAX_COVER_SIZE = 5 * 1024 * 1024; // 5 MB
 export default function Music() {
   const {
     analyser,
+    hasEverPlayed,
     tracks,
     currentIndex,
     isPlaying,
@@ -81,9 +83,9 @@ export default function Music() {
 
   const progressPct = duration > 0 ? (progress / duration) * 100 : 0;
 
+  // The Haze centres on the cover art.
   const coverRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
-  // Live accent — re-renders on tyunnie-accent-changed (Auto-Theme, picker).
+  // Live accent — the Haze's fallback when a cover has no usable colour.
   const accentRgb = useAccentColor();
 
   // ── View: queue or manage ──
@@ -100,41 +102,6 @@ export default function Music() {
   const audioInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Audio glow — DOM ref, not state ──
-  useEffect(() => {
-    // accentRgb comes from useAccentColor() and is in this effect's deps, so an
-    // accent change (every track, with Auto-Theme on) tears the loop down and
-    // restarts it with the new colour. Reading the CSS var here without that
-    // dep captured it once at mount: the rAF loop then repainted the stale
-    // colour 60x/sec AND, because it writes an inline style every frame, it
-    // permanently clobbered the rgba(var(--accent-rgb),…) fallback in the JSX,
-    // so the element could never recover on its own.
-    const rgb = accentRgb;
-
-    if (!isPlaying || !analyser?.current) {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (coverRef.current)
-        coverRef.current.style.boxShadow = `0 0 20px rgba(${rgb},0.15)`;
-      return;
-    }
-
-    const dataArray = new Uint8Array(analyser.current.frequencyBinCount);
-
-    function tick() {
-      if (!analyser?.current || !coverRef.current) return;
-      analyser.current.getByteFrequencyData(dataArray);
-      const slice = dataArray.slice(0, 10);
-      const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-      const g = avg / 255;
-      coverRef.current.style.boxShadow = `0 0 ${20 + g * 80}px ${g * 30}px rgba(${rgb},${0.15 + g * 0.65})`;
-      rafRef.current = requestAnimationFrame(tick);
-    }
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [isPlaying, analyser, accentRgb]);
 
   // ── Upload handler ──
   async function handleUpload(e: React.FormEvent) {
@@ -265,13 +232,17 @@ export default function Music() {
     // dock. `min-h-` below lg because the two columns stack there — a fixed
     // height would have to fit both, and it can't.
     <div className="on-dark flex flex-col lg:flex-row min-h-[calc(100dvh-120px)] lg:h-[calc(100dvh-120px)] bg-[#111010] rounded-2xl overflow-hidden border border-[#2a2520] relative">
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 20%, rgba(var(--accent-rgb),0.08) 0%, transparent 60%)",
-        }}
-      />
+      {/* Music-reactive Haze behind the cover — components/visualizer. */}
+      {currentTrack && (
+        <Visualizer
+          analyser={analyser}
+          armed={isPlaying || hasEverPlayed}
+          isPlaying={isPlaying}
+          accentRgb={accentRgb}
+          coverUrl={currentTrack.cover}
+          anchorRef={coverRef}
+        />
+      )}
 
       {/* ── LEFT: NOW PLAYING ── */}
       {/* shrink-0: stacked below lg, this block must keep its natural height or

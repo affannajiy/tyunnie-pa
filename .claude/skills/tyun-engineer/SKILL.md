@@ -15,7 +15,7 @@ Engineering review for Tyunnie PA. The question: when this fails, does anyone fi
 - **`rulebooks/ENGINEERING_Rulebook.md`** — §1 failure modes · §2 core principles ·
   §3 quality & reliability · §4 delivery · §5 run & measure · §6 a11y/i18n in code ·
   §7 conflicts. Tag every finding with its section.
-- **`.claude/CLAUDE.md` → Invariants and Tracked debt** — settled decisions. Flag a
+- **`CLAUDE.md` → Invariants and Tracked debt** — settled decisions. Flag a
   violation; don't reopen the decision.
 
 ---

@@ -42,10 +42,11 @@ export function createDeck(): Card[] {
   );
 }
 
-export function shuffle(deck: Card[]): Card[] {
+/** Fisher–Yates. `rng` is injectable so an engine test can rig the shoe. */
+export function shuffle(deck: Card[], rng: () => number = Math.random): Card[] {
   const d = [...deck];
   for (let i = d.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [d[i], d[j]] = [d[j], d[i]];
   }
   return d;

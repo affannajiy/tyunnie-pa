@@ -16,7 +16,7 @@ feels them — without trading away a security control to get them.
 - **`SECURITY.md`** (repo root) — current caching strategy, external API list, and the
   in-memory rate limiter / OTP cold-start limitation. Performance changes that touch
   caching or state persistence interact with these directly.
-- **`.claude/CLAUDE.md`** — settled invariants: `/_next/static` immutable caching is
+- **`CLAUDE.md`** — settled invariants: `/_next/static` immutable caching is
   **production-only** (it breaks HMR in dev), `optimizePackageImports` covers
   `lucide-react`/`recharts`/`date-fns`, `dynamic<Props>()` typing requirement.
 

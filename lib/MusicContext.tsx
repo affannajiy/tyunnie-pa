@@ -138,7 +138,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const ctx = new AudioContext();
     const source = ctx.createMediaElementSource(audio);
     const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
+    // 1024 → 512 bins (~43 Hz each): enough resolution for the Haze's
+    // bass / mid / high bands, which visualizer/audio.ts maps by Hz.
+    analyser.fftSize = 1024;
     source.connect(analyser);
     analyser.connect(ctx.destination);
     audioCtxRef.current = ctx;

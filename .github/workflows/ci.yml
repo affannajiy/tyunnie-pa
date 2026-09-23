@@ -74,6 +74,11 @@ jobs:
       - name: Lint (informational)
         run: npm run lint || true
 
+      # Blocking: all eight game engines. Nothing here touches a DOM or a
+      # network, so a failure is a real regression, never a flake.
+      - name: Test
+        run: npm test
+
       # Also the TypeScript check — `next build` type-checks the whole project.
       - name: Build
         run: npm run build

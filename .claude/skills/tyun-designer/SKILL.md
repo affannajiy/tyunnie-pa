@@ -17,7 +17,7 @@ and Taehyun-inspired voice.
   §5 responsive · §6 hierarchy · §7 patterns & states · §8 conflict rulings. **Cite the
   section in every finding** ("§2.8 common region", "§1.5 error prevention"). §8's
   standing ruling: *contrast wins on text and controls*.
-- **`.claude/CLAUDE.md` → Invariants** — settled decisions. Flag violations, don't reopen them.
+- **`CLAUDE.md` → Invariants** — settled decisions. Flag violations, don't reopen them.
 - **`app/globals.css`** — the live token source. Never restate tokens from memory.
 
 ---

@@ -29,7 +29,9 @@ import {
   chooseClaim,
   claimOptions,
   chowSets,
+  bestChow,
   concealedKongs,
+  type Opponent,
 } from "./bot";
 
 export const HUMAN: Seat = 0;
@@ -39,7 +41,13 @@ export const NAMES = ["You", "Beomgyu", "Tyunnie", "Yeonjun"];
 /** HK plays the wall to the last tile — no dead wall. Kept as a constant so a
  *  variant with one is a one-line change. */
 export const DEAD_WALL = 0;
-export const HANDS_PER_GAME = 16;
+/**
+ * A game is four rounds (East → North) of four dealer seats. A dealer who wins
+ * or draws keeps the deal (連莊) and that hand does not count against the
+ * sixteen — so a game is at least 16 hands and usually more. There is no cap;
+ * `handNo` is display only.
+ */
+export const ROUNDS = 4;
 
 export type Player = {
   hand: Tile[];
@@ -78,7 +86,10 @@ export type Game = {
   players: Player[];
   dealer: Seat;
   roundWind: Seat;
+  /** Hands played so far in this game (display). */
   handNo: number;
+  /** Consecutive hands this dealer has kept the deal (連莊 count, display). */
+  streak: number;
   turn: Seat;
   /** Tile just drawn by `turn` — rendered apart from the sorted hand. */
   drawnId: number | null;
@@ -107,6 +118,7 @@ export function newGame(difficulty: Difficulty): Game {
     dealer: 0,
     roundWind: 0,
     handNo: 0,
+    streak: 0,
     turn: 0,
     drawnId: null,
     lastDiscard: null,
@@ -171,26 +183,29 @@ export function startHand(g: Game): Game {
 }
 
 export function nextHand(g: Game): Game {
-  if (g.handNo + 1 >= HANDS_PER_GAME) return bump({ ...g, phase: "gameOver" });
   const dealerWon = g.result?.kind === "win" && g.result.winner === g.dealer;
   const keepDealer = dealerWon || g.result?.kind === "draw";
-  let dealer = g.dealer, roundWind = g.roundWind;
-  if (!keepDealer) {
-    dealer = nextSeat(dealer);
-    if (dealer === 0) roundWind = nextSeat(roundWind);
-  }
-  return startHand({ ...g, dealer, roundWind, handNo: g.handNo + 1 });
+  if (keepDealer) return startHand({ ...g, handNo: g.handNo + 1, streak: g.streak + 1 });
+  // The deal passes. Past the last seat of the last round the game is over.
+  if (g.dealer === 3 && g.roundWind === ROUNDS - 1) return bump({ ...g, phase: "gameOver" });
+  const dealer = nextSeat(g.dealer);
+  const roundWind = dealer === 0 ? nextSeat(g.roundWind) : g.roundWind;
+  return startHand({ ...g, dealer, roundWind, handNo: g.handNo + 1, streak: 0 });
 }
 
-/** `turn` draws. Ends the hand as a draw when only the dead wall remains. */
-export function draw(g: Game): Game {
+/**
+ * `turn` draws. Ends the hand as a draw when only the dead wall remains.
+ * Replacement tiles (after a kong) come off the tail of the wall, as flower
+ * replacements do — the head is the live wall the wall view depletes.
+ */
+export function draw(g: Game, fromTail = false): Game {
   if (g.wall.length <= DEAD_WALL) {
     return bump({ ...g, phase: "handOver", result: { kind: "draw" } });
   }
   const wall = [...g.wall];
   const players = clonePlayers(g);
   const p = players[g.turn];
-  let t = wall.shift()!;
+  let t = fromTail ? wall.pop()! : wall.shift()!;
   while (isFlower(t)) {
     p.flowers.push(t);
     const r = wall.pop();
@@ -310,13 +325,23 @@ export function robKong(g: Game, robber: Seat): Game {
   return finishWin({ ...g, players, pendingKong: null }, robber, seat, sc, tile, tile);
 }
 
+/**
+ * Human passes on robbing. Any bot further round the table that can rob still
+ * gets to — the declare loop stopped at the human, it did not ask them.
+ */
 export function declineRob(g: Game): Game {
   if (!g.pendingKong) return g;
-  return drawReplacement(bump({ ...g, pendingKong: null, phase: "discard" }), g.pendingKong.seat);
+  const { tile, seat } = g.pendingKong;
+  for (let i = 1; i < 4; i++) {
+    const s = ((seat + i) % 4) as Seat;
+    if (s === HUMAN) continue;
+    if (claimWinScore(g, s, tile, true)) return robKong(g, s);
+  }
+  return drawReplacement(bump({ ...g, pendingKong: null, phase: "discard" }), seat);
 }
 
 function drawReplacement(g: Game, seat: Seat): Game {
-  const g2 = draw({ ...g, turn: seat, pendingKong: null });
+  const g2 = draw({ ...g, turn: seat, pendingKong: null }, true);
   return g2.phase === "discard" ? { ...g2, afterKong: true } : g2;
 }
 
@@ -341,6 +366,8 @@ export function discard(g: Game, seat: Seat, tileId: number): Game {
 
   // Work out every other seat's options.
   const visible = players.flatMap((q) => [...q.discards, ...q.melds.flatMap((m) => m.tiles)]);
+  const opponentsOf = (s: Seat): Opponent[] =>
+    players.filter((_, i) => i !== s).map((q) => ({ discards: q.discards, meldCount: q.melds.length }));
   const botClaims: Claim[] = [];
   let humanClaims: (ClaimKind | "win")[] = [];
   for (let i = 1; i < 4; i++) {
@@ -355,7 +382,7 @@ export function discard(g: Game, seat: Seat, tileId: number): Game {
     } else {
       if (claimWinScore(g2, s, tile)) { botClaims.push({ seat: s, kind: "win" }); continue; }
       const c = chooseClaim(
-        { hand: q.hand, melds: q.melds, visible, humanDiscards: players[HUMAN].discards, difficulty: g.difficulty, fanCtx: fanCtx(g2, s) },
+        { hand: q.hand, melds: q.melds, visible, humanDiscards: players[HUMAN].discards, opponents: opponentsOf(s), difficulty: g.difficulty, fanCtx: fanCtx(g2, s) },
         tile,
         fromLeft,
       );
@@ -367,11 +394,18 @@ export function discard(g: Game, seat: Seat, tileId: number): Game {
   return resolveClaims({ ...g2, humanClaims: [], botClaims }, null);
 }
 
+/** The chow sets the human could make with the pending discard, for the UI to offer. */
+export function humanChowSets(g: Game): [Tile, Tile][] {
+  if (!g.lastDiscard || !g.humanClaims.includes("chow")) return [];
+  return chowSets(g.players[HUMAN].hand, g.lastDiscard.tile);
+}
+
 /**
  * Apply the winning claim by priority: win (closest to the discarder first)
- * > pung/kong > chow. `human` is the human's pick or null for pass.
+ * > pung/kong > chow. `human` is the human's pick or null for pass; `chowPick`
+ * is the index into `humanChowSets` when the pick is a chow with a choice.
  */
-export function resolveClaims(g: Game, human: ClaimKind | "win" | null): Game {
+export function resolveClaims(g: Game, human: ClaimKind | "win" | null, chowPick = 0): Game {
   if (!g.lastDiscard) return g;
   const { tile, seat: shooter } = g.lastDiscard;
   const all: Claim[] = [...g.botClaims];
@@ -395,7 +429,9 @@ export function resolveClaims(g: Game, human: ClaimKind | "win" | null): Game {
   const p = players[pick.seat];
   const k = kindOf(tile);
   if (pick.kind === "chow") {
-    const [a, b] = chowSets(p.hand, tile)[0];
+    const sets = chowSets(p.hand, tile);
+    const idx = pick.seat === HUMAN ? Math.min(chowPick, sets.length - 1) : bestChow(p.hand, tile, p.melds, fanCtx(base, pick.seat));
+    const [a, b] = sets[idx];
     p.hand = p.hand.filter((t) => t.id !== a.id && t.id !== b.id);
     p.melds.push({ kind: "chow", tiles: sortTiles([a, b, tile]) });
   } else {
@@ -424,6 +460,7 @@ export function botAct(g: Game): Game {
     melds: p.melds,
     visible,
     humanDiscards: g.players[HUMAN].discards,
+    opponents: g.players.filter((_, i) => i !== seat).map((q) => ({ discards: q.discards, meldCount: q.melds.length })),
     difficulty: g.difficulty,
     fanCtx: fanCtx(g, seat),
   });

@@ -15,7 +15,7 @@ this package, or this version bump, change what a deployed user is exposed to?
 
 - **`SECURITY.md` → "Reading `npm audit` in this repo"** — why the raw audit number is
   misleading here and which command is the real one. Do not re-derive this.
-- **`.claude/CLAUDE.md` → Invariants → Build** — the two pinned constraints.
+- **`CLAUDE.md` → Invariants → Build** — the two pinned constraints.
   They look like bugs waiting to be tidied. They are not.
 - **`rulebooks/SECURITY_Rulebook.md` §5b** (dependencies and provenance) and **§5c**
   (checks in the pipeline); `rulebooks/ENGINEERING_Rulebook.md` §4.6, §4.19, §4.20. Tag findings with the section.

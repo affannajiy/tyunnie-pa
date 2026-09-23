@@ -4,6 +4,27 @@ A running log of gotchas, non-obvious decisions, and things that will waste your
 
 ---
 
+## 🟡 React Compiler lint rejects three patterns the game components reach for
+
+**Symptom:** `react-hooks/refs` ("Cannot access refs during render"), `react-hooks/set-state-in-effect` and `react-hooks/purity` errors on code that runs fine. The refs one also fires on a *callback* that reads `ref.current` when that callback is passed as an argument to a plain helper called during render (a `padBtn(...)` render helper, an array of `{ on: doHint }` objects) — the compiler can't prove the helper won't call it.
+**Root cause:** eslint-config-next 16 ships the compiler rules. They see `gRef.current = g` in the body, `setThinking(true)` at the top of an effect, `Math.random()` / `Date.now()` in render, and closures over refs handed to non-JSX call sites.
+**Fix:** (1) mirror state into a ref inside an effect (`useEffect(() => { gRef.current = g }, [g])`), or make the ref the truth and `setState` the mirror (Tetris `apply()`); (2) derive instead of syncing — `thinking = status === "playing" && turn === BOT`, `selected = explicitSel ?? hintTarget`; (3) turn a render helper that takes handlers into a component (`PadBtn`) so the closures become JSX props; (4) seed quips by hand count, play sound cues from a state-diff effect, never inside an updater. Also the browser tool's `space` key does not reach `e.key === " "` handlers — use a letter alias (`D`) when driving a game from the tool.
+**Date:** 2026-09-20
+
+## 🟡 The browser tool's "Return" key is not "Enter"
+
+**Symptom:** A keydown handler on `e.key === "Enter"` works for a human but never fires when the in-app browser tool presses `Return` — `e.key` arrives as `""`.
+**Root cause:** The automation maps `Return` to an unnamed key; `Enter` maps correctly. Nothing in the app.
+**Fix:** Press `Enter` in tool scripts. Verified the handler with a captured listener before touching the code — don't "fix" a working handler for this.
+**Date:** 2026-09-20
+
+## 🟡 Bulk-patching CRLF files from a script
+
+**Symptom:** A Node patch script reports its search string missing although the text is visibly there.
+**Root cause:** Most tracked files here are CRLF on disk (autocrlf); a template literal in the script is LF. `String.includes` fails on the line break.
+**Fix:** Normalise `\r\n` → `\n` before matching and restore on write. Files created by the Write tool are LF; git normalises on commit either way.
+**Date:** 2026-09-20
+
 ## Routing
 
 ### Root redirect lives in `next.config.ts`, not `app/page.tsx`
@@ -191,9 +212,13 @@ async function togglePlay() {
 }
 ```
 
-### Audio-reactive glow uses direct DOM manipulation, not React state
+### The Haze reads floats, not bytes
 
-The music glow effect in `Music.tsx` drives `boxShadow` directly via `coverRef` (a DOM ref) instead of React state. This is intentional — React state causes re-render overhead that breaks per-frame beat detection. Don't refactor this to `useState`.
+`getByteFrequencyData` maps the analyser's default −100…−30 dB window, and a modern master's bass sits at 0.83–0.99 of it permanently — the old glow barely moved because of this. `components/visualizer/audio.ts` reads `getFloatFrequencyData` and maps its own −75…−12 dB window, so bass swings ~0.25–0.75. Don't change the shared node's `minDecibels`/`maxDecibels` to fix it instead; other readers would shift.
+
+### Don't `loseContext()` in the Haze's cleanup
+
+`getContext("webgl")` on the same canvas returns the same context. A StrictMode / fast-refresh re-run then gets a lost context and every shader compile logs `shader: null`. Delete the buffer and program; let the canvas unmount free the context.
 
 ---
 

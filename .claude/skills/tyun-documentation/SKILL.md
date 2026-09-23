@@ -3,7 +3,7 @@ name: tyun-documentation
 description: >
   Update, audit, or maintain Tyunnie PA project documentation. Use when bumping a
   version, writing a docs/CHANGELOG.md entry, syncing the README badge, updating
-  .claude/CLAUDE.md after code changes, adding a docs/DEVNOTES.md gotcha, or
+  CLAUDE.md after code changes, adding a docs/DEVNOTES.md gotcha, or
   editing docs/DATABASE.md / docs/DEPLOYMENT.md. Also for "update the docs",
   "document this", or "what version are we on". Run after shipping a feature or fix.
 ---
@@ -19,7 +19,7 @@ session knows it was accepted as partial and why. Write the why down.
 |---|---|
 | `docs/CHANGELOG.md` | Version history, Keep a Changelog format — source of truth for releases |
 | `README.md` | Public overview: features, stack, setup, version badge |
-| `.claude/CLAUDE.md` | Claude's invariant list — one line per rule, depth lives in the skills |
+| `CLAUDE.md` | Claude's invariant list — one line per rule, depth lives in the skills |
 | `docs/DEVNOTES.md` | Gotcha log: HMR quirks, build traps, browser bugs |
 | `docs/DATABASE.md` | Supabase schema, RLS, indexes, SQL |
 | `docs/DEPLOYMENT.md` | Env vars, Vercel, Google OAuth, Supabase auth config |
@@ -36,7 +36,7 @@ Patch `x.x.X` fixes/types/build/docs · Minor `x.X.0` features/UI/API routes · 
 **Three sync locations, always together:**
 1. `package.json` → `"version"`
 2. `README.md` → badge `version-x.x.x-f97316`
-3. `.claude/CLAUDE.md` → header line
+3. `CLAUDE.md` → header line
 
 `lib/version.ts` re-exports `pkg.version` — it follows automatically, never edit by hand.
 

@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.28.0-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.29.0-f97316?style=flat-square)
 
 ---
 
@@ -51,13 +51,14 @@
 
 ### Music Player
 
-- Upload MP3s + album art, full playback controls, Web Audio visualizer, persistent across panels
+- Upload MP3s + album art, full playback controls, persistent across panels
+- **Haze visualizer** — a WebGL glow behind the cover that breathes with the bass, mids and highs, coloured from the album art
 
 ### Pomodoro + Focus Mode
 
 - **Adjustable timer** — configurable focus, short break, and long break durations with four presets: Classic (25/5/15), Extended (50/10/30), Short Sprint (15/3/10), Deep Work (90/15/30). Settings sync across the full panel, desk widget, and Focus Mode
 - Session dot tracker scales with the configured long-break interval
-- **Focus Mode** (`Ctrl/⌘+Shift+F` or Sidebar dock button) — fullscreen overlay with music-reactive background glow (Web Audio beat detection drives the radial gradient in real time), preset picker, task selector, full Pomodoro controls, and floating sticky notes
+- **Focus Mode** (`Ctrl/⌘+Shift+F` or Sidebar dock button) — fullscreen overlay with the music-reactive Haze behind the timer or the album art (Listen mode), preset picker, task selector, full Pomodoro controls, and floating sticky notes
 
 ### Calculator Hub
 
@@ -76,7 +77,15 @@ All modes follow the app's light/dark theme and chosen accent colour.
 
 ### Games Hub
 
-- Tetris, Chess (3 difficulties, 8 time controls), Sudoku, Minesweeper, Solitaire, Blackjack, Mahjong (Hong Kong rules, 3 bot difficulties, built-in guide), Tic Tac Toe
+- Chess — full rules incl. threefold / fifty-move / insufficient material, four deterministic bot levels, resign, draw offers, undo, PGN export, seven time controls
+- Tetris — 7-bag, SRS, hold, ghost, guideline scoring with T-spins and combos; Marathon and 40-line Sprint
+- Sudoku — generated, unique-solution puzzles graded by technique, hints that name the technique, notes, undo/redo, shareable IDs, a daily puzzle
+- Minesweeper — classic boards + custom, first click always opens, best times, long-press flagging
+- Solitaire — Klondike, draw 1 or 3, drag and drop, undo, auto-complete
+- Tic Tac Toe — unbeatable Hard, forkable Normal, persisted scoreline
+- Blackjack — six-deck casino table: chip betting, double, split to four hands, insurance, dealer peek, a persistent fictional bankroll and session stats
+- Mahjong — Hong Kong rules on a four-sided table, four bot difficulties up to a defensive Expert, four-wind games, three hint levels, built-in guide
+- Every game shares sound (off by default), a speed setting, keyboard controls and a local record shown on its hub card; Chess, Sudoku, Solitaire and Minesweeper resume a game you left
 
 ### Navigation Dock
 
@@ -221,7 +230,7 @@ public/sprites/         Tyunnie sprite PNGs
 public/music/           MP3s, cover art, playlist.json
 ```
 
-Full file-by-file breakdown in [.claude/CLAUDE.md](./.claude/CLAUDE.md).
+Full file-by-file breakdown in [CLAUDE.md](./CLAUDE.md).
 
 ---
 

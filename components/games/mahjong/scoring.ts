@@ -227,7 +227,17 @@ function scoreDecomp(d: Decomp, melds: Meld[], allTiles: Tile[], ctx: WinContext
   else if (suits.size === 1 && !honours) { add("Pure one suit", "清一色", 7); }
   else if (suits.size === 1 && honours) { add("Mixed one suit", "混一色", 3); }
 
-  if (pungLike.length === 4) add("All pungs", "對對糊", 3);
+  // 混么九: every set is a pung of a terminal or honour and the pair is one
+  // too. Sits above 對對糊 rather than on top of it — that is how the printed
+  // tables count it (4, not 3+4). 清么九 above already covers the no-honour case.
+  const orphanKind = (k: Kind) => kindSuit(k) === "w" || kindSuit(k) === "d" || kindRank(k) === 1 || kindRank(k) === 9;
+  const mixedTerminals = pungLike.length === 4 && honours && suits.size > 0 && sets.every((s) => orphanKind(s.k)) && orphanKind(d.pair);
+  // 坎坎糊: four concealed pungs (or concealed kongs) and won by self-draw.
+  const concealedPungs = d.sets.filter((s) => s.kind === "pung").length + melds.filter((m) => m.kind === "kong" && m.concealed).length;
+  if (concealedPungs === 4 && ctx.selfDrawn) { add("Four concealed pungs", "坎坎糊", LIMIT); return fans; }
+
+  if (mixedTerminals) add("Mixed terminals", "混么九", 4);
+  else if (pungLike.length === 4) add("All pungs", "對對糊", 3);
   else if (chows.length === 4 && !honours) add("All chows", "平糊", 1);
 
   // Seat / round wind pungs (a wind can be both → 2 fan)

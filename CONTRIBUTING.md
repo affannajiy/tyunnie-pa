@@ -26,7 +26,7 @@ full feature set. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and
 
 - **Build clean.** Run `npm run build` and `npm run lint` — the Vercel build
   fails on unused vars, `any` misuse, and TS errors. There are a few non-obvious
-  build gotchas documented in [.claude/CLAUDE.md](.claude/CLAUDE.md) and
+  build gotchas documented in [CLAUDE.md](CLAUDE.md) and
   [docs/DEVNOTES.md](docs/DEVNOTES.md) — please skim them.
 - **Match the surrounding style.** No new dependencies unless necessary.
 - **For UI changes, follow the usability contract** in

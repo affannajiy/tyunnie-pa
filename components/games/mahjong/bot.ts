@@ -9,7 +9,7 @@
 import { type Tile, type Kind, kindOf, isHonour, isSuited, countKinds } from "./tiles";
 import { type Meld, isComplete, waitingOn } from "./scoring";
 
-export type Difficulty = "easy" | "normal" | "hard";
+export type Difficulty = "easy" | "normal" | "hard" | "expert";
 
 // ── Efficiency ─────────────────────────────────────────────────────────────
 
@@ -147,6 +147,11 @@ export function rankDiscards(hand: Tile[], melds: Meld[], visible: Tile[], fanCt
 
 // ── Decisions ──────────────────────────────────────────────────────────────
 
+export type Opponent = {
+  discards: Tile[];
+  meldCount: number;
+};
+
 export type BotView = {
   hand: Tile[];
   melds: Meld[];
@@ -154,12 +159,62 @@ export type BotView = {
   visible: Tile[];
   /** The human's own discards — Hard reads these as "safe to throw". */
   humanDiscards: Tile[];
+  /** The other three seats — Expert reads all of them for defence. Optional so older callers still type. */
+  opponents?: Opponent[];
   difficulty: Difficulty;
   fanCtx: FanCtx;
 };
 
+// ── Defence (Expert) ───────────────────────────────────────────────────────
+
+/**
+ * How likely an opponent is to be waiting. Open melds and a long discard row
+ * both say "late hand"; the number is a weight, not a probability.
+ */
+export function threatOf(o: Opponent): number {
+  let t = o.meldCount * 0.35 + Math.max(0, o.discards.length - 6) * 0.06;
+  if (o.meldCount >= 3) t += 0.4;
+  return Math.min(1.5, t);
+}
+
+/**
+ * Danger of throwing `kind` against `opponents`. A tile someone already
+ * discarded is safe against them (they built past it); honours and terminals
+ * with most copies visible are near-safe; middle suited tiles are the risk.
+ */
+export function dangerOf(kind: Kind, view: BotView): number {
+  const opps = view.opponents ?? [];
+  const seen = countKinds(view.visible);
+  const copiesOut = seen.get(kind) ?? 0;
+  const suit = kind[0], rank = Number(kind.slice(1));
+  const honour = suit === "w" || suit === "d";
+  let danger = 0;
+  for (const o of opps) {
+    const t = threatOf(o);
+    if (t <= 0) continue;
+    if (o.discards.some((d) => kindOf(d) === kind)) continue;
+    let base: number;
+    if (honour) base = copiesOut >= 3 ? 0 : copiesOut === 2 ? 0.15 : 0.45;
+    else if (rank === 1 || rank === 9) base = 0.45;
+    else if (rank === 2 || rank === 8) base = 0.65;
+    else base = 1;
+    // The fewer copies left, the fewer hands can be waiting on it.
+    base *= copiesOut >= 3 ? 0.35 : copiesOut === 2 ? 0.7 : 1;
+    // A tile three away in the same suit already thrown by this opponent (suji) makes this one safer.
+    if (!honour && o.discards.some((d) => d.suit === suit && Math.abs(d.rank - rank) === 3)) base *= 0.7;
+    danger += base * t;
+  }
+  return danger;
+}
+
+/** True while every opponent reads as an early hand. */
+export function tableQuiet(view: BotView): boolean {
+  return (view.opponents ?? []).every((o) => threatOf(o) < 0.5);
+}
+
 export function chooseDiscard(v: BotView): Tile {
   const ranked = rankDiscards(v.hand, v.melds, v.visible, v.fanCtx);
+  if (v.difficulty === "expert") return chooseDiscardExpert(v, ranked);
   if (v.difficulty === "easy") {
     // Easy plays like a beginner: right idea half the time, random the rest.
     if (Math.random() < 0.5) return ranked[Math.floor(Math.random() * ranked.length)];
@@ -177,6 +232,29 @@ export function chooseDiscard(v: BotView): Tile {
   return ranked[0];
 }
 
+/**
+ * Expert weighs attack against defence. Near ready, or with a quiet table, it
+ * takes the efficient discard; far from ready with a threat on the table it
+ * pays some efficiency for a safer tile. Never random.
+ */
+function chooseDiscardExpert(v: BotView, ranked: Tile[]): Tile {
+  if (tableQuiet(v)) return ranked[0];
+  const bestRest = v.hand.filter((x) => x.id !== ranked[0].id);
+  const bestValue = handValue(bestRest, v.melds, v.fanCtx);
+  const ready = waitingOn(bestRest, v.melds).length > 0;
+  // A ready hand attacks unless the tile is flat-out dangerous and a nearly
+  // free safe tile exists; a hand far from ready folds hard.
+  const defendWeight = ready ? 1.2 : bestValue >= 14 ? 2.5 : 5;
+  let best = ranked[0], bestScore = -Infinity;
+  for (const t of ranked.slice(0, 6)) {
+    const rest = v.hand.filter((x) => x.id !== t.id);
+    const loss = bestValue - handValue(rest, v.melds, v.fanCtx);
+    const s = -loss - dangerOf(kindOf(t), v) * defendWeight;
+    if (s > bestScore) { bestScore = s; best = t; }
+  }
+  return best;
+}
+
 export type ClaimKind = "chow" | "pung" | "kong";
 
 /** Which meld types this hand could make with `tile`. Chow only if `fromLeft`. */
@@ -188,6 +266,19 @@ export function claimOptions(hand: Tile[], tile: Tile, fromLeft: boolean): Claim
   if (same >= 2) out.push("pung");
   if (fromLeft && chowSets(hand, tile).length) out.push("chow");
   return out;
+}
+
+/** Which of `chowSets` leaves the best hand — the bot's pick, and the default the UI offers. */
+export function bestChow(hand: Tile[], tile: Tile, melds: Meld[], ctx?: FanCtx): number {
+  const sets = chowSets(hand, tile);
+  let best = 0, bestV = -Infinity;
+  sets.forEach(([a, b], i) => {
+    const rest = hand.filter((t) => t.id !== a.id && t.id !== b.id);
+    const m = [...melds, { kind: "chow" as const, tiles: [a, b, tile] }];
+    const v = ctx ? handValue(rest, m, ctx) : efficiency(rest, m.length);
+    if (v > bestV) { bestV = v; best = i; }
+  });
+  return best;
 }
 
 /** The distinct pairs of hand tiles that form a run with `tile`. */
@@ -223,7 +314,7 @@ export function chooseClaim(v: BotView, tile: Tile, fromLeft: boolean): ClaimKin
   const shapeAfter = (kind: ClaimKind) => {
     let rest: Tile[];
     if (kind === "chow") {
-      const [a, b] = chowSets(v.hand, tile)[0];
+      const [a, b] = chowSets(v.hand, tile)[bestChow(v.hand, tile, v.melds, v.fanCtx)];
       rest = v.hand.filter((t) => t.id !== a.id && t.id !== b.id);
     } else {
       let n = kind === "kong" ? 3 : 2;
@@ -238,7 +329,7 @@ export function chooseClaim(v: BotView, tile: Tile, fromLeft: boolean): ClaimKin
   // Opening a concealed hand costs the 2 fan of 門清自摸, which is often the
   // difference between a legal win and a chicken hand. Demand a real gain
   // for the first claim; once open, anything that helps is fine.
-  const threshold = v.melds.length === 0 ? (v.difficulty === "hard" ? 3 : 2) : 0;
+  const threshold = v.melds.length === 0 ? (v.difficulty === "hard" || v.difficulty === "expert" ? 3 : 2) : 0;
   let best: ClaimKind | null = null, bestGain = threshold;
   for (const o of opts) {
     if (o === "chow" && v.difficulty === "easy") continue;

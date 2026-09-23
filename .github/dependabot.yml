@@ -36,7 +36,7 @@ updates:
 
     ignore:
       # The lint toolchain is pinned deliberately, not accidentally — see
-      # .claude/CLAUDE.md "Lint toolchain is fragile". eslint 10 breaks on
+      # CLAUDE.md "Lint toolchain is fragile". eslint 10 breaks on
       # eslint-plugin-react's peer cap; eslint-config-next majors drag it along.
       # Security advisories still come through: `ignore` only suppresses the
       # scheduled version bumps.

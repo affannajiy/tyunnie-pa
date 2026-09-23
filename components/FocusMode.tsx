@@ -20,37 +20,11 @@ import type { Todo, StickyNote as StickyNoteType } from "@/lib/database";
 import StickyNote from "@/components/StickyNote";
 import { updateStickyNote, deleteStickyNote } from "@/lib/database";
 import { useAccentColor } from "@/lib/useAccentColor";
+import Visualizer from "@/components/visualizer/Visualizer";
 
 type PomSettings = { focusMins: number; shortMins: number };
 
 type Preset = { label: string; focusMins: number; shortMins: number };
-
-// ── Ambient glow tuning ──────────────────────────────────────────────────────
-// Original bass window. Sampling fewer bins was tried and reverted.
-const BASS_BINS = 12;
-// Envelope fall per frame. Rise is instant (see tick) — fast attack, smooth
-// decay. This is the ONLY smoothing; there is deliberately no CSS transition
-// on the element, which used to smear every frame and caused the lag.
-const DECAY = 0.86;
-
-/**
- * The ambient glow, as one function so the idle branch and the animated branch
- * can never drift apart. `g` is 0–1.
- *
- * Geometry is the original low ellipse. Two alternatives were tried and both
- * reverted after looking at them: a wider `140% 120% at 50% 88%` sized ellipse,
- * and a tighter `22%→55%` footprint. The original wash is the look — don't
- * "improve" either number without asking.
- *
- * The static background in the JSX `style` must be kept in step with this.
- */
-function glowCss(rgb: string, g: number): string {
-  // Original footprint. A tighter 22→55 was tried and reverted — the wider wash
-  // is the look. Don't shrink these without asking.
-  const radius = Math.round(30 + g * 60);
-  const opacity = (0.08 + g * 0.47).toFixed(3);
-  return `radial-gradient(ellipse at 50% 80%, rgba(${rgb},${opacity}) 0%, transparent ${radius}%)`;
-}
 
 const PRESETS: Preset[] = [
   { label: "Classic",     focusMins: 25, shortMins: 5  },
@@ -93,13 +67,7 @@ export default function FocusMode({
 }: Props) {
   const music = useMusicContext();
 
-  // ── Music-rhythm glow refs (never state — same rule as Music.tsx) ──
-  const bgGlowRef = useRef<HTMLDivElement>(null);
-  const glowRafRef = useRef<number | null>(null);
-  // Envelope + running-max live in refs, not state: they update every frame and
-  // must never trigger a React render (same rule as the glow itself).
-  const envelopeRef = useRef(0);
-  // Live accent — re-renders on tyunnie-accent-changed (Auto-Theme, picker).
+  // Live accent — the Haze's fallback when a cover has no usable colour.
   const accentRgb = useAccentColor();
 
   // ── Emphasis mode ──
@@ -121,6 +89,11 @@ export default function FocusMode({
       return next;
     });
   }
+
+  // ── Haze anchor ──
+  // The Haze centres on the album art in Listen mode and the timer ring in
+  // Timer mode — one ref, attached to whichever is on screen.
+  const hazeAnchorRef = useRef<HTMLDivElement>(null);
 
   // ── Task state ──
   const [linkedTask, setLinkedTask] = useState<string | null>(null);
@@ -210,73 +183,6 @@ export default function FocusMode({
     }
   }, [pomRunning]);
 
-  // ── Music-rhythm background glow via analyser — direct DOM ref, NOT state ──
-  useEffect(() => {
-    // accentRgb comes from useAccentColor() and is in this effect's deps, so an
-    // accent change (every track, with Auto-Theme on) tears the loop down and
-    // restarts it with the new colour. Reading the CSS var here without that
-    // dep captured it once at mount: the rAF loop then repainted the stale
-    // colour 60x/sec AND, because it writes an inline style every frame, it
-    // permanently clobbered the rgba(var(--accent-rgb),…) fallback in the JSX,
-    // so the element could never recover on its own.
-    const rgb = accentRgb;
-
-    // A rAF loop writing inline styles is invisible to the global
-    // prefers-reduced-motion block in globals.css, which only reaches CSS
-    // transitions and animations. Honour it explicitly (§13): render the glow
-    // at a calm fixed level and never start the loop.
-    const reduceMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-    if (reduceMotion) {
-      if (bgGlowRef.current) bgGlowRef.current.style.background = glowCss(rgb, 0.35);
-      return;
-    }
-
-    if (!music.isPlaying || !music.analyser?.current) {
-      if (glowRafRef.current) cancelAnimationFrame(glowRafRef.current);
-      glowRafRef.current = null;
-      if (bgGlowRef.current) {
-        envelopeRef.current = 0;
-        bgGlowRef.current.style.background = glowCss(rgb, 0);
-      }
-      return;
-    }
-
-    const dataArray = new Uint8Array(music.analyser.current.frequencyBinCount);
-
-    function tick() {
-      if (!music.analyser?.current || !bgGlowRef.current) return;
-      music.analyser.current.getByteFrequencyData(dataArray);
-
-      // ABSOLUTE level, as it originally was — this is what actually rises and
-      // falls with the music. An auto-normalise (raw / running-peak) was tried
-      // here and it FLATTENED the glow: modern masters keep the bass near its
-      // own maximum almost constantly, so the ratio pinned at ~1.0 and the glow
-      // became a static blob. Do not reintroduce it.
-      let sum = 0;
-      for (let i = 0; i < BASS_BINS; i++) sum += dataArray[i];
-      const target = sum / BASS_BINS / 255;
-
-      // Fast attack, smooth decay: jump straight to a new peak on the frame it
-      // lands, then ease down. Keeps the punch without the per-frame CSS smear.
-      envelopeRef.current =
-        target > envelopeRef.current
-          ? target
-          : envelopeRef.current * DECAY + target * (1 - DECAY);
-
-      bgGlowRef.current.style.background = glowCss(rgb, envelopeRef.current);
-      glowRafRef.current = requestAnimationFrame(tick);
-    }
-
-    glowRafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (glowRafRef.current) cancelAnimationFrame(glowRafRef.current);
-      glowRafRef.current = null;
-    };
-  }, [music.isPlaying, music.analyser, accentRgb]);
-
   // ── Timer display ──
   const pomMin = Math.floor(pomSeconds / 60).toString().padStart(2, "0");
   const pomSec = (pomSeconds % 60).toString().padStart(2, "0");
@@ -304,19 +210,19 @@ export default function FocusMode({
       className="on-dark fixed inset-0 z-100 flex flex-col overflow-hidden"
       style={{ background: "linear-gradient(160deg, #0e0b08 0%, #111010 100%)" }}
     >
-      {/* Music-reactive ambient glow — written directly via bgGlowRef */}
-      <div
-        ref={bgGlowRef}
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          // Still NO CSS transition here, deliberately. The rAF loop writes this
-          // every frame; the old 0.08s ease applied an 80ms smear to each write
-          // and was the main reason the glow lagged the beat. Smoothing lives in
-          // the attack/decay envelope in tick() instead.
-          background:
-            "radial-gradient(ellipse at 50% 80%, rgba(var(--accent-rgb),0.12) 0%, transparent 60%)",
-        }}
-      />
+      {/* Music-reactive Haze — components/visualizer. Mounted in both modes
+          whenever a track is loaded; it draws a still frame until first play. */}
+      {music.currentTrack && (
+        <Visualizer
+          analyser={music.analyser}
+          armed={music.isPlaying || music.hasEverPlayed}
+          isPlaying={music.isPlaying}
+          accentRgb={accentRgb}
+          coverUrl={music.currentTrack.cover}
+          anchorRef={hazeAnchorRef}
+          layoutKey={listenMode}
+        />
+      )}
 
       {/* ── HEADER ── */}
       <div className="shrink-0 flex items-center justify-between px-6 py-4 relative z-10">
@@ -427,15 +333,13 @@ export default function FocusMode({
         </div>
         )}
 
-        {/* ── LISTEN MODE: album art is the hero ──
-            Reuses the same bass-reactive glow already painting the backdrop via
-            bgGlowRef; no second render loop. */}
+        {/* ── LISTEN MODE: album art is the hero, the Haze glows behind it ── */}
         {listenMode && music.currentTrack && (
           <div className="flex flex-col items-center gap-5 w-full">
             <div
-              // No glow around the artwork on purpose — the background ambient
-              // glow is the only light source in Listen mode. Removed on request
-              // while chasing a band at the top of the screen.
+              ref={hazeAnchorRef}
+              // No box-shadow around the artwork on purpose — the Haze behind
+              // it is the only light source.
               className="rounded-3xl overflow-hidden bg-[#2a2520] w-[min(70vw,340px)] aspect-square"
             >
               {music.currentTrack.cover ? (
@@ -489,7 +393,7 @@ export default function FocusMode({
 
         {/* Timer circle */}
         {!listenMode && (
-        <div className="relative">
+        <div ref={hazeAnchorRef} className="relative">
           <svg className="-rotate-90" width="220" height="220" viewBox="0 0 200 200">
             <circle cx="100" cy="100" r={r} fill="none" stroke="#1e1b17" strokeWidth="8" />
             <circle

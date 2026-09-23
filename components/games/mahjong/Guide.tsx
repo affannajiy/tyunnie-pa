@@ -24,6 +24,7 @@ const FAN_TABLE: { name: string; zh: string; fan: number | "limit"; how: string 
   { name: "Robbing the kong", zh: "搶槓", fan: 1, how: "Won on the tile someone added to their pung." },
   { name: "Mixed one suit", zh: "混一色", fan: 3, how: "One suit plus honours." },
   { name: "All pungs", zh: "對對糊", fan: 3, how: "Four pungs/kongs and a pair." },
+  { name: "Mixed terminals", zh: "混么九", fan: 4, how: "Every pung and the pair is a 1, a 9 or an honour, with at least one honour. Replaces All pungs." },
   { name: "Little three dragons", zh: "小三元", fan: 5, how: "Two dragon pungs and a pair of the third." },
   { name: "Little four winds", zh: "小四喜", fan: 6, how: "Three wind pungs and a pair of the fourth." },
   { name: "Pure one suit", zh: "清一色", fan: 7, how: "Every tile in one suit, no honours." },
@@ -33,6 +34,7 @@ const FAN_TABLE: { name: string; zh: string; fan: number | "limit"; how: string 
   { name: "Thirteen orphans", zh: "十三么", fan: "limit", how: "One of every 1, 9, wind and dragon, plus a pair of any." },
   { name: "Big four winds", zh: "大四喜", fan: "limit", how: "Pungs of all four winds." },
   { name: "Four kongs", zh: "十八羅漢", fan: "limit", how: "Four kongs." },
+  { name: "Four concealed pungs", zh: "坎坎糊", fan: "limit", how: "Four pungs (or concealed kongs) built without a claim, won by self-draw." },
   { name: "Nine gates", zh: "九蓮寶燈", fan: "limit", how: "1112345678999 of one suit, concealed, waiting on any of the nine." },
   { name: "All flowers", zh: "八仙過海", fan: "limit", how: "All eight flowers and seasons." },
   { name: "Heavenly hand", zh: "天糊", fan: "limit", how: "Dealer wins on the opening 14." },
@@ -120,7 +122,7 @@ export default function Guide({
                 Fan converts to points: {Object.entries(POINTS).map(([f, p]) => `${f}→${p}`).join(", ")}. Limit is {LIMIT}. Self-draw: all three pay full. Discard: the shooter pays full, the other two pay half.
               </Section>
               <Section title="Rounds">
-                The dealer keeps the deal after winning or a draw; otherwise it passes right. After four dealers the round wind changes. A game is 16 hands.
+                The dealer keeps the deal after winning or a draw; otherwise it passes right. After four dealers the round wind changes. A game is four rounds — East to North — so at least 16 hands, more when a dealer holds the deal (連莊).
               </Section>
             </>
           )}
@@ -169,7 +171,7 @@ export default function Guide({
               <Section title="Hints">
                 <label className="flex items-center gap-3 mt-1 cursor-pointer">
                   <input type="checkbox" checked={hints} onChange={(e) => onHints(e.target.checked)} className="accent-[#f97316] w-4 h-4" />
-                  <span>Show hints — suggested discard, what you&apos;re waiting on, and whether your hand clears 3 fan.</span>
+                  <span>Show hints — suggested discard, and whether your hand clears 3 fan. Settings has a Full level that also lists your waits.</span>
                 </label>
               </Section>
             </>

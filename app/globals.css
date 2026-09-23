@@ -298,6 +298,67 @@ body {
   animation: modal-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
 }
 
+/* Table games (Blackjack, Mahjong). Entrance-only keyframes — nothing here is
+   written by a rAF loop, so a CSS animation is the right tool. The global
+   reduced-motion block above flattens all of them. */
+@keyframes card-in {
+  from { opacity: 0; transform: translate(0, -18px) rotate(-4deg); }
+  to   { opacity: 1; transform: translate(0, 0) rotate(0); }
+}
+@keyframes chip-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes tile-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spotlight-in {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-card-in { animation: card-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-chip-in { animation: chip-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-tile-in { animation: tile-in 0.18s ease-out both; }
+.animate-spotlight-in { animation: spotlight-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Board games. mark-in = a placed mark / digit; line-draw = SVG stroke revealed
+   along a winning line (pathLength=1 on the element); cell-pop = a cleared
+   Tetris row or a completed Sudoku unit; shake = a wrong entry / mine. */
+@keyframes mark-in {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes line-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes cell-pop {
+  0%   { transform: scale(1); filter: brightness(1); }
+  50%  { transform: scale(1.08); filter: brightness(1.6); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@keyframes shake-x {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+.animate-mark-in { animation: mark-in 0.15s ease-out both; }
+.animate-line-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: line-draw 0.4s ease-out 0.05s both; }
+.animate-cell-pop { animation: cell-pop 0.3s ease-out both; }
+.animate-shake-x { animation: shake-x 0.25s ease-in-out both; }
+/* Tetris clear toast: rises in, holds, fades — one keyframe so it needs no timer. */
+@keyframes toast-up {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.96); }
+  12%  { opacity: 1; transform: translateY(0) scale(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+.animate-toast-up { animation: toast-up 1.4s ease-out both; }
+/* The global block below would jump this to its last frame (opacity 0) and
+   hide the toast; hold it still instead — it unmounts on the next clear. */
+@media (prefers-reduced-motion: reduce) { .animate-toast-up { animation: none; } }
+
 .animate-fade-in {
   animation: fade-in 0.18s ease both;
 }
