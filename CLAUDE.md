@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-Personal AI assistant web app, Taehyun (TXT) themed. Next.js 16 · TypeScript · Tailwind v4 · Supabase · Gemini + Groq · Vercel. v3.29.0.
+Personal AI assistant web app, Taehyun (TXT) themed. Next.js 16 · TypeScript · Tailwind v4 · Supabase · Gemini + Groq · Vercel. v3.29.1.
 
 **This file is the invariant list, not the manual** — and the only CLAUDE.md. `next dev` keeps the `nextjs-agent-rules` block above in sync (no `AGENTS.md`, so it writes here); leave the markers. One line per rule. Depth lives in the skills and docs below.
 

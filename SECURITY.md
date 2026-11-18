@@ -1,6 +1,6 @@
 # Security — Tyunnie PA
 
-Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link). Last robustness pass: **2026-06-24** (v3.22.0 — rate-limiter memory hardening, changelog cache fix, crash-guard sweep). Last rulebook pass: **2026-08-19** (v3.26.0 — graph-expression sandbox escape, sanitiser rewrite, CI security automation).
+Security posture, audit history, known limitations, and backup plans. Last full audit: **2026-06-10** (pre-public-launch pass before sharing the Vercel link). Last robustness pass: **2026-06-24** (v3.22.0 — rate-limiter memory hardening, changelog cache fix, crash-guard sweep). Last rulebook pass: **2026-11-18** (OWASP LLM Top 10 2026 + Agentic Top 10 — AI action guards, memory id fix).
 
 ---
 
@@ -11,10 +11,10 @@ Security posture, audit history, known limitations, and backup plans. Last full 
 | API auth | Every non-cron route validates the Supabase JWT via `lib/apiAuth.ts` — `getAuthUser()` returns the verified user; `verifyAuth()` is the boolean wrapper |
 | Recipient binding | `/api/vault-notify` emails ONLY the verified JWT's `user.email` — the client cannot choose the recipient (mail-relay prevention) |
 | Rate limiting | Two-tier: per-IP burst + per-user daily quota (`lib/rateLimit.ts`). Chat: 25/min IP + 300/day user. Run: 10/min IP + 100/day user. Vault: 5/10min IP + per-user. Idle keys are pruned per-call + a 5-min global sweep (tracks widest active window) so the Map can't grow unbounded on a long-lived instance |
-| LLM resilience | `/api/chat` calls Gemini 2.0 Flash first, falls back to Groq llama-3.3-70b on any error/timeout (missing both keys fails gracefully — generic error, no crash). `/api/daily-quote` is Groq-only |
+| LLM resilience | `/api/chat` calls Gemini 3.5 Flash first, falls back to Groq gpt-oss-120b on any error/timeout (model ids live only in `lib/aiModels.ts`) (missing both keys fails gracefully — generic error, no crash). `/api/daily-quote` is Groq-only |
 | OTP | `crypto.randomInt` (CSPRNG), `crypto.timingSafeEqual` comparison, 10-min expiry, 5-attempt lockout, one-time use |
 | Cron | `/api/daily-quote` guarded by `CRON_SECRET` Bearer token, constant-time compared |
-| Vault crypto | AES-GCM 256-bit (Web Crypto), PBKDF2 100k iterations; fresh salt + 12-byte IV per encryption; PIN never stored (decrypt-then-compare verifier) |
+| Vault crypto | AES-GCM 256-bit (Web Crypto), PBKDF2 600k iterations (100k kept only as a read fallback for older records); fresh salt + 12-byte IV per encryption; PIN never stored (decrypt-then-compare verifier) |
 | XSS | `sanitizeHtml()` on all AI output before `dangerouslySetInnerHTML`. Escapes everything, then re-opens only bare `b\|strong\|em\|i\|code\|br`. Attributes cannot survive, so event handlers and `javascript:` URIs are impossible by construction rather than stripped by pattern |
 | Headers | CSP (`default-src 'self'` + explicit `connect-src`), HSTS preload, `nosniff`, `frame-ancestors 'self'`, `X-XSS-Protection: 0`, `poweredByHeader: false` |
 | Secrets | All API keys server-only (no `NEXT_PUBLIC_` on secrets); service role key used only in `app/api/daily-quote`; `.env*` gitignored and untracked |
@@ -27,8 +27,8 @@ Security posture, audit history, known limitations, and backup plans. Last full 
 
 | API | Auth | Risk surface |
 |---|---|---|
-| Gemini 2.0 Flash (primary chat) | `GEMINI_API_KEY` server-only | Prompt injection; token-cost abuse (capped 300/day per user) |
-| Groq Llama 3.3 70B (chat fallback + daily-quote) | `GROQ_API_KEY` server-only | Same as Gemini |
+| Gemini 3.5 Flash (primary chat) | `GEMINI_API_KEY` server-only | Prompt injection; token-cost abuse (capped 300/day per user) |
+| Groq gpt-oss-120b (chat fallback + daily-quote) | `GROQ_API_KEY` server-only | Same as Gemini |
 | JDoodle (py/js/ts/bash) | `JDOODLE_CLIENT_ID/SECRET` server-only | Sandboxed exec; credit exhaustion (capped 100/day per user + 15s timeout) |
 | Resend | `RESEND_API_KEY` server-only | Mail-relay abuse — prevented by binding the recipient to the JWT email |
 | Open-Meteo | None | Public, read-only, low risk |
@@ -80,6 +80,23 @@ Verified clean: all 13 `JSON.parse(localStorage…)` sites guarded after #3; eve
 
 ---
 
+## Rulebook Pass — 2026-11-18 (LLM Top 10 2026 + Agentic Top 10)
+
+The rulebook moved §4 to the 2026 OWASP LLM list, which renumbers most risks, and added the
+Agentic Top 10. Existing `§4 LLMxx` tags in code and below were remapped to the new numbers.
+Tyun's chat actions are tool use, so this pass read every `executeAction` case against both lists.
+
+| # | Severity | Issue | Status |
+|---|---|---|---|
+| 1 | 🟠 Medium | `delete_memory` ran with no confirm. Memories have no panel, so the chat was the only place one could be removed and the user never saw it happen (§4 LLM03 excessive agency, ASI02 tool misuse) | ✅ Fixed — goes through `confirmDestructive`, naming the memory |
+| 2 | 🟠 Medium | `edit_sticky` replaced a note's whole text with no confirm — a delete with extra steps (§4 LLM03) | ✅ Fixed — confirms whenever the new text does not keep the old; an append still goes through quietly |
+| 3 | 🟡 Low | "At most 5 actions per workflow" lived only in the prompt (§7 *enforce in code, remind in the prompt*) | ✅ Fixed — `MAX_ACTIONS_PER_REPLY = 6` (5 + mood); extras are dropped and logged |
+| 4 | 🟡 Low | `save_memory` stored any length and duplicates; every memory rides along in later prompts (ASI06 memory and context poisoning) | ✅ Fixed — 300-char cap, case-insensitive dedupe |
+| 5 | 🟡 Low | **Bug found on the way:** a memory saved in-session got a client-made UUID, so a later `delete_memory` sent an id no row had — it vanished from state and came back on reload | ✅ Fixed — `addMemory()` returns the inserted row, the dashboard keeps its real id |
+| 6 | 🟢 Low | Doc drift — this file still named Gemini 2.0 Flash / Llama 3.3 70B (both retired) and PBKDF2 at 100k | ✅ Fixed |
+
+---
+
 ## Rulebook Pass — 2026-08-21
 
 Full review against the rewritten `rulebooks/SECURITY_Rulebook.md` (§1 through §6).
@@ -89,10 +106,10 @@ This pass ran against the new §-numbering, so its citations are the ones to fol
 |---|---|---|---|
 | 1 | 🔴 High | `Calculator.tsx` still reached `new Function()` on both the calculator and graphing paths. The token allowlists added in 3.26.0 were correct, but they were guarding an evaluator rather than removing one — §2a.7 forbids the sink outright, and the same guard had already failed once. It also forced `'unsafe-eval'` into the CSP, breaking §2b.4 for the whole app | ✅ Fixed — `lib/mathEval.ts`, a recursive-descent parser over the keypad's own vocabulary. No string ever becomes code, so `constructor`/`fetch`/`alert` are not dangerous inputs but simply not tokens. Both `new Function()` sites deleted; `'unsafe-eval'` removed from the production CSP and verified absent on a real production response |
 | 2 | 🟠 Medium | `Profile.tsx` rendered a vault entry's saved website straight into `href={dec.website}`. React escapes text but does not police URL schemes, so a stored `javascript:` URL executed on click — stored XSS with a click trigger (§2b.1, A05) | ✅ Fixed — `lib/safeUrl.ts` `safeHref()` parses the URL and allowlists `http`/`https`/`mailto` (§2a.2). Parsing rather than prefix-matching, so `java	script:` and case tricks canonicalise before the check. A non-conforming value still displays as text, just not as a link |
-| 3 | 🟠 Medium | `/api/chat` accepted a fully client-supplied `systemPrompt` of up to 60 000 chars. Any authenticated caller could replace the persona entirely and use the route as a general-purpose LLM proxy on the owner's Gemini and Groq keys (§2e.4, §4 LLM06/LLM07/LLM10) | ✅ Partly fixed — the server now owns a preamble it always prepends, and the client's string is appended below it as explicitly untrusted framing (§1a.4: enforce in code, remind in the prompt). Prompt cap cut 60k → 20k and a new 40k conversation-wide cap added. **Remaining:** the four prompts are still composed client-side; moving them into the route is the real fix |
+| 3 | 🟠 Medium | `/api/chat` accepted a fully client-supplied `systemPrompt` of up to 60 000 chars. Any authenticated caller could replace the persona entirely and use the route as a general-purpose LLM proxy on the owner's Gemini and Groq keys (§2e.4, §4 LLM03/LLM06/LLM08 (2026 numbering)) | ✅ Partly fixed — the server now owns a preamble it always prepends, and the client's string is appended below it as explicitly untrusted framing (§1a.4: enforce in code, remind in the prompt). Prompt cap cut 60k → 20k and a new 40k conversation-wide cap added. **Remaining:** the four prompts are still composed client-side; moving them into the route is the real fix |
 | 4 | 🟠 Medium | Vault PBKDF2 ran at 100 000 iterations where §2c.6 requires 600 000 — and the stretched secret is a 6-digit PIN, so the iteration count is very nearly the entire work factor (§1a.9) | ✅ Fixed — 600 000 for everything written from now on, with a read-only fallback to 100 000 so existing rows still decrypt; re-saving upgrades a record. Unlock now decrypts entries concurrently so the 6× cost does not become 6× the wait |
 | 5 | 🟡 Low | `/api/chat` checked `m.content.length` only *if* it was a string, so a non-string `content` skipped validation entirely and went on to the SDK (§2a.3) | ✅ Fixed — type checked before length, and a conversation-wide character total added |
-| 6 | 🟡 Low | `buildSystemPrompt()` inlined every todo, draft, project and snippet with no cap, so prompt size — and token spend — scaled with the user's data (§4 LLM10) | ✅ Fixed — 40 items per list, with a truncation line so the model reports "and N more" instead of inventing a total |
+| 6 | 🟡 Low | `buildSystemPrompt()` inlined every todo, draft, project and snippet with no cap, so prompt size — and token spend — scaled with the user's data (§4 LLM06) | ✅ Fixed — 40 items per list, with a truncation line so the model reports "and N more" instead of inventing a total |
 | 7 | 🟡 Low | CI had no secret scanning, and `actions/checkout` left the job token in `.git/config` for every later step (§5c.3) | ✅ Fixed — gitleaks step added with `fetch-depth: 0` so history is scanned too, plus `persist-credentials: false` |
 | 8 | 🟡 Low | `crypto.ts` built base64 with `String.fromCharCode(...bytes)`, which throws `RangeError` once a record is large enough to exceed the argument limit | ✅ Fixed — chunked base64 helpers |
 | 9 | 🟡 Low | **Found by tightening the CSP:** `@vercel/analytics` and `@vercel/speed-insights` were being blocked outright in development — `va.vercel-scripts.com` was in no directive. A control silently breaking a feature nobody was watching (§1a.8) | ✅ Fixed — allowed in the dev policy only; on Vercel both are served from this origin, which `'self'` already covers |

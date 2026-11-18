@@ -401,8 +401,11 @@ export const guest = {
 
   // memories
   getMemories: (): Memory[] => [...getGuestData().memories],
-  addMemory: (content: string): void =>
-    mutate((d) => d.memories.unshift({ id: uid(), user_id: GUEST_ID, content, created_at: nowISO() })),
+  addMemory: (content: string): Memory => {
+    const row: Memory = { id: uid(), user_id: GUEST_ID, content, created_at: nowISO() };
+    mutate((d) => d.memories.unshift(row));
+    return row;
+  },
   deleteMemory: (id: string): void =>
     mutate((d) => {
       d.memories = d.memories.filter((x) => x.id !== id);

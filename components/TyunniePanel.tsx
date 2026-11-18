@@ -677,7 +677,7 @@ No preamble. No markdown fences.`,
     // Every list below is capped. Uncapped, the prompt grew with the user's data
     // and a heavy account could push a single request past six figures of
     // characters — the token bill scales with it and the server now rejects it
-    // outright (§4 LLM10). `MAX_ITEMS` keeps the worst case well under the
+    // outright (§4 LLM06). `MAX_ITEMS` keeps the worst case well under the
     // route's MAX_PROMPT_CHARS; a truncation line tells the model what it is
     // not seeing so it says "you have more" instead of inventing a total.
     const MAX_ITEMS = 40;
@@ -1077,6 +1077,12 @@ casual chat (no data action — still set a mood):
   // they must clear the same bar: the UI path confirms, and so does this one.
   // Without it a hallucinated (or prompt-injected) action deletes user data with
   // no chance to cancel.
+  // The prompt asks for at most 5 workflow actions plus a mood. A rule that
+  // lives only in the prompt is not enforced (§7), so the code holds the line:
+  // anything past this is dropped, not run.
+  const MAX_ACTIONS_PER_REPLY = 6;
+  const MAX_MEMORY_CHARS = 300;
+
   function confirmDestructive(title: string, message: string) {
     return confirmDialog({ title, message, confirmLabel: "Delete" });
   }
@@ -1367,6 +1373,17 @@ casual chat (no data action — still set a mood):
         case "edit_sticky": {
           const d = action.data;
           if (d.id && d.content !== undefined && onStickyUpdated) {
+            // An edit replaces the whole note. Adding to it keeps the old text,
+            // so that goes through quietly; anything that drops existing words
+            // is a delete with extra steps and gets the same dialog.
+            const old = appData.stickyNotes?.find((n) => n.id === d.id)?.content?.trim() ?? "";
+            if (old && !String(d.content).includes(old)) {
+              const ok = await confirmDestructive(
+                "Replace this note?",
+                "What's written on it now is replaced with Tyun's version.",
+              );
+              if (!ok) break;
+            }
             onStickyUpdated(d.id, d.content);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
@@ -1376,8 +1393,12 @@ casual chat (no data action — still set a mood):
 
         case "save_memory": {
           const d = action.data;
-          if (d.content && onMemoryAdded) {
-            onMemoryAdded(d.content);
+          // Memories ride along in every later prompt, so a bad one keeps
+          // steering (§4 LLM05, ASI06). Cap the size and skip duplicates.
+          const content = typeof d.content === "string" ? d.content.trim().slice(0, MAX_MEMORY_CHARS) : "";
+          const dup = appData.memories?.some((m) => m.content.trim().toLowerCase() === content.toLowerCase());
+          if (content && !dup && onMemoryAdded) {
+            onMemoryAdded(content);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
           }
@@ -1387,6 +1408,14 @@ casual chat (no data action — still set a mood):
         case "delete_memory": {
           const d = action.data;
           if (d.id && onMemoryDeleted) {
+            // Memories have no panel of their own, so the chat is the only
+            // place one can be removed — and the only chance to say no.
+            const item = appData.memories?.find((m) => m.id === d.id);
+            const ok = await confirmDestructive(
+              "Forget this?",
+              item ? `Tyun forgets "${item.content.slice(0, 120)}".` : "Tyun forgets this memory.",
+            );
+            if (!ok) break;
             onMemoryDeleted(d.id);
             setCurrentMood("happy");
             setTimeout(() => setCurrentMood(null), 4000);
@@ -1598,10 +1627,14 @@ casual chat (no data action — still set a mood):
       // timeouts: a destructive action awaits a confirm dialog, and ConfirmHost
       // holds one pending prompt at a time — overlapping calls would orphan the
       // first promise and silently drop that action.
+      if (actionMatches.length > MAX_ACTIONS_PER_REPLY) {
+        console.warn(`Dropped ${actionMatches.length - MAX_ACTIONS_PER_REPLY} action(s) over the per-reply cap`);
+      }
+      const toRun = actionMatches.slice(0, MAX_ACTIONS_PER_REPLY);
       void (async () => {
-        for (let i = 0; i < actionMatches.length; i++) {
+        for (let i = 0; i < toRun.length; i++) {
           await new Promise((r) => setTimeout(r, i === 0 ? 300 : 200));
-          await executeAction(actionMatches[i][1]);
+          await executeAction(toRun[i][1]);
         }
       })();
     } catch {

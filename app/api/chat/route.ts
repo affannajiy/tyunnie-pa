@@ -33,7 +33,7 @@ const MAX_MESSAGE_CHARS = 8_000;
 // ~18k on its own before a single todo is inlined, so a real account tripped
 // "System prompt too large" on every message. 40k gives the capped data lists
 // (40 items each, see buildSystemPrompt) room and still bounds per-request
-// token spend (§4 LLM10 — unbounded consumption).
+// token spend (§4 LLM06 — unbounded consumption).
 const MAX_PROMPT_CHARS  = 40_000;
 // Total characters across the conversation, so 30 messages x 8k cannot add up
 // to a 240k-character request that passes every individual check.
@@ -56,7 +56,7 @@ const GROQ_TIMEOUT_MS   = 12_000;
 // the prompt is attacker-controlled for any authenticated caller, so it cannot
 // be the thing that holds a rule.
 //
-// §1a.4 / §4 LLM07: a constraint that lives only in a prompt is not enforced.
+// §1a.4 / §4 LLM08: a constraint that lives only in a prompt is not enforced.
 // The server therefore owns a preamble it always sends, and the client's string
 // is appended below it as *requested framing*, not as authority. This does not
 // make the model obedient — nothing does — but it stops the route from being a

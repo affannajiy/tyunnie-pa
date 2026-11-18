@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.29.1] — 2026-11-18
+
+### Highlights
+
+**Fixed**
+
+- **Tyun asks before forgetting** — when Tyun is about to forget something you told him, you get the same Cancel / Delete dialog as every other delete, showing what is about to go
+- **Notes don't get overwritten quietly** — if Tyun's edit to a sticky note would replace what you'd written, he asks first. Adding to a note still just happens
+- **Forgetting a fresh memory sticks** — something Tyun saved earlier in the same visit can now be forgotten for good; before, it disappeared and came back on the next load
+
+### Changed
+
+- **Security rulebook §4 is the OWASP LLM Top 10 2026, paired with the Agentic Top 10** — the 2026 list renumbers most risks, so every `§4 LLMxx` tag in `app/api/chat/route.ts`, `components/TyunniePanel.tsx` and `SECURITY.md` was remapped (unbounded consumption LLM10→LLM06, prompt leakage LLM07→LLM08 "hidden context exposure", excessive agency LLM06→LLM03). The `tyun-security` skill now treats chat actions as tool use and checks them against the Agentic list too
+- **Chat actions are capped in code** — `MAX_ACTIONS_PER_REPLY = 6` (the prompt's 5-step workflow limit plus a mood). Extras are dropped and logged. The limit used to live only in the prompt
+- **`save_memory` is bounded** — 300 characters, case-insensitive duplicates skipped. Every memory rides along in later prompts, so an oversized or repeated one keeps steering the model (ASI06)
+- **`SECURITY.md`** — new audit section for this pass; current-defences table names the live models (Gemini 3.5 Flash, Groq gpt-oss-120b) and PBKDF2 at 600k
+
+### Fixed
+
+- **AI `delete_memory` ran with no confirm** — memories have no panel, so the chat was the only place one could be removed and the user never saw it happen. Now goes through `confirmDestructive`
+- **AI `edit_sticky` replaced a note's whole text with no confirm** — confirms whenever the new text doesn't contain the old
+- **A memory saved in-session could never be deleted** — the dashboard put a client-made UUID in state, so `delete_memory` sent an id no row had; it vanished locally and returned on reload. `addMemory()` now returns the inserted row (guest path too) and the dashboard keeps its real id
+
+---
+
 ## [3.29.0] — 2026-09-23
 
 ### Highlights

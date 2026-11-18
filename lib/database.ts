@@ -792,9 +792,16 @@ export async function getMemories(userId: string): Promise<Memory[]> {
 export async function addMemory(
   userId: string,
   content: string,
-): Promise<void> {
+): Promise<Memory | null> {
   if (userId === GUEST_ID) return guest.addMemory(content);
-  await supabase.from("memories").insert({ user_id: userId, content });
+  const { data, error } = await supabase
+    .from("memories")
+    .insert({ user_id: userId, content })
+    .select()
+    .single();
+
+  if (error) console.error("addMemory error:", error.message);
+  return data ?? null;
 }
 
 export async function deleteMemory(id: string): Promise<void> {

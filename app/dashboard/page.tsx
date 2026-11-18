@@ -1413,16 +1413,12 @@ export default function Home() {
         onPomodoroStart={handlePomodoroStart}
         onMemoryAdded={async (content: string) => {
           if (!user) return;
-          await addMemory(user.id, content);
-          setMemories((prev) => [
-            {
-              id: crypto.randomUUID(),
-              user_id: user.id,
-              content,
-              created_at: new Date().toISOString(),
-            },
-            ...prev,
-          ]);
+          // Keep the row the DB returned. A client-made UUID here meant a
+          // memory saved this session could never be deleted: delete_memory
+          // sent an id no row had, the state dropped it, and it came back on
+          // the next load.
+          const row = await addMemory(user.id, content);
+          if (row) setMemories((prev) => [row, ...prev]);
         }}
         onMemoryDeleted={async (id: string) => {
           await deleteMemory(id);

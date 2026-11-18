@@ -19,10 +19,10 @@ Security review for Tyunnie PA. Find what's exploitable before it ships.
   accepted reasoning still holds instead.
 - **`rulebooks/SECURITY_Rulebook.md`** — the principles: §1 design principles (§1a Saltzer
   and Schroeder, §1b modern additions), §2 line-level controls (§2a–§2m), §3 OWASP
-  Top 10:2025, §4 OWASP LLM Top 10, §5 supply chain & SDLC, §6 run/detect/respond,
+  Top 10:2025, §4 OWASP LLM Top 10 (2026) + Agentic Top 10, §5 supply chain & SDLC, §6 run/detect/respond,
   §7 conflict rulings. **Tag every finding with the section it violates** (e.g.
   "§1a.3 complete mediation", "§2a input validation"). If a model reads untrusted
-  content or holds a tool, §4 is not optional. Not optional framing — it's what makes findings arguable.
+  content or holds a tool, §4 is not optional. Tyunnie AI actions (model emits action JSON that edits or deletes items) are tool use — check the Agentic list too (ASI01 goal hijack, ASI02 tool misuse). Not optional framing — it's what makes findings arguable.
 
 If a fact about the app contradicts `SECURITY.md`, `SECURITY.md` is stale and fixing it
 is part of the job.
