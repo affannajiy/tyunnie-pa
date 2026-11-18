@@ -254,22 +254,22 @@ export default function TyunniePanel({
   // snapPct = vh hidden below fold (translateY).
   // Desktop: default (8vh ~92vh) → tab-size (4vh ~96vh) → fullscreen (0).
   // Mobile:  default (8vh ~92vh) → fullscreen (0). No middle step.
-  const [isMobile, setIsMobile] = useState(false);
+  // The panel is loaded with dynamic(..., { ssr: false }), so reading window
+  // in a lazy initialiser is safe and avoids a mount-time setState.
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [snapPct, setSnapPct] = useState(() => (window.innerWidth < 768 ? 0 : 8));
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Shrinking to mobile while at a desktop-only snap resets to fullscreen.
+      if (mobile) setSnapPct(0);
+    };
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
 
   const SNAP_POINTS = isMobile ? [0] : [8, 4, 0];
-
-  const [snapPct, setSnapPct] = useState(8);
-
-  // If device shrinks to mobile while at a desktop-only snap, reset to fullscreen.
-  useEffect(() => {
-    if (isMobile && snapPct !== 0) setSnapPct(0);
-  }, [isMobile]);
 
   // Reset to default when panel closes.
   // On mobile always reset to 0 (fullscreen) — there is only one snap point.
@@ -357,6 +357,14 @@ export default function TyunniePanel({
     prefill: string;
   } | null>(null);
   const [proactiveDismissed, setProactiveDismissed] = useState(false);
+  // Reset the suggestion when the workspace snapshot changes — adjusted during
+  // render (React's "store the previous prop" pattern), not in an effect.
+  const [prevSnapshotAt, setPrevSnapshotAt] = useState(snapshot?.updatedAt);
+  if (snapshot?.updatedAt !== prevSnapshotAt) {
+    setPrevSnapshotAt(snapshot?.updatedAt);
+    setProactiveDismissed(false);
+    setProactiveSuggestion(null);
+  }
   const lastProactiveRef = useRef<number>(0);
   const lastMessageAtRef = useRef<number>(0);
   const isOpenRef = useRef(isOpen);
@@ -369,8 +377,22 @@ export default function TyunniePanel({
    *   floatPosRef   — ref mirror of floatPos (avoids stale closure in drag handlers)
    *   floatDragState — tracks active drag operation
    */
-  const [isFloating, setIsFloating] = useState(false);
-  const [floatPos, setFloatPos] = useState<{ x: number; y: number } | null>(null);
+  const [isFloating, setIsFloating] = useState(
+    () => localStorage.getItem("tyunnie_float") === "true",
+  );
+  const [floatPos, setFloatPos] = useState<{ x: number; y: number } | null>(() => {
+    const fallback = { x: window.innerWidth - 420, y: 80 };
+    const stored = localStorage.getItem("tyunnie_float_pos");
+    if (!stored) return fallback;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return fallback;
+    }
+  });
+  // Float is desktop-only. Derived rather than forced off by an effect, so the
+  // saved preference comes back when the window widens again.
+  const floating = isFloating && !isMobile;
   const floatPosRef = useRef<{ x: number; y: number } | null>(null);
   const floatDragState = useRef<{
     active: boolean;
@@ -429,14 +451,24 @@ export default function TyunniePanel({
           new Date().getMinutes().toString().padStart(2, "0"),
       },
     ]);
-  }, []);
+  }, [isGuest]);
 
+  // Copy a new prefill into the input during render; tell the parent and
+  // focus the field afterwards (those are side effects, so they stay in an effect).
+  const [prevPrefill, setPrevPrefill] = useState<string | undefined>(undefined);
+  if (prefillInput !== prevPrefill) {
+    setPrevPrefill(prefillInput);
+    if (prefillInput) setInput(prefillInput);
+  }
+  const onPrefillConsumedRef = useRef(onPrefillConsumed);
   useEffect(() => {
-    if (prefillInput) {
-      setInput(prefillInput);
-      onPrefillConsumed?.();
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    onPrefillConsumedRef.current = onPrefillConsumed;
+  });
+  useEffect(() => {
+    if (!prefillInput) return;
+    onPrefillConsumedRef.current?.();
+    const t = setTimeout(() => inputRef.current?.focus(), 100);
+    return () => clearTimeout(t);
   }, [prefillInput]);
 
   // Scroll to bottom whenever bubbles change
@@ -464,13 +496,25 @@ export default function TyunniePanel({
   }, [briefingCacheKey]);
 
   // ── DAILY BRIEFING ──
+  // A cached briefing is read during render instead of copied into state by
+  // the effect. Fetched text lives in `briefing` and wins over the cache.
+  const shownBriefing = isGuest
+    ? null
+    : (briefing ??
+      (briefingKey === 0 ? sessionStorage.getItem(briefingCacheKey) : null));
+
+  // The briefing is one-shot per session (gated on sessionStorage), so it reads
+  // appData through a ref — a todo change must not regenerate it.
+  const appDataRef = useRef(appData);
+  useEffect(() => {
+    appDataRef.current = appData;
+  });
+
   useEffect(() => {
     if (isGuest) return; // AI is gated for guests
-    if (briefingKey === 0 && sessionStorage.getItem(briefingCacheKey)) {
-      setBriefing(sessionStorage.getItem(briefingCacheKey));
-      return;
-    }
+    if (briefingKey === 0 && sessionStorage.getItem(briefingCacheKey)) return;
     async function fetchBriefing() {
+      const appData = appDataRef.current;
       const today = todayKey();
       const hour = new Date().getHours();
       const timeOfDay =
@@ -526,44 +570,13 @@ Only mention tasks or money if it's genuinely worth bringing up, and say it casu
    
     // briefingCacheKey included so a rename re-runs this and regenerates the
     // briefing under the new name instead of serving the old cached text.
-  }, [briefingKey, briefingCacheKey]);
+  }, [briefingKey, briefingCacheKey, isGuest]);
 
   // ── KEEP isOpenRef IN SYNC ──
   useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
 
   // ── KEEP floatPosRef IN SYNC ──
   useEffect(() => { floatPosRef.current = floatPos; }, [floatPos]);
-
-  // ── LOAD FLOAT STATE FROM LOCALSTORAGE (client-only) ──
-  useEffect(() => {
-    const floatStored = localStorage.getItem("tyunnie_float");
-    if (floatStored === "true") setIsFloating(true);
-
-    const posStored = localStorage.getItem("tyunnie_float_pos");
-    if (posStored) {
-      try {
-        setFloatPos(JSON.parse(posStored));
-      } catch {
-        setFloatPos({ x: window.innerWidth - 420, y: 80 });
-      }
-    } else {
-      setFloatPos({ x: window.innerWidth - 420, y: 80 });
-    }
-  }, []);
-
-  // ── DISABLE FLOAT ON MOBILE ──
-  useEffect(() => {
-    if (isMobile && isFloating) {
-      setIsFloating(false);
-      localStorage.setItem("tyunnie_float", "false");
-    }
-  }, [isMobile, isFloating]);
-
-  // ── RESET PROACTIVE SUGGESTION WHEN SNAPSHOT CHANGES ──
-  useEffect(() => {
-    setProactiveDismissed(false);
-    setProactiveSuggestion(null);
-  }, [snapshot?.updatedAt]);
 
   // ── PROACTIVE SUGGESTION TRIGGER ──
   useEffect(() => {
@@ -614,7 +627,7 @@ No preamble. No markdown fences.`,
     }, 4000);
 
     return () => clearTimeout(timer);
-  }, [snapshot]);
+  }, [snapshot, isGuest]);
 
   // ── FLOAT DRAG HANDLERS ──
   function onFloatPointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -1656,7 +1669,7 @@ casual chat (no data action — still set a mood):
   // ── RENDER ──
 
   // Bubble max-width: wider in float mode or when panel is expanded
-  const bubbleMaxWidth = isFloating || snapPct <= 4 ? "max-w-xl" : "max-w-[210px]";
+  const bubbleMaxWidth = floating || snapPct <= 4 ? "max-w-xl" : "max-w-[210px]";
 
   // Proactive suggestion card — shown above input in both modes
   const proactiveSuggestionCard = proactiveSuggestion && !proactiveDismissed ? (
@@ -1725,14 +1738,14 @@ casual chat (no data action — still set a mood):
           </div>
         </div>
       )}
-      {briefing && !briefingLoading && profile?.show_briefing !== false && (
+      {shownBriefing && !briefingLoading && profile?.show_briefing !== false && (
         <div className="shrink-0 px-3 pt-3 pb-1">
           <div className="bg-[#1e1b17] border border-(--accent)/30 rounded-2xl px-3.5 py-2.5 w-full">
             <div className="text-[9px] font-bold text-(--accent) uppercase tracking-widest mb-1.5 font-mono">
               Daily briefing
             </div>
             <p className="text-[12px] text-[#c8b89a] leading-[1.7]">
-              {briefing}
+              {shownBriefing}
             </p>
           </div>
         </div>
@@ -1914,7 +1927,7 @@ casual chat (no data action — still set a mood):
 
   return (
     <>
-      {isFloating && floatPos && !isMobile ? (
+      {floating && floatPos ? (
         /* ── FLOAT WINDOW MODE ── */
         <div
           style={{

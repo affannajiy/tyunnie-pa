@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-Personal AI assistant web app, Taehyun (TXT) themed. Next.js 16 · TypeScript · Tailwind v4 · Supabase · Gemini + Groq · Vercel. v3.29.1.
+Personal AI assistant web app, Taehyun (TXT) themed. Next.js 16 · TypeScript · Tailwind v4 · Supabase · Gemini + Groq · Vercel. v3.29.2.
 
 **This file is the invariant list, not the manual** — and the only CLAUDE.md. `next dev` keeps the `nextjs-agent-rules` block above in sync (no `AGENTS.md`, so it writes here); leave the markers. One line per rule. Depth lives in the skills and docs below.
 
@@ -191,7 +191,7 @@ Boundaries: RLS *audit* = security, RLS *change* = database. Skills run in-sessi
 ### Tracked debt — written down so it doesn't become architecture
 - **`lib/database.ts` is fire-and-forget.** 47 functions log to console and return `void`; reads `return data ?? []`, so a failed fetch is indistinguishable from an empty list. Needs the toast system — one change, not two. Don't add a `boolean` return before a caller reads it.
 - **vitest covers the eight game engines only** (199 tests). `mathEval`/`dayKey`/`withTimeout` are still verified by throwaway scripts — port them to `*.test.ts` next time they change.
-- **ESLint: 54 problems**, 0 unused-vars, none in `components/games`. Mostly `exhaustive-deps` and `set-state-in-effect` in the older panels. Clear `exhaustive-deps` before making lint blocking — it is the stale-closure class that already bit twice.
+- **ESLint: 43 problems** (29 errors, 14 warnings), 0 unused-vars, none in `components/games` or `TyunniePanel.tsx`. Mostly `exhaustive-deps` and `set-state-in-effect` in the older panels — the 3.29.2 TyunniePanel pass is the pattern to copy. Clear `exhaustive-deps` before making lint blocking — it is the stale-closure class that already bit twice.
 - **Solitaire cards are pointer-only.** Draw/undo/auto/new have keys, but moving a card needs a roving `tabIndex` + a pick-then-place key scheme (WCAG 2.1.1). Design first, then build.
 - **Label→field association missing.** Controls carry `aria-label`, but there is no `htmlFor` anywhere, so clicking a visible label doesn't focus its field. Needs `useId()` per field.
 

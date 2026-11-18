@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.29.2] — 2026-11-18
+
+### Highlights
+
+**Fixed**
+
+- **Floating chat remembers you** — if you float the chat on a laptop and the window gets narrow for a moment, it floats again when the window widens. Before, it forgot and docked itself for good
+- **Security updates** — the app's framework and image tools are updated to versions with known security problems fixed
+
+### Changed
+
+- **`TyunniePanel.tsx` lints clean (11 problems → 0)** — mount-time state (`isMobile`, `snapPct`, float on/off and position) comes from lazy `useState` initialisers, which is safe because the panel is `dynamic(..., { ssr: false })`. The mobile snap reset moved into the resize listener. Float is derived (`floating = isFloating && !isMobile`) instead of forced off by an effect. The prefill and proactive-suggestion resets use the "store the previous prop" render pattern. The cached briefing is read from `sessionStorage` during render instead of copied into state. The briefing reads `appData` through a ref, so editing a todo still doesn't regenerate it (one-shot per session, as before). `isGuest` added to the three effects that read it
+- **Dependency floors raised** — `next` and `eslint-config-next` to `^16.4.6`, the `sharp` override to `^0.35.5`, so a fresh resolve can't land on a vulnerable version. Lint count is down to 43 project-wide
+
+### Fixed
+
+- **CI audit gate failed on `main`** — `npm audit --omit=dev` reported 1 critical and 2 high advisories: `next` 16.0.0–16.4.4 (13 advisories, including RCE in `next/og` and in Image Optimization with SVG), `sharp` <0.35.5 (librsvg) and `source-map-js` 1.0.0–1.2.1 (event-loop DoS). `npm audit fix` moved them to `next` 16.4.6, `sharp` 0.35.5 and `source-map-js` 1.2.2, and the production audit is back to 0. A dev-only `picomatch` advisory with no fixed version is still open (see `SECURITY.md`)
+
+---
+
 ## [3.29.1] — 2026-11-18
 
 ### Highlights

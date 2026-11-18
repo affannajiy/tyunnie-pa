@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)
-![Version](https://img.shields.io/badge/version-3.29.1-f97316?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.29.2-f97316?style=flat-square)
 
 ---
 
@@ -21,7 +21,7 @@
 - **Live workspace awareness** — Tyunnie reads the content you're actively editing (code, draft, or task list) and injects it into every chat request; ask "what does this do?" or "fix this bug" without pasting anything
 - **Proactive suggestions** — after 4 seconds of editing, Tyunnie silently analyses your active workspace and surfaces a non-intrusive tip (bug catch for code, quiz questions for writing, focus nudge for tasks) as a dismissable card with a "Use this →" pre-fill shortcut
 - **Daily briefing** — personalised 1-2 sentence summary on load, togglable from profile
-- **Detachable floating window** — "Float panel" button (desktop) converts the bottom-sheet into a free-floating, draggable 400×560px window; position persists across page loads. Snap-back button returns to the sheet
+- **Detachable floating window** — "Float panel" button (desktop) converts the bottom-sheet into a free-floating, draggable 400×560px window; position and float state persist across page loads, and it re-floats if the window narrows to mobile width and widens again. Snap-back button returns to the sheet
 - **Bottom-sheet overlay** — slides up from the dock; chat history persists across all tab switches
 - **Snap resize** — cycle through snap sizes (default → wide → fullscreen on desktop; fullscreen-only on mobile)
 - **Swipe-up gesture** — swipe from the bottom edge to open on mobile

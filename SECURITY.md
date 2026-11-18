@@ -213,6 +213,8 @@ npm audit --omit=dev   # 0 vulnerabilities
 
 Production dependencies audit clean at **0** — reconfirmed 2026-08-19 after clearing the `nanoid` advisory (see the Rulebook Pass above). This number is now enforced by CI rather than by remembering to check. The dev-only advisories were accepted deliberately in 3.23.0 as the cost of restoring the lint gate (`eslint-config-next` had been pinned to a wrong package, so `npm run lint` was broken for a full release). Two constraints hold that repair together and must not be "tidied up": `eslint` stays on `^9` (eslint-config-next@16 bundles a react plugin whose peer caps at ^9.7), and the `brace-expansion` override stays **scoped to `@eslint/config-array`** — making it global re-breaks the linter.
 
+**2026-11-18 (v3.29.2):** CI's prod audit failed on `next` 16.0.0–16.4.4 (critical; RCE in `next/og` and in SVG Image Optimization, among 13 advisories), `sharp` <0.35.5 and `source-map-js` ≤1.2.1. Cleared with `npm audit fix`, and the `package.json` floors were raised to match, so the prod audit is back to **0**. One dev-only advisory is still open: `picomatch` (high, affects every published version, no fix available). It runs only in local tooling and never reaches a bundle. Accepted until a fixed version ships. Then run `npm audit fix` and verify with `npm ci --dry-run`.
+
 ---
 
 ## Known Limitations & Backup Plans
